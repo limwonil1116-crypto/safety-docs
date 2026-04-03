@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -17,12 +18,24 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    if (email && password) {
-      router.push("/tasks");
-    } else {
-      setError("이메일과 비밀번호를 입력해 주세요.");
+
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setError("이메일 또는 비밀번호가 올바르지 않습니다.");
+      } else {
+        router.push("/tasks");
+      }
+    } catch {
+      setError("로그인 처리 중 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const contacts = [
@@ -64,6 +77,7 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">이메일 주소</label>
               <div className="relative">
@@ -73,11 +87,13 @@ export default function LoginPage() {
                     <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
                   </svg>
                 </div>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                <input type="email" value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="이메일을 입력하세요"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"/>
               </div>
             </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">비밀번호</label>
               <div className="relative">
@@ -90,29 +106,32 @@ export default function LoginPage() {
                 <input type={showPassword ? "text" : "password"} value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="비밀번호를 입력하세요"
-                  className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                  className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"/>
                 <button type="button" onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
                   </svg>
                 </button>
               </div>
             </div>
+
             <div className="flex items-center gap-2">
               <input type="checkbox" id="remember" checked={remember}
                 onChange={(e) => setRemember(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300"/>
+                className="w-4 h-4 rounded border-gray-300 text-blue-600"/>
               <label htmlFor="remember" className="text-sm text-gray-600">로그인 정보 기억하기</label>
             </div>
+
             <button type="submit" disabled={loading}
-              className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-60"
+              className="w-full py-3 rounded-xl text-white font-medium text-sm transition-opacity disabled:opacity-60"
               style={{ background: "#2563eb" }}>
               {loading ? "로그인 중..." : "로그인"}
             </button>
           </form>
 
-          <button className="w-full mt-3 py-3 rounded-xl font-medium text-sm"
+          <button className="w-full mt-3 py-3 rounded-xl font-medium text-sm transition-opacity"
             style={{ background: "#FEE500", color: "#000000" }}>
             카카오로 로그인
           </button>
@@ -122,6 +141,7 @@ export default function LoginPage() {
             <span>|</span>
             <Link href="/forgot-password" className="hover:text-blue-600">비밀번호 찾기</Link>
           </div>
+
           <div className="text-center mt-3">
             <Link href="/signup" className="text-sm font-medium" style={{ color: "#2563eb" }}>
               계정이 없으신가요? 회원가입
