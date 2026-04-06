@@ -1,86 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { DOCUMENT_TYPE_LABELS, DOCUMENT_TYPE_SHORT, DocumentType } from "@/types";
 
-const mockApprovals = [
-  {
-    id: "1",
-    type: "SAFETY_WORK_PERMIT",
-    typeLabel: "안전작업허가서",
-    typeShort: "붙임1",
-    taskName: "내현지구 정밀안전진단",
-    company: "한국안전연구원",
-    writer: "홍길동",
-    status: "IN_REVIEW",
-    statusLabel: "검토중",
-    currentApprover: "김담당",
-    submittedAt: "2026.04.03",
-    isMyTurn: true,
-  },
-  {
-    id: "2",
-    type: "CONFINED_SPACE",
-    typeLabel: "밀폐공간 작업허가서",
-    typeShort: "붙임2",
-    taskName: "장은항 어촌뉴딜 정밀점검",
-    company: "안전기술연구소",
-    writer: "이철수",
-    status: "IN_REVIEW",
-    statusLabel: "검토중",
-    currentApprover: "박검토",
-    submittedAt: "2026.04.03",
-    isMyTurn: false,
-  },
-  {
-    id: "3",
-    type: "HOLIDAY_WORK",
-    typeLabel: "휴일작업 신청서",
-    typeShort: "붙임3",
-    taskName: "대천1지구 정밀안전진단",
-    company: "KR안전연구원",
-    writer: "박민수",
-    status: "APPROVED",
-    statusLabel: "검토완료",
-    currentApprover: null,
-    submittedAt: "2026.04.01",
-    isMyTurn: false,
-  },
-  {
-    id: "4",
-    type: "SAFETY_WORK_PERMIT",
-    typeLabel: "안전작업허가서",
-    typeShort: "붙임1",
-    taskName: "증산지구 정기안전점검",
-    company: "한국안전연구원",
-    writer: "홍길동",
-    status: "REJECTED",
-    statusLabel: "반려",
-    currentApprover: null,
-    submittedAt: "2026.04.02",
-    isMyTurn: false,
-  },
-  {
-    id: "5",
-    type: "POWER_OUTAGE",
-    typeLabel: "정전작업 허가서",
-    typeShort: "붙임4",
-    taskName: "내현지구 정밀안전진단",
-    company: "한국안전연구원",
-    writer: "홍길동",
-    status: "SUBMITTED",
-    statusLabel: "제출완료",
-    currentApprover: "김담당",
-    submittedAt: "2026.04.03",
-    isMyTurn: true,
-  },
-];
+interface ApprovalDoc {
+  id: string;
+  document_type: DocumentType;
+  status: string;
+  task_name: string;
+  contractor_company_name?: string;
+  writer_name?: string;
+  current_approver_name?: string;
+  submitted_at?: string;
+  updated_at: string;
+  is_my_turn: boolean;
+}
 
-const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
-  SUBMITTED: { bg: "bg-blue-100",  text: "text-blue-600" },
-  IN_REVIEW: { bg: "bg-amber-100", text: "text-amber-600" },
-  APPROVED:  { bg: "bg-green-100", text: "text-green-600" },
-  REJECTED:  { bg: "bg-red-100",   text: "text-red-600" },
+const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
+  SUBMITTED: { bg: "bg-blue-100",  text: "text-blue-600",  label: "제출완료" },
+  IN_REVIEW: { bg: "bg-amber-100", text: "text-amber-600", label: "검토중" },
+  APPROVED:  { bg: "bg-green-100", text: "text-green-600", label: "검토완료" },
+  REJECTED:  { bg: "bg-red-100",   text: "text-red-600",   label: "반려" },
 };
 
 const TABS = [
@@ -91,30 +32,61 @@ const TABS = [
   { key: "POWER_OUTAGE",       label: "붙임4" },
 ];
 
-const DATE_FILTERS = ["오늘", "이번 주", "이번 달", "직접 선택"];
+const DATE_FILTERS = [
+  { key: "ALL",        label: "오늘" },
+  { key: "THIS_WEEK",  label: "이번 주" },
+  { key: "THIS_MONTH", label: "이번 달" },
+];
 
 export default function ApprovalsPage() {
+  const [docs, setDocs] = useState<ApprovalDoc[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("ALL");
-  const [dateFilter, setDateFilter] = useState("오늘");
+  const [dateFilter, setDateFilter] = useState("ALL");
   const [search, setSearch] = useState("");
+  const [typeCounts, setTypeCounts] = useState<Record<string, number>>({});
+  const [myTurnCount, setMyTurnCount] = useState(0);
 
-  const filtered = mockApprovals.filter((doc) => {
-    const tabMatch = activeTab === "ALL" || doc.type === activeTab;
-    const searchMatch =
-      search === "" ||
-      doc.taskName.includes(search) ||
-      doc.company.includes(search) ||
-      doc.writer.includes(search);
-    return tabMatch && searchMatch;
-  });
+  const fetchApprovals = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams();
+      if (activeTab !== "ALL") params.set("type", activeTab);
+      if (dateFilter !== "ALL") params.set("date", dateFilter);
+      if (search) params.set("keyword", search);
 
-  const myTurnCount = mockApprovals.filter((d) => d.isMyTurn).length;
+      const res = await fetch(`/api/approvals?${params.toString()}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "불러오기 실패");
+      setDocs(data.documents ?? []);
+      setTypeCounts(data.typeCounts ?? {});
+      setMyTurnCount(data.myTurnCount ?? 0);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTab, dateFilter, search]);
+
+  useEffect(() => {
+    const timer = setTimeout(fetchApprovals, 300);
+    return () => clearTimeout(timer);
+  }, [fetchApprovals]);
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "";
+    return new Date(dateStr).toLocaleDateString("ko-KR", {
+      year: "numeric", month: "2-digit", day: "2-digit",
+    }).replace(/\. /g, ".").replace(/\.$/, "");
+  };
 
   return (
     <div>
       {/* 상단 헤더 */}
       <div className="px-4 pt-4 pb-3 bg-white border-b border-gray-100">
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center justify-between mb-2">
           <h1 className="text-lg font-bold text-gray-900">승인 목록</h1>
           {myTurnCount > 0 && (
             <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-red-100 text-red-600">
@@ -122,18 +94,18 @@ export default function ApprovalsPage() {
             </span>
           )}
         </div>
-
         {/* 날짜 필터 */}
-        <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+        <div className="flex gap-2 overflow-x-auto pb-1">
           {DATE_FILTERS.map((f) => (
-            <button key={f} onClick={() => setDateFilter(f)}
+            <button
+              key={f.key}
+              onClick={() => setDateFilter(f.key)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                dateFilter === f
-                  ? "text-white"
-                  : "bg-gray-100 text-gray-600"
+                dateFilter === f.key ? "text-white" : "bg-gray-100 text-gray-600"
               }`}
-              style={dateFilter === f ? { background: "#2563eb" } : {}}>
-              {f}
+              style={dateFilter === f.key ? { background: "#2563eb" } : {}}
+            >
+              {f.label}
             </button>
           ))}
         </div>
@@ -143,21 +115,22 @@ export default function ApprovalsPage() {
       <div className="bg-white border-b border-gray-200 flex overflow-x-auto">
         {TABS.map((tab) => {
           const count = tab.key === "ALL"
-            ? mockApprovals.length
-            : mockApprovals.filter((d) => d.type === tab.key).length;
+            ? (typeCounts.ALL ?? 0)
+            : (typeCounts[tab.key] ?? 0);
           return (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
               className={`flex-shrink-0 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.key
                   ? "border-blue-600 text-blue-600"
                   : "border-transparent text-gray-500"
-              }`}>
+              }`}
+            >
               {tab.label}
               {count > 0 && (
                 <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
-                  activeTab === tab.key
-                    ? "bg-blue-100 text-blue-600"
-                    : "bg-gray-100 text-gray-500"
+                  activeTab === tab.key ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-500"
                 }`}>
                   {count}
                 </span>
@@ -175,15 +148,27 @@ export default function ApprovalsPage() {
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
           </div>
-          <input value={search} onChange={(e) => setSearch(e.target.value)}
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="과업명, 업체명, 작성자 검색"
-            className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+            className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
       </div>
 
       {/* 목록 */}
       <div className="px-4 pb-4 space-y-3">
-        {filtered.length === 0 ? (
+        {loading ? (
+          [1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+              <div className="h-3 bg-gray-100 rounded w-1/2" />
+            </div>
+          ))
+        ) : error ? (
+          <div className="text-center py-12 text-red-500 text-sm">{error}</div>
+        ) : docs.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-3 opacity-50">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -192,53 +177,58 @@ export default function ApprovalsPage() {
             <p className="text-sm">해당 문서가 없습니다</p>
           </div>
         ) : (
-          filtered.map((doc) => (
-            <Link key={doc.id} href={`/approvals/${doc.id}`}>
-              <div className={`bg-white rounded-2xl p-4 shadow-sm border transition-shadow hover:shadow-md ${
-                doc.isMyTurn ? "border-blue-200" : "border-gray-100"
-              }`}>
-                {/* 내 차례 배너 */}
-                {doc.isMyTurn && (
-                  <div className="flex items-center gap-1.5 mb-2 text-xs font-medium text-blue-600">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse inline-block"/>
-                    내 차례입니다
-                  </div>
-                )}
-
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">
-                      {doc.typeShort}
+          docs.map((doc) => {
+            const style = STATUS_STYLE[doc.status] ?? STATUS_STYLE.SUBMITTED;
+            const typeShort = DOCUMENT_TYPE_SHORT[doc.document_type] ?? doc.document_type;
+            const typeLabel = DOCUMENT_TYPE_LABELS[doc.document_type] ?? doc.document_type;
+            const isMyTurn = doc.is_my_turn === true || String(doc.is_my_turn) === "true";
+            return (
+              <Link key={doc.id} href={`/approvals/${doc.id}`}>
+                <div className={`bg-white rounded-2xl p-4 shadow-sm border transition-shadow hover:shadow-md ${
+                  isMyTurn ? "border-blue-200" : "border-gray-100"
+                }`}>
+                  {isMyTurn && (
+                    <div className="flex items-center gap-1.5 mb-2 text-xs font-medium text-blue-600">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse inline-block"/>
+                      내 차례입니다
+                    </div>
+                  )}
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">
+                        {typeShort}
+                      </span>
+                      <span className="text-sm font-semibold text-gray-900">{doc.task_name}</span>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${style.bg} ${style.text}`}>
+                      {style.label}
                     </span>
-                    <span className="text-sm font-semibold text-gray-900">{doc.taskName}</span>
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[doc.status].bg} ${STATUS_STYLE[doc.status].text}`}>
-                    {doc.statusLabel}
-                  </span>
-                </div>
-
-                <p className="text-xs text-gray-500 mb-2">{doc.typeLabel}</p>
-
-                <div className="flex items-center gap-3 text-xs text-gray-400">
-                  <span>{doc.company}</span>
-                  <span>·</span>
-                  <span>작성자: {doc.writer}</span>
-                  <span>·</span>
-                  <span>{doc.submittedAt}</span>
-                </div>
-
-                {doc.currentApprover && (
-                  <div className="mt-2 text-xs text-amber-600 flex items-center gap-1">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10"/>
-                      <polyline points="12 6 12 12 16 14"/>
-                    </svg>
-                    현재 검토자: {doc.currentApprover}
+                  <p className="text-xs text-gray-500 mb-2">{typeLabel}</p>
+                  <div className="flex items-center gap-2 text-xs text-gray-400 flex-wrap">
+                    {doc.contractor_company_name && <span>{doc.contractor_company_name}</span>}
+                    {doc.contractor_company_name && <span>·</span>}
+                    <span>작성자: {doc.writer_name}</span>
+                    {doc.submitted_at && (
+                      <>
+                        <span>·</span>
+                        <span>{formatDate(doc.submitted_at)}</span>
+                      </>
+                    )}
                   </div>
-                )}
-              </div>
-            </Link>
-          ))
+                  {doc.current_approver_name && (
+                    <div className="mt-2 text-xs text-amber-600 flex items-center gap-1">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                      </svg>
+                      현재 검토자: {doc.current_approver_name}
+                    </div>
+                  )}
+                </div>
+              </Link>
+            );
+          })
         )}
       </div>
     </div>

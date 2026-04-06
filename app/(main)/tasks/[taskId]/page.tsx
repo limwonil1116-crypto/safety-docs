@@ -1,186 +1,317 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { DOCUMENT_TYPE_LABELS, DOCUMENT_TYPE_SHORT, DocumentType } from "@/types";
 
-const mockTask = {
-  id: "1",
-  name: "내현지구 정밀안전진단",
-  company: "한국안전연구원",
-  period: "2026.01.01 ~ 2026.12.31",
-};
+interface TaskDetail {
+  id: string;
+  name: string;
+  contractorCompanyName?: string;
+  startDate?: string;
+  endDate?: string;
+  status: string;
+}
 
-const mockDocuments = [
-  {
-    id: "1",
-    type: "SAFETY_WORK_PERMIT",
-    typeLabel: "안전작업허가서",
-    typeShort: "붙임1",
-    status: "IN_REVIEW",
-    statusLabel: "검토중",
-    writer: "홍길동",
-    submittedAt: "2026.04.03",
-    currentApprover: "김담당",
-  },
-  {
-    id: "2",
-    type: "SAFETY_WORK_PERMIT",
-    typeLabel: "안전작업허가서",
-    typeShort: "붙임1",
-    status: "APPROVED",
-    statusLabel: "검토완료",
-    writer: "홍길동",
-    submittedAt: "2026.03.28",
-    currentApprover: null,
-  },
-  {
-    id: "3",
-    type: "CONFINED_SPACE",
-    typeLabel: "밀폐공간 작업허가서",
-    typeShort: "붙임2",
-    status: "REJECTED",
-    statusLabel: "반려",
-    writer: "홍길동",
-    submittedAt: "2026.04.01",
-    currentApprover: null,
-  },
-  {
-    id: "4",
-    type: "HOLIDAY_WORK",
-    typeLabel: "휴일작업 신청서",
-    typeShort: "붙임3",
-    status: "DRAFT",
-    statusLabel: "작성중",
-    writer: "홍길동",
-    submittedAt: null,
-    currentApprover: null,
-  },
-];
+interface DocumentItem {
+  id: string;
+  taskId: string;
+  documentType: DocumentType;
+  status: string;
+  writerName?: string;
+  submittedAt?: string;
+  currentApproverName?: string;
+}
 
-const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
-  DRAFT:     { bg: "bg-gray-100",   text: "text-gray-600" },
-  SUBMITTED: { bg: "bg-blue-100",   text: "text-blue-600" },
-  IN_REVIEW: { bg: "bg-amber-100",  text: "text-amber-600" },
-  APPROVED:  { bg: "bg-green-100",  text: "text-green-600" },
-  REJECTED:  { bg: "bg-red-100",    text: "text-red-600" },
+const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
+  DRAFT:     { bg: "bg-gray-100",  text: "text-gray-600",  label: "작성중" },
+  SUBMITTED: { bg: "bg-blue-100",  text: "text-blue-600",  label: "제출완료" },
+  IN_REVIEW: { bg: "bg-amber-100", text: "text-amber-600", label: "검토중" },
+  APPROVED:  { bg: "bg-green-100", text: "text-green-600", label: "검토완료" },
+  REJECTED:  { bg: "bg-red-100",   text: "text-red-600",   label: "반려" },
 };
 
 const TABS = [
-  { key: "ALL", label: "전체" },
+  { key: "ALL",                label: "전체" },
   { key: "SAFETY_WORK_PERMIT", label: "붙임1" },
-  { key: "CONFINED_SPACE", label: "붙임2" },
-  { key: "HOLIDAY_WORK", label: "붙임3" },
-  { key: "POWER_OUTAGE", label: "붙임4" },
+  { key: "CONFINED_SPACE",     label: "붙임2" },
+  { key: "HOLIDAY_WORK",       label: "붙임3" },
+  { key: "POWER_OUTAGE",       label: "붙임4" },
 ];
+
+const DOC_TYPES = [
+  { key: "SAFETY_WORK_PERMIT", label: "붙임1", desc: "안전작업허가서" },
+  { key: "CONFINED_SPACE",     label: "붙임2", desc: "밀폐공간 작업허가서" },
+  { key: "HOLIDAY_WORK",       label: "붙임3", desc: "휴일작업 신청서" },
+  { key: "POWER_OUTAGE",       label: "붙임4", desc: "정전작업 허가서" },
+];
+
+function CreateDocumentModal({
+  taskId,
+  onClose,
+  onCreated,
+}: {
+  taskId: string;
+  onClose: () => void;
+  onCreated: (docId: string) => void;
+}) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleCreate = async () => {
+    if (!selected) { setError("서식을 선택해주세요."); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId, documentType: selected }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "생성 실패");
+      onCreated(data.document.id);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+      <div className="bg-white w-full rounded-t-3xl p-6 pb-10">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-bold text-gray-900">새 서식 작성</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        <div className="space-y-2 mb-5">
+          {DOC_TYPES.map((type) => (
+            <button
+              key={type.key}
+              onClick={() => setSelected(type.key)}
+              className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
+                selected === type.key ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold ${
+                selected === type.key ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-600"
+              }`}>
+                {type.label}
+              </span>
+              <span className={`text-sm font-medium ${selected === type.key ? "text-blue-700" : "text-gray-700"}`}>
+                {type.desc}
+              </span>
+              {selected === type.key && (
+                <svg className="ml-auto text-blue-500" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+            </button>
+          ))}
+        </div>
+        {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
+        <button
+          onClick={handleCreate}
+          disabled={loading || !selected}
+          className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50"
+          style={{ background: "#2563eb" }}
+        >
+          {loading ? "생성 중..." : "작성 시작"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function TaskDetailPage() {
   const params = useParams();
-  const [activeTab, setActiveTab] = useState("ALL");
+  const router = useRouter();
+  const taskId = params.taskId as string;
 
-  const filtered = activeTab === "ALL"
-    ? mockDocuments
-    : mockDocuments.filter((d) => d.type === activeTab);
+  const [task, setTask] = useState<TaskDetail | null>(null);
+  const [docList, setDocList] = useState<DocumentItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState("ALL");
+  const [showCreate, setShowCreate] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "불러오기 실패");
+      setTask(data.task);
+      setDocList(data.documents);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  }, [taskId]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const filtered = activeTab === "ALL" ? docList : docList.filter((d) => d.documentType === activeTab);
+
+  const formatPeriod = () => {
+    if (!task) return "";
+    const fmt = (d: string) => new Date(d).toLocaleDateString("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).replace(/\. /g, ".").replace(/\.$/, "");
+    const start = task.startDate ? fmt(task.startDate) : "";
+    const end = task.endDate ? fmt(task.endDate) : "";
+    if (start && end) return `${start} ~ ${end}`;
+    if (start) return `${start} ~`;
+    return "";
+  };
+
+  if (loading) {
+    return (
+      <div>
+        <div className="px-4 pt-4 pb-3 animate-pulse" style={{ background: "#1e3a5f" }}>
+          <div className="h-4 bg-blue-800 rounded w-20 mb-3" />
+          <div className="h-5 bg-blue-800 rounded w-3/4 mb-2" />
+          <div className="h-3 bg-blue-900 rounded w-1/2" />
+        </div>
+        <div className="p-4 space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+              <div className="h-3 bg-gray-100 rounded w-1/2" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 text-center py-12 text-red-500 text-sm">
+        {error}
+        <button onClick={fetchData} className="block mx-auto mt-3 text-blue-500 underline text-xs">다시 시도</button>
+      </div>
+    );
+  }
 
   return (
     <div>
-      {/* 과업 정보 헤더 */}
       <div className="px-4 pt-4 pb-3" style={{ background: "#1e3a5f" }}>
         <Link href="/tasks" className="flex items-center gap-1 text-blue-300 text-sm mb-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="15 18 9 12 15 6"/>
+            <polyline points="15 18 9 12 15 6" />
           </svg>
           과업 목록
         </Link>
-        <h2 className="text-white font-bold text-base">{mockTask.name}</h2>
-        <p className="text-blue-200 text-xs mt-0.5">{mockTask.company}</p>
-        <p className="text-blue-300 text-xs mt-0.5">{mockTask.period}</p>
+        <h2 className="text-white font-bold text-base">{task?.name}</h2>
+        {task?.contractorCompanyName && <p className="text-blue-200 text-xs mt-0.5">{task.contractorCompanyName}</p>}
+        {formatPeriod() && <p className="text-blue-300 text-xs mt-0.5">{formatPeriod()}</p>}
       </div>
 
-      {/* 탭 */}
       <div className="bg-white border-b border-gray-200 flex overflow-x-auto">
         {TABS.map((tab) => {
-          const count = tab.key === "ALL"
-            ? mockDocuments.length
-            : mockDocuments.filter((d) => d.type === tab.key).length;
+          const count = tab.key === "ALL" ? docList.length : docList.filter((d) => d.documentType === tab.key).length;
           return (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
               className={`flex-shrink-0 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.key
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-gray-500"
+                activeTab === tab.key ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500"
               }`}>
               {tab.label}
               {count > 0 && (
                 <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
                   activeTab === tab.key ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-500"
-                }`}>
-                  {count}
-                </span>
+                }`}>{count}</span>
               )}
             </button>
           );
         })}
       </div>
 
-      {/* 문서 목록 */}
       <div className="p-4 space-y-3">
         {filtered.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-3 opacity-50">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
             </svg>
-            <p className="text-sm">해당 서류가 없습니다</p>
+            <p className="text-sm">해당 서식이 없습니다</p>
+            <button onClick={() => setShowCreate(true)} className="mt-3 text-blue-500 text-sm underline">
+              새 서식 작성하기
+            </button>
           </div>
         ) : (
-          filtered.map((doc) => (
-            <div key={doc.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">
-                    {doc.typeShort}
-                  </span>
-                  <span className="text-sm font-medium text-gray-900">{doc.typeLabel}</span>
+          filtered.map((doc) => {
+            const style = STATUS_STYLE[doc.status] ?? STATUS_STYLE.DRAFT;
+            const typeShort = DOCUMENT_TYPE_SHORT[doc.documentType] ?? doc.documentType;
+            const typeLabel = DOCUMENT_TYPE_LABELS[doc.documentType] ?? doc.documentType;
+            return (
+              <div key={doc.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{typeShort}</span>
+                    <span className="text-sm font-medium text-gray-900">{typeLabel}</span>
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${style.bg} ${style.text}`}>{style.label}</span>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[doc.status].bg} ${STATUS_STYLE[doc.status].text}`}>
-                  {doc.statusLabel}
-                </span>
+                <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+                  {doc.writerName && <span>작성자: {doc.writerName}</span>}
+                  {doc.submittedAt && <span>제출일: {doc.submittedAt}</span>}
+                  {doc.currentApproverName && (
+                    <span className="flex items-center gap-0.5 text-amber-600">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                      </svg>
+                      현재 검토자: {doc.currentApproverName}
+                    </span>
+                  )}
+                </div>
+                <div className="flex gap-2 mt-3">
+                  {doc.status === "DRAFT" || doc.status === "REJECTED" ? (
+                    <Link href={`/tasks/${taskId}/documents/${doc.id}/edit`}
+                      className="flex-1 text-center py-2 rounded-xl text-sm font-medium text-white"
+                      style={{ background: "#2563eb" }}>
+                      {doc.status === "REJECTED" ? "재작성" : "이어서 작성"}
+                    </Link>
+                  ) : (
+                    <Link href={`/tasks/${taskId}/documents/${doc.id}/detail`}
+                      className="flex-1 text-center py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-600">
+                      상세 보기
+                    </Link>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-3 text-xs text-gray-500">
-                <span>작성자: {doc.writer}</span>
-                {doc.submittedAt && <span>제출일: {doc.submittedAt}</span>}
-                {doc.currentApprover && <span>검토자: {doc.currentApprover}</span>}
-              </div>
-              <div className="flex gap-2 mt-3">
-                {doc.status === "DRAFT" || doc.status === "REJECTED" ? (
-                  <Link href={`/tasks/${params.taskId}/documents/${doc.id}/edit`}
-                    className="flex-1 text-center py-2 rounded-xl text-sm font-medium text-white"
-                    style={{ background: "#2563eb" }}>
-                    {doc.status === "REJECTED" ? "수정하기" : "이어서 작성"}
-                  </Link>
-                ) : (
-                  <Link href={`/tasks/${params.taskId}/documents/${doc.id}/detail`}
-                    className="flex-1 text-center py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-600">
-                    상세 보기
-                  </Link>
-                )}
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
-      {/* 새 서류 작성 버튼 */}
       <button
+        onClick={() => setShowCreate(true)}
         className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white"
-        style={{ background: "#2563eb" }}>
+        style={{ background: "#2563eb" }}
+      >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
         </svg>
       </button>
+
+      {showCreate && (
+        <CreateDocumentModal
+          taskId={taskId}
+          onClose={() => setShowCreate(false)}
+          onCreated={(docId) => {
+            setShowCreate(false);
+            router.push(`/tasks/${taskId}/documents/${docId}/edit`);
+          }}
+        />
+      )}
     </div>
   );
 }

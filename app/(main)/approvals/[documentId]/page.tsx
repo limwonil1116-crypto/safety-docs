@@ -1,60 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { DOCUMENT_TYPE_LABELS, DOCUMENT_TYPE_SHORT, DocumentType } from "@/types";
 
-const mockDocument = {
-  id: "1",
-  type: "SAFETY_WORK_PERMIT",
-  typeLabel: "안전작업허가서",
-  typeShort: "붙임1",
-  taskName: "내현지구 정밀안전진단",
-  company: "한국안전연구원",
-  writer: "홍길동",
-  status: "IN_REVIEW",
-  statusLabel: "검토중",
-  submittedAt: "2026.04.03 09:30",
-  isMyTurn: true,
-  formData: {
-    requestDate: "2026-04-03",
-    workDate: "2026-04-04",
-    workStartTime: "09:00",
-    workEndTime: "18:00",
-    projectName: "내현지구 정밀안전진단",
-    applicantCompany: "한국안전연구원",
-    applicantName: "홍길동",
-    workLocation: "내현지구 여수로 구간",
-    workContent: "1블록 보강토 쌓기 7블록 외 3개소 방수로 옹벽 재료조사 및 외관조사",
-    participants: "홍길동, 이철수, 박민수",
-    riskHighPlace: true,
-    riskWaterWork: false,
-    riskConfinedSpace: false,
-    riskPowerOutage: false,
-    riskFireWork: false,
-    factorSlippery: true,
-    factorSteepSlope: true,
-    factorNoRailing: true,
-    riskSummary: "방수로 옹벽 작업시 추락 위험",
-    improvementPlan: "안전난간에 안전로프 설치",
-    disasterType: "추락",
-  },
-  approvalLines: [
-    { order: 1, name: "김담당", org: "안전기술본부", role: "REVIEWER", status: "WAITING" },
-    { order: 2, name: "이부장", org: "안전기술본부", role: "FINAL_APPROVER", status: "PENDING" },
-  ],
-  reviewHistory: [],
-  attachments: [
-    { id: "1", name: "현장사진_01.jpg", type: "PHOTO", size: "2.3MB" },
-    { id: "2", name: "위험성평가표.pdf", type: "DOCUMENT", size: "1.1MB" },
-  ],
-};
+interface DocumentDetail {
+  id: string;
+  taskId: string;
+  documentType: DocumentType;
+  status: string;
+  formDataJson: Record<string, unknown>;
+  submittedAt?: string;
+  createdBy: string;
+  currentApproverUserId?: string;
+}
 
-const STATUS_STYLE: Record<string, { bg: string; text: string }> = {
-  SUBMITTED: { bg: "bg-blue-100",  text: "text-blue-600" },
-  IN_REVIEW: { bg: "bg-amber-100", text: "text-amber-600" },
-  APPROVED:  { bg: "bg-green-100", text: "text-green-600" },
-  REJECTED:  { bg: "bg-red-100",   text: "text-red-600" },
+interface ApprovalLine {
+  id: string;
+  approvalOrder: number;
+  approvalRole: string;
+  stepStatus: string;
+  approverName?: string;
+  approverOrg?: string;
+  actedAt?: string;
+  comment?: string;
+}
+
+interface UserItem {
+  id: string;
+  name: string;
+  organization?: string;
+  employeeNo?: string;
+}
+
+const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
+  SUBMITTED: { bg: "bg-blue-100",  text: "text-blue-600",  label: "제출완료" },
+  IN_REVIEW: { bg: "bg-amber-100", text: "text-amber-600", label: "검토중" },
+  APPROVED:  { bg: "bg-green-100", text: "text-green-600", label: "검토완료" },
+  REJECTED:  { bg: "bg-red-100",   text: "text-red-600",   label: "반려" },
 };
 
 const STEP_STYLE: Record<string, { bg: string; text: string; label: string }> = {
@@ -62,22 +46,380 @@ const STEP_STYLE: Record<string, { bg: string; text: string; label: string }> = 
   WAITING:  { bg: "bg-amber-100", text: "text-amber-600", label: "검토중" },
   APPROVED: { bg: "bg-green-100", text: "text-green-600", label: "승인" },
   REJECTED: { bg: "bg-red-100",   text: "text-red-600",   label: "반려" },
+  SKIPPED:  { bg: "bg-gray-100",  text: "text-gray-400",  label: "생략" },
 };
+
+const ROLE_LABELS: Record<string, Record<number, string>> = {
+  SAFETY_WORK_PERMIT: { 1: "최종검토자", 2: "최종허가자" },
+  CONFINED_SPACE:     { 1: "허가자",     2: "확인자" },
+  HOLIDAY_WORK:       { 1: "검토자",     2: "승인자" },
+  POWER_OUTAGE:       { 1: "허가자",     2: "확인자" },
+};
+
+const FINAL_ROLE_LABELS: Record<string, string> = {
+  SAFETY_WORK_PERMIT: "최종허가자",
+  CONFINED_SPACE:     "확인자",
+  HOLIDAY_WORK:       "승인자",
+  POWER_OUTAGE:       "확인자",
+};
+
+function Field({ label, value }: { label: string; value?: string | null }) {
+  if (!value) return null;
+  return (
+    <div className="flex gap-3">
+      <span className="text-gray-400 w-24 flex-shrink-0 text-sm">{label}</span>
+      <span className="text-gray-900 text-sm">{value}</span>
+    </div>
+  );
+}
+
+// 최종허가자 지정 모달
+function FinalApproverModal({
+  documentId,
+  documentType,
+  onClose,
+  onAssigned,
+}: {
+  documentId: string;
+  documentType: string;
+  onClose: () => void;
+  onAssigned: () => void;
+}) {
+  const [users, setUsers] = useState<UserItem[]>([]);
+  const [keyword, setKeyword] = useState("");
+  const [selected, setSelected] = useState<UserItem | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const finalRoleLabel = FINAL_ROLE_LABELS[documentType] ?? "최종허가자";
+
+  useEffect(() => {
+    const q = keyword ? `&keyword=${encodeURIComponent(keyword)}` : "";
+    fetch(`/api/users?krcOnly=true${q}`)
+      .then((r) => r.json())
+      .then((d) => setUsers(d.users ?? []));
+  }, [keyword]);
+
+  const handleAssign = async () => {
+    if (!selected) { setError("최종허가자를 선택해주세요."); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/documents/${documentId}/approval-lines`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ finalApproverUserId: selected.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "지정 실패");
+      onAssigned();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+      <div className="bg-white w-full rounded-t-3xl p-6 pb-10 max-h-[80vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-bold text-gray-900">{finalRoleLabel} 지정</h2>
+          <button onClick={onClose} className="text-gray-400">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+
+        <div className="bg-amber-50 rounded-xl p-3 mb-4 text-xs text-amber-700">
+          ℹ️ 검토 완료 후 최종 결재자를 지정합니다. 지정 후 즉시 알림이 발송됩니다.
+        </div>
+
+        {/* 선택된 최종허가자 */}
+        <div className={`p-3 rounded-xl border-2 mb-4 ${selected ? "border-green-400 bg-green-50" : "border-dashed border-gray-300"}`}>
+          <div className="text-xs text-gray-500 mb-1">{finalRoleLabel} <span className="text-red-500">*</span></div>
+          {selected ? (
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-medium text-gray-900">{selected.name}</span>
+                <span className="text-xs text-gray-500 ml-2">{selected.organization}</span>
+              </div>
+              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-red-500">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400">아래 목록에서 선택하세요</p>
+          )}
+        </div>
+
+        {/* 검색 */}
+        <div className="relative mb-2">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="이름으로 검색"
+            className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div className="space-y-1.5 max-h-48 overflow-y-auto mb-4">
+          {users.filter((u) => u.id !== selected?.id).map((u) => (
+            <button key={u.id} onClick={() => setSelected(u)}
+              className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-green-400 hover:bg-green-50 transition-colors text-left">
+              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-sm shrink-0">
+                {u.name[0]}
+              </div>
+              <div>
+                <div className="text-sm font-medium text-gray-900">{u.name}</div>
+                <div className="text-xs text-gray-500">{u.organization}{u.employeeNo ? ` · ${u.employeeNo}` : ""}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
+
+        <button
+          onClick={handleAssign}
+          disabled={loading || !selected}
+          className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50"
+          style={{ background: "#16a34a" }}
+        >
+          {loading ? "지정 중..." : `${finalRoleLabel} 지정 완료`}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function ApprovalDetailPage() {
   const params = useParams();
-  const [activeTab, setActiveTab] = useState("본문");
-  const [reviewOpinion, setReviewOpinion] = useState("");
-  const [actionRequest, setActionRequest] = useState("");
+  const router = useRouter();
+  const documentId = params.documentId as string;
+
+  const [doc, setDoc] = useState<DocumentDetail | null>(null);
+  const [approvalLines, setApprovalLines] = useState<ApprovalLine[]>([]);
+  const [taskName, setTaskName] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [isMyTurn, setIsMyTurn] = useState(false);
+  const [myApprovalOrder, setMyApprovalOrder] = useState(0);
+  const [activeTab, setActiveTab] = useState("내용");
+  const [comment, setComment] = useState("");
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [showSign, setShowSign] = useState(false);
+  const [showFinalApprover, setShowFinalApprover] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"APPROVE" | "REJECT" | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isDrawing = useRef(false);
 
-  const doc = mockDocument;
-  const f = doc.formData;
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [docRes, linesRes] = await Promise.all([
+        fetch(`/api/documents/${documentId}`),
+        fetch(`/api/documents/${documentId}/approval-lines`),
+      ]);
+      const docData = await docRes.json();
+      const linesData = await linesRes.json();
+      if (!docRes.ok) throw new Error(docData.error || "문서 조회 실패");
+      const docObj = docData.document;
+      setDoc(docObj);
+      const lines = linesData.approvalLines ?? [];
+      setApprovalLines(lines);
+
+      const taskRes = await fetch(`/api/tasks/${docObj.taskId}`);
+      const taskData = await taskRes.json();
+      if (taskRes.ok) setTaskName(taskData.task?.name ?? "");
+
+      const meRes = await fetch("/api/users/me");
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        const myId = meData.user?.id;
+        setIsMyTurn(docObj.currentApproverUserId === myId);
+        const myLine = lines.find((l: ApprovalLine & { approverUserId?: string }) => l.approverUserId === myId);
+        setMyApprovalOrder(myLine?.approvalOrder ?? 0);
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  }, [documentId]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const initCanvas = () => {
+    setTimeout(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "#1e3a5f";
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = "round";
+    }, 100);
+  };
+
+  const getPos = (e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) => {
+    const rect = canvas.getBoundingClientRect();
+    if ("touches" in e) {
+      return {
+        x: (e.touches[0].clientX - rect.left) * (canvas.width / rect.width),
+        y: (e.touches[0].clientY - rect.top) * (canvas.height / rect.height),
+      };
+    }
+    return {
+      x: (e.clientX - rect.left) * (canvas.width / rect.width),
+      y: (e.clientY - rect.top) * (canvas.height / rect.height),
+    };
+  };
+
+  const startDraw = (e: React.MouseEvent | React.TouchEvent) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    e.preventDefault();
+    isDrawing.current = true;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const pos = getPos(e, canvas);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  };
+
+  const draw = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isDrawing.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    e.preventDefault();
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const pos = getPos(e, canvas);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  };
+
+  const endDraw = () => { isDrawing.current = false; };
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const handleAction = async (action: "APPROVE" | "REJECT") => {
+    if (action === "REJECT" && !comment.trim()) {
+      alert("반려 사유를 입력해주세요.");
+      return;
+    }
+    setPendingAction(action);
+    setShowRejectConfirm(false);
+    setShowApproveConfirm(false);
+    setShowSign(true);
+    initCanvas();
+  };
+
+  const handleSubmitWithSign = async () => {
+    if (!pendingAction) return;
+    setProcessing(true);
+    try {
+      const res = await fetch(`/api/documents/${documentId}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: pendingAction,
+          comment: comment.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "처리 실패");
+
+      setShowSign(false);
+
+      // 1단계 승인 시 → 최종허가자 지정 모달
+      if (data.action === "NEED_FINAL_APPROVER") {
+        setShowFinalApprover(true);
+      } else if (data.action === "APPROVED") {
+        alert("최종 승인이 완료되었습니다!");
+        router.push("/approvals");
+      } else {
+        alert("반려되었습니다.");
+        router.push("/approvals");
+      }
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "오류가 발생했습니다.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-4 space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-white rounded-2xl p-4 animate-pulse">
+            <div className="h-4 bg-gray-200 rounded w-1/3 mb-3" />
+            <div className="h-10 bg-gray-100 rounded w-full" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error || !doc) {
+    return (
+      <div className="p-4 text-center py-12 text-red-500 text-sm">
+        {error || "문서를 찾을 수 없습니다."}
+        <button onClick={fetchData} className="block mx-auto mt-3 text-blue-500 underline text-xs">다시 시도</button>
+      </div>
+    );
+  }
+
+  const fd = doc.formDataJson;
+  const typeShort = DOCUMENT_TYPE_SHORT[doc.documentType] ?? doc.documentType;
+  const typeLabel = DOCUMENT_TYPE_LABELS[doc.documentType] ?? doc.documentType;
+  const statusStyle = STATUS_STYLE[doc.status] ?? STATUS_STYLE.SUBMITTED;
+  const roleLabels = ROLE_LABELS[doc.documentType] ?? {};
+  const rw = (fd.riskWorkTypes ?? {}) as Record<string, boolean>;
+  const rf = (fd.riskFactors ?? {}) as Record<string, boolean>;
+
+  const riskItems: string[] = [
+    rw.highPlace ? "고소작업" : "",
+    rw.waterWork ? "수상/수중" : "",
+    rw.confinedSpace ? "밀폐공간" : "",
+    rw.powerOutage ? "정전작업" : "",
+    rw.fireWork ? "화기작업" : "",
+  ].filter((v) => v !== "");
+
+  const factorItems: string[] = [
+    rf.narrowAccess ? "접근통로 협소" : "",
+    rf.slippery ? "미끄러운 바닥" : "",
+    rf.steepSlope ? "급경사면" : "",
+    rf.waterHazard ? "침수·홍수" : "",
+    rf.rockfall ? "낙석·붕괴" : "",
+    rf.noRailing ? "난간없음" : "",
+    rf.suffocation ? "질식·유해가스" : "",
+    rf.electrocution ? "감전위험" : "",
+    rf.fire ? "화재·폭발" : "",
+  ].filter((v) => v !== "");
 
   return (
     <div className="pb-32">
-      {/* 상단 헤더 */}
       <div className="px-4 pt-4 pb-3 bg-white border-b border-gray-100">
         <Link href="/approvals" className="flex items-center gap-1 text-gray-400 text-sm mb-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -85,50 +427,31 @@ export default function ApprovalDetailPage() {
           </svg>
           승인 목록
         </Link>
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">
-                {doc.typeShort}
-              </span>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[doc.status].bg} ${STATUS_STYLE[doc.status].text}`}>
-                {doc.statusLabel}
-              </span>
-            </div>
-            <h2 className="text-base font-bold text-gray-900">{doc.taskName}</h2>
-            <p className="text-xs text-gray-500 mt-0.5">{doc.typeLabel} · {doc.company} · {doc.writer}</p>
-            <p className="text-xs text-gray-400 mt-0.5">제출일: {doc.submittedAt}</p>
-          </div>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{typeShort}</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle.bg} ${statusStyle.text}`}>
+            {statusStyle.label}
+          </span>
+          {isMyTurn && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium animate-pulse">
+              내 차례
+            </span>
+          )}
         </div>
-
-        {/* 요약 카드 */}
-        <div className="flex gap-3 mt-3">
-          <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-xl">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-            </svg>
-            첨부 {doc.attachments.length}개
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-xl">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-            결재 {doc.approvalLines.length}단계
-          </div>
-        </div>
+        <h2 className="text-base font-bold text-gray-900">{taskName}</h2>
+        <p className="text-xs text-gray-500 mt-0.5">{typeLabel}</p>
+        {doc.submittedAt && (
+          <p className="text-xs text-gray-400 mt-0.5">
+            제출일: {new Date(doc.submittedAt).toLocaleDateString("ko-KR")}
+          </p>
+        )}
       </div>
 
-      {/* 탭 */}
       <div className="bg-white border-b border-gray-200 flex">
-        {["본문", "첨부", "결재현황"].map((tab) => (
+        {["내용", "결재현황"].map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500"
+              activeTab === tab ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500"
             }`}>
             {tab}
           </button>
@@ -136,230 +459,216 @@ export default function ApprovalDetailPage() {
       </div>
 
       <div className="p-4 space-y-4">
-
-        {/* 본문 탭 */}
-        {activeTab === "본문" && (
+        {activeTab === "내용" && (
           <>
             <div className="bg-white rounded-2xl p-4 shadow-sm">
               <h3 className="text-sm font-bold text-gray-900 mb-3">기본정보</h3>
-              <div className="space-y-2 text-sm">
-                {[
-                  { label: "요청일", value: f.requestDate },
-                  { label: "작업예정일", value: f.workDate },
-                  { label: "작업시간", value: `${f.workStartTime} ~ ${f.workEndTime}` },
-                  { label: "용역명", value: f.projectName },
-                  { label: "업체명", value: f.applicantCompany },
-                  { label: "신청자", value: f.applicantName },
-                ].map((item) => (
-                  <div key={item.label} className="flex gap-3">
-                    <span className="text-gray-400 w-24 flex-shrink-0">{item.label}</span>
-                    <span className="text-gray-900">{item.value}</span>
-                  </div>
-                ))}
+              <div className="space-y-2">
+                <Field label="신청일" value={fd.requestDate as string} />
+                <Field label="작업예정일" value={fd.workDate as string} />
+                <Field label="작업시간" value={`${fd.workStartTime ?? ""} ~ ${fd.workEndTime ?? ""}`} />
+                <Field label="과업명" value={fd.projectName as string} />
+                <Field label="업체명" value={fd.applicantCompany as string} />
+                <Field label="신청자" value={fd.applicantName as string} />
               </div>
             </div>
 
             <div className="bg-white rounded-2xl p-4 shadow-sm">
               <h3 className="text-sm font-bold text-gray-900 mb-3">작업정보</h3>
-              <div className="space-y-2 text-sm">
-                {[
-                  { label: "작업장소", value: f.workLocation },
-                  { label: "작업내용", value: f.workContent },
-                  { label: "작업자", value: f.participants },
-                ].map((item) => (
-                  <div key={item.label} className="flex gap-3">
-                    <span className="text-gray-400 w-24 flex-shrink-0">{item.label}</span>
-                    <span className="text-gray-900">{item.value}</span>
-                  </div>
-                ))}
+              <div className="space-y-2">
+                <Field label="작업장소" value={fd.workLocation as string} />
+                <Field label="작업내용" value={fd.workContent as string} />
+                <Field label="작업원" value={fd.participants as string} />
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <h3 className="text-sm font-bold text-gray-900 mb-3">위험공종 / 위험요소</h3>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {f.riskHighPlace && <span className="text-xs px-2 py-1 bg-red-50 text-red-600 rounded-lg">고소작업</span>}
-                {f.factorSlippery && <span className="text-xs px-2 py-1 bg-amber-50 text-amber-600 rounded-lg">미끄러짐</span>}
-                {f.factorSteepSlope && <span className="text-xs px-2 py-1 bg-amber-50 text-amber-600 rounded-lg">급경사</span>}
-                {f.factorNoRailing && <span className="text-xs px-2 py-1 bg-amber-50 text-amber-600 rounded-lg">난간 미설치</span>}
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex gap-3">
-                  <span className="text-gray-400 w-24 flex-shrink-0">개선대책</span>
-                  <span className="text-gray-900">{f.riskSummary}</span>
+            {(riskItems.length > 0 || factorItems.length > 0) && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-gray-900 mb-3">위험작업 / 위험요소</h3>
+                {riskItems.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {riskItems.map((l) => (
+                      <span key={l} className="text-xs px-2 py-1 bg-red-50 text-red-600 rounded-lg">⚠️ {l}</span>
+                    ))}
+                  </div>
+                )}
+                {factorItems.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {factorItems.map((l) => (
+                      <span key={l} className="text-xs px-2 py-1 bg-amber-50 text-amber-600 rounded-lg">{l}</span>
+                    ))}
+                  </div>
+                )}
+                <div className="space-y-2 mt-2">
+                  <Field label="개선계획" value={fd.riskSummary as string} />
+                  <Field label="재해형태" value={fd.disasterType as string} />
                 </div>
-                <div className="flex gap-3">
-                  <span className="text-gray-400 w-24 flex-shrink-0">재해형태</span>
-                  <span className="text-gray-900">{f.disasterType}</span>
+              </div>
+            )}
+
+            {fd.specialNotes && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-gray-900 mb-2">특이사항</h3>
+                <p className="text-sm text-gray-700">{fd.specialNotes as string}</p>
+              </div>
+            )}
+
+            {fd.signatureData && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-gray-900 mb-3">신청자 서명</h3>
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <img src={fd.signatureData as string} alt="서명" className="w-full max-h-28 object-contain bg-white" />
                 </div>
               </div>
-            </div>
+            )}
+
+            {isMyTurn && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
+                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
+                  검토의견 입력
+                </h3>
+                <textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="검토 의견을 입력하세요 (반려 시 필수)"
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+            )}
           </>
         )}
 
-        {/* 첨부 탭 */}
-        {activeTab === "첨부" && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h3 className="text-sm font-bold text-gray-900 mb-3">첨부파일</h3>
-            <div className="space-y-2">
-              {doc.attachments.map((file) => (
-                <div key={file.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      file.type === "PHOTO" ? "bg-blue-100" : "bg-red-100"
-                    }`}>
-                      {file.type === "PHOTO" ? (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
-                          <rect x="3" y="3" width="18" height="18" rx="2"/>
-                          <circle cx="8.5" cy="8.5" r="1.5"/>
-                          <polyline points="21 15 16 10 5 21"/>
-                        </svg>
-                      ) : (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                          <polyline points="14 2 14 8 20 8"/>
-                        </svg>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-900">{file.name}</p>
-                      <p className="text-xs text-gray-400">{file.size}</p>
-                    </div>
-                  </div>
-                  <button className="text-xs text-blue-600 font-medium px-3 py-1.5 bg-blue-50 rounded-lg">
-                    다운로드
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 결재현황 탭 */}
         {activeTab === "결재현황" && (
           <div className="bg-white rounded-2xl p-4 shadow-sm">
             <h3 className="text-sm font-bold text-gray-900 mb-3">결재선</h3>
             <div className="space-y-3">
-              {doc.approvalLines.map((line, idx) => (
-                <div key={idx} className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-                    style={{ background: "#e0e7ff", color: "#3730a3" }}>
-                    {line.order}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900">{line.name}</span>
-                      <span className="text-xs text-gray-400">{line.org}</span>
-                    </div>
-                    <span className="text-xs text-gray-400">
-                      {line.role === "FINAL_APPROVER" ? "최종 결재권자" : "검토자"}
-                    </span>
-                  </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STEP_STYLE[line.status].bg} ${STEP_STYLE[line.status].text}`}>
-                    {STEP_STYLE[line.status].label}
+              <div className="flex items-center gap-3">
+                <div className="w-16 text-xs text-gray-500 shrink-0">신청인</div>
+                <div className="flex-1 flex items-center justify-between p-2.5 rounded-xl bg-green-50">
+                  <span className="text-sm font-medium text-gray-900">
+                    {(fd.applicantName as string) || "작성자"}
                   </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-600">제출완료</span>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 검토의견 입력 (내 차례일 때) */}
-        {doc.isMyTurn && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
-            <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
-              검토의견 입력
-            </h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">검토의견</label>
-                <textarea value={reviewOpinion}
-                  onChange={(e) => setReviewOpinion(e.target.value)}
-                  placeholder="검토 결과 의견을 입력하세요"
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"/>
               </div>
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">
-                  조치사항 <span className="text-red-400">(반려 시 필수)</span>
-                </label>
-                <textarea value={actionRequest}
-                  onChange={(e) => setActionRequest(e.target.value)}
-                  placeholder="필요한 조치사항을 입력하세요"
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"/>
-              </div>
+              {approvalLines.map((line) => {
+                const stepStyle = STEP_STYLE[line.stepStatus] ?? STEP_STYLE.PENDING;
+                const roleLabel = roleLabels[line.approvalOrder] ?? `${line.approvalOrder}단계`;
+                return (
+                  <div key={line.id} className="flex items-start gap-3">
+                    <div className="w-16 text-xs text-gray-500 shrink-0 pt-2.5">{roleLabel}</div>
+                    <div className={`flex-1 p-2.5 rounded-xl ${stepStyle.bg}`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-sm font-medium text-gray-900">{line.approverName}</span>
+                          {line.approverOrg && <span className="text-xs text-gray-500 ml-1.5">{line.approverOrg}</span>}
+                        </div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stepStyle.text}`}>{stepStyle.label}</span>
+                      </div>
+                      {line.comment && (
+                        <div className="mt-1.5 text-xs text-gray-600 bg-white/60 rounded-lg p-2">💬 {line.comment}</div>
+                      )}
+                      {line.actedAt && (
+                        <div className="mt-1 text-xs text-gray-400">{new Date(line.actedAt).toLocaleDateString("ko-KR")}</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
       </div>
 
-      {/* 반려 확인 모달 */}
-      {showRejectConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.5)" }}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
-            <h3 className="text-base font-bold text-gray-900 mb-2">반려하시겠습니까?</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              반려 시 작성자에게 알림이 발송되고 수정 요청이 됩니다.
-            </p>
-            {(!reviewOpinion || !actionRequest) && (
-              <p className="text-xs text-red-500 mb-3">검토의견과 조치사항을 모두 입력해 주세요.</p>
-            )}
-            <div className="flex gap-3">
-              <button onClick={() => setShowRejectConfirm(false)}
-                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">
-                취소
-              </button>
-              <button
-                disabled={!reviewOpinion || !actionRequest}
-                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-40"
-                style={{ background: "#dc2626" }}>
-                반려
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 승인 확인 모달 */}
-      {showApproveConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.5)" }}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
-            <h3 className="text-base font-bold text-gray-900 mb-2">승인하시겠습니까?</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              승인 후 다음 결재자에게 자동으로 전달됩니다.
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowApproveConfirm(false)}
-                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">
-                취소
-              </button>
-              <button
-                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white"
-                style={{ background: "#16a34a" }}>
-                승인
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 하단 액션 버튼 */}
-      {doc.isMyTurn && (
+      {isMyTurn && (
         <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 flex gap-3">
           <button onClick={() => setShowRejectConfirm(true)}
             className="flex-1 py-3 rounded-xl border-2 border-red-200 text-sm font-medium text-red-600">
             반려
           </button>
           <button onClick={() => setShowApproveConfirm(true)}
-            className="flex-2 px-8 py-3 rounded-xl text-white text-sm font-medium"
+            className="flex-1 py-3 rounded-xl text-white text-sm font-medium"
             style={{ background: "#16a34a" }}>
-            승인
+            {myApprovalOrder === 1 ? "검토완료 (다음단계 지정)" : "최종 승인"}
           </button>
         </div>
+      )}
+
+      {showRejectConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <h3 className="text-base font-bold text-gray-900 mb-2">반려하시겠습니까?</h3>
+            <p className="text-sm text-gray-500 mb-4">반려 시 작성자에게 알림이 전송됩니다.</p>
+            {!comment.trim() && <p className="text-xs text-red-500 mb-3">반려 사유(검토의견)를 먼저 입력해주세요.</p>}
+            <div className="flex gap-3">
+              <button onClick={() => setShowRejectConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">취소</button>
+              <button onClick={() => handleAction("REJECT")} disabled={!comment.trim()}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-40"
+                style={{ background: "#dc2626" }}>반려</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showApproveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <h3 className="text-base font-bold text-gray-900 mb-2">
+              {myApprovalOrder === 1 ? "검토완료 후 최종허가자를 지정합니다" : "최종 승인하시겠습니까?"}
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              {myApprovalOrder === 1 ? "서명 후 최종허가자를 직접 지정합니다." : "승인 시 작성자에게 알림이 전송됩니다."}
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setShowApproveConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">취소</button>
+              <button onClick={() => handleAction("APPROVE")}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white"
+                style={{ background: "#16a34a" }}>확인</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSign && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+          <div className="bg-white w-full rounded-t-3xl p-6 pb-10">
+            <h2 className="text-base font-bold text-gray-900 mb-1">
+              {pendingAction === "APPROVE" ? "승인 서명" : "반려 서명"}
+            </h2>
+            <p className="text-xs text-gray-500 mb-4">아래 서명란에 서명 후 확인을 눌러주세요.</p>
+            <div className="border-2 border-gray-200 rounded-2xl overflow-hidden mb-3 bg-white">
+              <canvas ref={canvasRef} width={600} height={160} className="w-full touch-none"
+                style={{ cursor: "crosshair" }}
+                onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
+                onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw}
+              />
+            </div>
+            <div className="flex gap-2 mb-4">
+              <button onClick={clearCanvas} className="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">다시 서명</button>
+              <button onClick={() => setShowSign(false)} className="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">취소</button>
+            </div>
+            <button onClick={handleSubmitWithSign} disabled={processing}
+              className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50"
+              style={{ background: pendingAction === "APPROVE" ? "#16a34a" : "#dc2626" }}>
+              {processing ? "처리 중..." : pendingAction === "APPROVE" ? "서명 완료 및 승인" : "서명 완료 및 반려"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showFinalApprover && doc && (
+        <FinalApproverModal
+          documentId={documentId}
+          documentType={doc.documentType}
+          onClose={() => setShowFinalApprover(false)}
+          onAssigned={() => {
+            setShowFinalApprover(false);
+            alert("최종허가자가 지정되었습니다! 알림이 전송되었습니다.");
+            router.push("/approvals");
+          }}
+        />
       )}
     </div>
   );
