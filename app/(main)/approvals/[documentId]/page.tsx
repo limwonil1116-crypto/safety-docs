@@ -38,12 +38,12 @@ interface UserItem {
 }
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
-  SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "?쒖텧?꾨즺" },
-  IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "寃?좎쨷" },
-  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "理쒖쥌寃곗옱 吏꾪뻾以? },
-  APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "?뱀씤?꾨즺" },
-  REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "諛섎젮" },
-  DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "?묒꽦以? },
+  SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료" },
+  IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중" },
+  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종결재 진행중" },
+  APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료" },
+  REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "반려" },
+  DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중" },
 };
 
 function getStatusKey(doc: DocumentDetail): string {
