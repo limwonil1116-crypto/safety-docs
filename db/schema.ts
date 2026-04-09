@@ -1,7 +1,4 @@
 // db/schema.ts
-// 한국농어촌공사 안전기술본부 — 용역 법정서류 전자제출 시스템
-// Drizzle ORM 스키마 전체본
-
 import {
   pgTable,
   uuid,
@@ -16,23 +13,24 @@ import {
   inet,
   smallint,
   bigint,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
-// ─── ENUMS ───────────────────────────────────────────────────────────────────
+// ===== ENUMS =====
 
 export const userRoleEnum = pgEnum("user_role", [
-  "CONTRACTOR",     // 용역업체 작성자
-  "REVIEWER",       // 공사 직원 검토자
-  "FINAL_APPROVER", // 최종 결재권자
-  "ADMIN",          // 관리자
+  "CONTRACTOR",
+  "REVIEWER",
+  "FINAL_APPROVER",
+  "ADMIN",
 ]);
 
 export const userStatusEnum = pgEnum("user_status", [
-  "PENDING",   // 가입 대기
-  "ACTIVE",    // 활성
-  "INACTIVE",  // 비활성
-  "LOCKED",    // 잠김
+  "PENDING",
+  "ACTIVE",
+  "INACTIVE",
+  "LOCKED",
 ]);
 
 export const authProviderEnum = pgEnum("auth_provider", [
@@ -47,26 +45,26 @@ export const taskStatusEnum = pgEnum("task_status", [
 ]);
 
 export const documentTypeEnum = pgEnum("document_type", [
-  "SAFETY_WORK_PERMIT",     // 붙임1: 안전작업허가서
-  "CONFINED_SPACE",         // 붙임2: 밀폐공간 작업허가서
-  "HOLIDAY_WORK",           // 붙임3: 휴일작업 신청서
-  "POWER_OUTAGE",           // 붙임4: 정전작업 허가서
+  "SAFETY_WORK_PERMIT",
+  "CONFINED_SPACE",
+  "HOLIDAY_WORK",
+  "POWER_OUTAGE",
 ]);
 
 export const documentStatusEnum = pgEnum("document_status", [
-  "DRAFT",      // 작성중
-  "SUBMITTED",  // 제출완료
-  "IN_REVIEW",  // 검토중
-  "APPROVED",   // 검토완료
-  "REJECTED",   // 반려
+  "DRAFT",
+  "SUBMITTED",
+  "IN_REVIEW",
+  "APPROVED",
+  "REJECTED",
 ]);
 
 export const approvalStepStatusEnum = pgEnum("approval_step_status", [
-  "PENDING",   // 아직 차례 아님
-  "WAITING",   // 현재 차례
-  "APPROVED",  // 승인 완료
-  "REJECTED",  // 반려
-  "SKIPPED",   // 건너뜀
+  "PENDING",
+  "WAITING",
+  "APPROVED",
+  "REJECTED",
+  "SKIPPED",
 ]);
 
 export const approvalRoleEnum = pgEnum("approval_role", [
@@ -126,7 +124,7 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "SYSTEM",
 ]);
 
-// ─── USERS ────────────────────────────────────────────────────────────────────
+// ===== USERS =====
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -138,17 +136,15 @@ export const users = pgTable("users", {
   status: userStatusEnum("status").notNull().default("PENDING"),
   phone: varchar("phone", { length: 30 }),
   employeeNo: varchar("employee_no", { length: 50 }),
-  // OAuth
   provider: authProviderEnum("provider").default("local"),
   providerUserId: varchar("provider_user_id", { length: 191 }),
-  // Meta
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
-// ─── TASKS (과업) ─────────────────────────────────────────────────────────────
+// ===== TASKS =====
 
 export const tasks = pgTable("tasks", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -165,7 +161,7 @@ export const tasks = pgTable("tasks", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
-// ─── DOCUMENTS (문서 마스터) ───────────────────────────────────────────────────
+// ===== DOCUMENTS =====
 
 export const documents = pgTable("documents", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -174,32 +170,30 @@ export const documents = pgTable("documents", {
   status: documentStatusEnum("status").notNull().default("DRAFT"),
   createdBy: uuid("created_by").references(() => users.id).notNull(),
   lastUpdatedBy: uuid("last_updated_by").references(() => users.id),
-  // 결재 캐시
   currentApprovalOrder: integer("current_approval_order"),
   currentApproverUserId: uuid("current_approver_user_id").references(() => users.id),
-  // 상태 시각
   submittedAt: timestamp("submitted_at", { withTimezone: true }),
   approvedAt: timestamp("approved_at", { withTimezone: true }),
   rejectedAt: timestamp("rejected_at", { withTimezone: true }),
-  // 반려 정보
   rejectionReason: text("rejection_reason"),
   rejectionCount: integer("rejection_count").notNull().default(0),
   lastRejectedBy: uuid("last_rejected_by").references(() => users.id),
-  // 복사 출처
   duplicatedFromDocumentId: uuid("duplicated_from_document_id"),
-  // 문서 본문 (JSONB — 붙임 4종 공통+확장 필드)
   formDataJson: jsonb("form_data_json").notNull().default({}),
-  // PDF 상태 캐시
+  // ===== 작업 위치 (추가된 컬럼) =====
+  workLatitude: doublePrecision("work_latitude"),
+  workLongitude: doublePrecision("work_longitude"),
+  workAddress: text("work_address"),
+  // ===== PDF =====
   finalPdfOutputId: uuid("final_pdf_output_id"),
   pdfGenerationStatus: pdfGenerationStatusEnum("pdf_generation_status").default("NOT_REQUESTED"),
   pdfGeneratedAt: timestamp("pdf_generated_at", { withTimezone: true }),
   outputVersion: integer("output_version").notNull().default(0),
-  // 이메일 상태 캐시
+  // ===== 이메일 =====
   lastEmailDispatchId: uuid("last_email_dispatch_id"),
   emailDispatchStatus: emailDispatchStatusEnum("email_dispatch_status").default("NOT_REQUESTED"),
   emailSentAt: timestamp("email_sent_at", { withTimezone: true }),
   emailFailureReason: text("email_failure_reason"),
-  // 최신 검토/반려 요약 캐시
   latestReviewCommentId: uuid("latest_review_comment_id"),
   latestRejectionCommentId: uuid("latest_rejection_comment_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -207,13 +201,12 @@ export const documents = pgTable("documents", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
-// ─── DOCUMENT HISTORIES (문서 이력) ───────────────────────────────────────────
+// ===== DOCUMENT HISTORIES =====
 
 export const documentHistories = pgTable("document_histories", {
   id: uuid("id").primaryKey().defaultRandom(),
   documentId: uuid("document_id").references(() => documents.id).notNull(),
   actionType: varchar("action_type", { length: 50 }).notNull(),
-  // CREATED | UPDATED | SUBMITTED | RESUBMITTED | REJECTED | APPROVED | DUPLICATED
   actorUserId: uuid("actor_user_id").references(() => users.id),
   previousStatus: documentStatusEnum("previous_status"),
   nextStatus: documentStatusEnum("next_status"),
@@ -222,7 +215,7 @@ export const documentHistories = pgTable("document_histories", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// ─── DOCUMENT APPROVAL LINES (결재선) ─────────────────────────────────────────
+// ===== DOCUMENT APPROVAL LINES =====
 
 export const documentApprovalLines = pgTable("document_approval_lines", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -240,14 +233,14 @@ export const documentApprovalLines = pgTable("document_approval_lines", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// ─── DOCUMENT APPROVAL ACTIONS (결재 액션 감사 로그) ─────────────────────────
+// ===== DOCUMENT APPROVAL ACTIONS =====
 
 export const documentApprovalActions = pgTable("document_approval_actions", {
   id: uuid("id").primaryKey().defaultRandom(),
   documentId: uuid("document_id").references(() => documents.id).notNull(),
   approvalLineId: uuid("approval_line_id").references(() => documentApprovalLines.id).notNull(),
   actorUserId: uuid("actor_user_id").references(() => users.id).notNull(),
-  actionType: varchar("action_type", { length: 20 }).notNull(), // APPROVE | REJECT
+  actionType: varchar("action_type", { length: 20 }).notNull(),
   previousStepStatus: approvalStepStatusEnum("previous_step_status"),
   nextStepStatus: approvalStepStatusEnum("next_step_status"),
   comment: text("comment"),
@@ -256,7 +249,7 @@ export const documentApprovalActions = pgTable("document_approval_actions", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// ─── DOCUMENT REVIEW COMMENTS (검토의견) ──────────────────────────────────────
+// ===== DOCUMENT REVIEW COMMENTS =====
 
 export const documentReviewComments = pgTable("document_review_comments", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -271,15 +264,15 @@ export const documentReviewComments = pgTable("document_review_comments", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// ─── DOCUMENT SIGNATURES (전자서명) ───────────────────────────────────────────
+// ===== DOCUMENT SIGNATURES =====
 
 export const documentSignatures = pgTable("document_signatures", {
   id: uuid("id").primaryKey().defaultRandom(),
   documentId: uuid("document_id").references(() => documents.id).notNull(),
   approvalLineId: uuid("approval_line_id").references(() => documentApprovalLines.id).notNull(),
   signerUserId: uuid("signer_user_id").references(() => users.id).notNull(),
-  signatureData: text("signature_data"), // base64 원본
-  signatureImageUrl: text("signature_image_url"), // 저장소 URL
+  signatureData: text("signature_data"),
+  signatureImageUrl: text("signature_image_url"),
   signatureFormat: varchar("signature_format", { length: 20 }).default("PNG"),
   signedAt: timestamp("signed_at", { withTimezone: true }).notNull().defaultNow(),
   ipAddress: text("ip_address"),
@@ -288,7 +281,7 @@ export const documentSignatures = pgTable("document_signatures", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// ─── DOCUMENT ATTACHMENTS (첨부파일) ──────────────────────────────────────────
+// ===== DOCUMENT ATTACHMENTS =====
 
 export const documentAttachments = pgTable("document_attachments", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -305,18 +298,18 @@ export const documentAttachments = pgTable("document_attachments", {
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
-// ─── DOCUMENT ATTACHMENT HISTORIES (첨부 이력) ────────────────────────────────
+// ===== DOCUMENT ATTACHMENT HISTORIES =====
 
 export const documentAttachmentHistories = pgTable("document_attachment_histories", {
   id: uuid("id").primaryKey().defaultRandom(),
   documentId: uuid("document_id").references(() => documents.id).notNull(),
   attachmentId: uuid("attachment_id").references(() => documentAttachments.id),
-  actionType: varchar("action_type", { length: 20 }).notNull(), // UPLOADED | DELETED | REPLACED
+  actionType: varchar("action_type", { length: 20 }).notNull(),
   actorUserId: uuid("actor_user_id").references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// ─── DOCUMENT OUTPUTS (PDF 결과물) ────────────────────────────────────────────
+// ===== DOCUMENT OUTPUTS =====
 
 export const documentOutputs = pgTable("document_outputs", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -336,13 +329,13 @@ export const documentOutputs = pgTable("document_outputs", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// ─── DOCUMENT OUTPUT HISTORIES (PDF 생성 이력) ────────────────────────────────
+// ===== DOCUMENT OUTPUT HISTORIES =====
 
 export const documentOutputHistories = pgTable("document_output_histories", {
   id: uuid("id").primaryKey().defaultRandom(),
   documentOutputId: uuid("document_output_id").references(() => documentOutputs.id),
   documentId: uuid("document_id").references(() => documents.id).notNull(),
-  triggerType: varchar("trigger_type", { length: 50 }), // AUTO_AFTER_APPROVAL | MANUAL_REGENERATE
+  triggerType: varchar("trigger_type", { length: 50 }),
   triggeredBy: uuid("triggered_by").references(() => users.id),
   attemptNo: integer("attempt_no").notNull().default(1),
   status: pdfGenerationStatusEnum("status").notNull(),
@@ -353,13 +346,13 @@ export const documentOutputHistories = pgTable("document_output_histories", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// ─── DOCUMENT EMAIL DISPATCHES (이메일 발송) ──────────────────────────────────
+// ===== DOCUMENT EMAIL DISPATCHES =====
 
 export const documentEmailDispatches = pgTable("document_email_dispatches", {
   id: uuid("id").primaryKey().defaultRandom(),
   documentId: uuid("document_id").references(() => documents.id).notNull(),
   dispatchStatus: emailDispatchStatusEnum("dispatch_status").notNull().default("NOT_REQUESTED"),
-  triggerType: varchar("trigger_type", { length: 50 }), // AUTO | MANUAL_RESEND
+  triggerType: varchar("trigger_type", { length: 50 }),
   triggeredBy: uuid("triggered_by").references(() => users.id),
   subject: varchar("subject", { length: 255 }),
   bodySnapshot: text("body_snapshot"),
@@ -372,7 +365,7 @@ export const documentEmailDispatches = pgTable("document_email_dispatches", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// ─── DOCUMENT EMAIL RECIPIENTS (수신자) ───────────────────────────────────────
+// ===== DOCUMENT EMAIL RECIPIENTS =====
 
 export const documentEmailRecipients = pgTable("document_email_recipients", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -389,7 +382,7 @@ export const documentEmailRecipients = pgTable("document_email_recipients", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// ─── NOTIFICATIONS (알림) ─────────────────────────────────────────────────────
+// ===== NOTIFICATIONS =====
 
 export const notifications = pgTable("notifications", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -403,7 +396,7 @@ export const notifications = pgTable("notifications", {
   readAt: timestamp("read_at", { withTimezone: true }),
 });
 
-// ─── RELATIONS ────────────────────────────────────────────────────────────────
+// ===== RELATIONS =====
 
 export const usersRelations = relations(users, ({ many }) => ({
   createdTasks: many(tasks, { relationName: "createdTasks" }),

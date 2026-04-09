@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { tasks, documents, users } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { tasks, documents, users, documentApprovalLines } from "@/db/schema";
+import { eq, sql, inArray, isNull, and } from "drizzle-orm";
 
 export async function GET(
   req: NextRequest,
@@ -43,30 +43,58 @@ export async function GET(
       })
       .from(documents)
       .leftJoin(users, eq(documents.createdBy, users.id))
-      .where(eq(documents.taskId, taskId))
+      .where(and(eq(documents.taskId, taskId), isNull(documents.deletedAt)))
       .orderBy(sql`${documents.updatedAt} desc`);
 
+    // 현재 결재자 이름 조회
     const approverIds = docList
-      .filter((d: typeof docList[0]) => d.currentApproverUserId)
-      .map((d: typeof docList[0]) => d.currentApproverUserId as string);
+      .filter((d) => d.currentApproverUserId)
+      .map((d) => d.currentApproverUserId as string);
 
     const approverMap: Record<string, string> = {};
     if (approverIds.length > 0) {
       const approvers = await db
         .select({ id: users.id, name: users.name })
-        .from(users);
-      approvers.forEach((a: { id: string; name: string }) => {
-        if (approverIds.includes(a.id)) {
-          approverMap[a.id] = a.name;
-        }
+        .from(users)
+        .where(inArray(users.id, approverIds));
+      approvers.forEach((a) => { approverMap[a.id] = a.name; });
+    }
+
+    // 문서별 결재선 조회
+    const docIds = docList.map((d) => d.id);
+    let approvalLinesMap: Record<string, { approvalOrder: number; approverName: string | null; approverOrg: string | null; stepStatus: string }[]> = {};
+
+    if (docIds.length > 0) {
+      const lines = await db
+        .select({
+          documentId: documentApprovalLines.documentId,
+          approvalOrder: documentApprovalLines.approvalOrder,
+          stepStatus: documentApprovalLines.stepStatus,
+          approverName: users.name,
+          approverOrg: users.organization,
+        })
+        .from(documentApprovalLines)
+        .leftJoin(users, eq(documentApprovalLines.approverUserId, users.id))
+        .where(inArray(documentApprovalLines.documentId, docIds))
+        .orderBy(documentApprovalLines.approvalOrder);
+
+      lines.forEach((line) => {
+        if (!approvalLinesMap[line.documentId]) approvalLinesMap[line.documentId] = [];
+        approvalLinesMap[line.documentId].push({
+          approvalOrder: line.approvalOrder,
+          approverName: line.approverName,
+          approverOrg: line.approverOrg,
+          stepStatus: line.stepStatus,
+        });
       });
     }
 
-    const enrichedDocs = docList.map((doc: typeof docList[0]) => ({
+    const enrichedDocs = docList.map((doc) => ({
       ...doc,
       currentApproverName: doc.currentApproverUserId
         ? approverMap[doc.currentApproverUserId] ?? null
         : null,
+      approvalLines: approvalLinesMap[doc.id] ?? [],
       submittedAt: doc.submittedAt
         ? new Date(doc.submittedAt).toLocaleDateString("ko-KR", {
             year: "numeric",
@@ -107,9 +135,7 @@ export async function PATCH(
       return NextResponse.json({ error: "과업을 찾을 수 없습니다." }, { status: 404 });
     }
 
-    const updateData: Partial<typeof tasks.$inferInsert> = {
-      updatedAt: new Date(),
-    };
+    const updateData: Partial<typeof tasks.$inferInsert> = { updatedAt: new Date() };
     if (name !== undefined) updateData.name = name.trim();
     if (contractorCompanyName !== undefined) updateData.contractorCompanyName = contractorCompanyName?.trim() || null;
     if (description !== undefined) updateData.description = description?.trim() || null;

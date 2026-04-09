@@ -14,6 +14,7 @@ interface DocumentDetail {
   submittedAt?: string;
   createdBy: string;
   currentApproverUserId?: string;
+  currentApprovalOrder?: number;
 }
 
 interface ApprovalLine {
@@ -23,8 +24,10 @@ interface ApprovalLine {
   stepStatus: string;
   approverName?: string;
   approverOrg?: string;
+  approverUserId?: string;
   actedAt?: string;
   comment?: string;
+  signatureData?: string;
 }
 
 interface UserItem {
@@ -35,11 +38,18 @@ interface UserItem {
 }
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
-  SUBMITTED: { bg: "bg-blue-100",  text: "text-blue-600",  label: "제출완료" },
-  IN_REVIEW: { bg: "bg-amber-100", text: "text-amber-600", label: "검토중" },
-  APPROVED:  { bg: "bg-green-100", text: "text-green-600", label: "검토완료" },
-  REJECTED:  { bg: "bg-red-100",   text: "text-red-600",   label: "반려" },
+  SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료" },
+  IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중" },
+  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종결재 진행중" },
+  APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료" },
+  REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "반려" },
+  DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중" },
 };
+
+function getStatusKey(doc: DocumentDetail): string {
+  if (doc.status === "IN_REVIEW" && doc.currentApprovalOrder === 2) return "IN_REVIEW_FINAL";
+  return doc.status;
+}
 
 const STEP_STYLE: Record<string, { bg: string; text: string; label: string }> = {
   PENDING:  { bg: "bg-gray-100",  text: "text-gray-500",  label: "대기" },
@@ -101,7 +111,7 @@ function FinalApproverModal({
   }, [keyword]);
 
   const handleAssign = async () => {
-    if (!selected) { setError("최종허가자를 선택해주세요."); return; }
+    if (!selected) { setError("결재자를 선택해주세요."); return; }
     setLoading(true);
     setError("");
     try {
@@ -111,10 +121,10 @@ function FinalApproverModal({
         body: JSON.stringify({ finalApproverUserId: selected.id }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "지정 실패");
+      if (!res.ok) throw new Error(data.error || "오류 발생");
       onAssigned();
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
+      setError(e instanceof Error ? e.message : "서버 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
@@ -131,12 +141,9 @@ function FinalApproverModal({
             </svg>
           </button>
         </div>
-
         <div className="bg-amber-50 rounded-xl p-3 mb-4 text-xs text-amber-700">
-          ℹ️ 검토 완료 후 최종 결재자를 지정합니다. 지정 후 즉시 알림이 발송됩니다.
+          검토가 완료되었습니다. 최종 결재권자를 지정해주세요.
         </div>
-
-        {/* 선택된 최종허가자 */}
         <div className={`p-3 rounded-xl border-2 mb-4 ${selected ? "border-green-400 bg-green-50" : "border-dashed border-gray-300"}`}>
           <div className="text-xs text-gray-500 mb-1">{finalRoleLabel} <span className="text-red-500">*</span></div>
           {selected ? (
@@ -155,20 +162,14 @@ function FinalApproverModal({
             <p className="text-xs text-gray-400">아래 목록에서 선택하세요</p>
           )}
         </div>
-
-        {/* 검색 */}
         <div className="relative mb-2">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
-          <input
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
+          <input value={keyword} onChange={(e) => setKeyword(e.target.value)}
             placeholder="이름으로 검색"
-            className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+            className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
-
         <div className="space-y-1.5 max-h-48 overflow-y-auto mb-4">
           {users.filter((u) => u.id !== selected?.id).map((u) => (
             <button key={u.id} onClick={() => setSelected(u)}
@@ -183,16 +184,11 @@ function FinalApproverModal({
             </button>
           ))}
         </div>
-
         {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
-
-        <button
-          onClick={handleAssign}
-          disabled={loading || !selected}
+        <button onClick={handleAssign} disabled={loading || !selected}
           className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50"
-          style={{ background: "#16a34a" }}
-        >
-          {loading ? "지정 중..." : `${finalRoleLabel} 지정 완료`}
+          style={{ background: "#16a34a" }}>
+          {loading ? "지정 중.." : `${finalRoleLabel} 지정하기`}
         </button>
       </div>
     </div>
@@ -211,11 +207,14 @@ export default function ApprovalDetailPage() {
   const [error, setError] = useState("");
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [myApprovalOrder, setMyApprovalOrder] = useState(0);
+  const [myUserId, setMyUserId] = useState("");
+  const [myRole, setMyRole] = useState("");
   const [activeTab, setActiveTab] = useState("내용");
   const [comment, setComment] = useState("");
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [showSign, setShowSign] = useState(false);
   const [showFinalApprover, setShowFinalApprover] = useState(false);
   const [pendingAction, setPendingAction] = useState<"APPROVE" | "REJECT" | null>(null);
@@ -232,7 +231,7 @@ export default function ApprovalDetailPage() {
       ]);
       const docData = await docRes.json();
       const linesData = await linesRes.json();
-      if (!docRes.ok) throw new Error(docData.error || "문서 조회 실패");
+      if (!docRes.ok) throw new Error(docData.error || "데이터 오류");
       const docObj = docData.document;
       setDoc(docObj);
       const lines = linesData.approvalLines ?? [];
@@ -246,18 +245,37 @@ export default function ApprovalDetailPage() {
       if (meRes.ok) {
         const meData = await meRes.json();
         const myId = meData.user?.id;
+        setMyUserId(myId);
+        setMyRole(meData.user?.role ?? "");
         setIsMyTurn(docObj.currentApproverUserId === myId);
         const myLine = lines.find((l: ApprovalLine & { approverUserId?: string }) => l.approverUserId === myId);
         setMyApprovalOrder(myLine?.approvalOrder ?? 0);
       }
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
+      setError(e instanceof Error ? e.message : "서버 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
   }, [documentId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // 결재 취소
+  const handleCancelApproval = async () => {
+    if (!confirm("결재를 취소하고 재작성 상태로 되돌리시겠습니까?\n(결재선이 초기화됩니다)")) return;
+    setCancelling(true);
+    try {
+      const res = await fetch(`/api/documents/${documentId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "오류 발생");
+      alert("결재가 취소되었습니다. 과업 페이지에서 재작성할 수 있습니다.");
+      router.back();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "취소에 실패했습니다.");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const initCanvas = () => {
     setTimeout(() => {
@@ -324,7 +342,7 @@ export default function ApprovalDetailPage() {
 
   const handleAction = async (action: "APPROVE" | "REJECT") => {
     if (action === "REJECT" && !comment.trim()) {
-      alert("반려 사유를 입력해주세요.");
+      alert("반려 의견을 입력해주세요.");
       return;
     }
     setPendingAction(action);
@@ -338,31 +356,33 @@ export default function ApprovalDetailPage() {
     if (!pendingAction) return;
     setProcessing(true);
     try {
+      // 서명 데이터 추출
+      const canvas = canvasRef.current;
+      const signatureData = canvas ? canvas.toDataURL("image/png") : null;
+
       const res = await fetch(`/api/documents/${documentId}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: pendingAction,
           comment: comment.trim() || null,
+          signatureData,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "처리 실패");
-
+      if (!res.ok) throw new Error(data.error || "오류 발생");
       setShowSign(false);
-
-      // 1단계 승인 시 → 최종허가자 지정 모달
       if (data.action === "NEED_FINAL_APPROVER") {
         setShowFinalApprover(true);
       } else if (data.action === "APPROVED") {
         alert("최종 승인이 완료되었습니다!");
         router.push("/approvals");
       } else {
-        alert("반려되었습니다.");
+        alert("처리되었습니다.");
         router.push("/approvals");
       }
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "오류가 발생했습니다.");
+      alert(e instanceof Error ? e.message : "서버 오류가 발생했습니다.");
     } finally {
       setProcessing(false);
     }
@@ -391,35 +411,43 @@ export default function ApprovalDetailPage() {
   }
 
   const fd = doc.formDataJson;
+  const statusKey = getStatusKey(doc);
   const typeShort = DOCUMENT_TYPE_SHORT[doc.documentType] ?? doc.documentType;
   const typeLabel = DOCUMENT_TYPE_LABELS[doc.documentType] ?? doc.documentType;
-  const statusStyle = STATUS_STYLE[doc.status] ?? STATUS_STYLE.SUBMITTED;
+  const statusStyle = STATUS_STYLE[statusKey] ?? STATUS_STYLE.SUBMITTED;
   const roleLabels = ROLE_LABELS[doc.documentType] ?? {};
   const rw = (fd.riskWorkTypes ?? {}) as Record<string, boolean>;
   const rf = (fd.riskFactors ?? {}) as Record<string, boolean>;
 
-  const riskItems: string[] = [
+  const riskItems = [
     rw.highPlace ? "고소작업" : "",
-    rw.waterWork ? "수상/수중" : "",
+    rw.waterWork ? "수중/수변" : "",
     rw.confinedSpace ? "밀폐공간" : "",
     rw.powerOutage ? "정전작업" : "",
     rw.fireWork ? "화기작업" : "",
-  ].filter((v) => v !== "");
+  ].filter(Boolean);
 
-  const factorItems: string[] = [
-    rf.narrowAccess ? "접근통로 협소" : "",
-    rf.slippery ? "미끄러운 바닥" : "",
+  const factorItems = [
+    rf.narrowAccess ? "협소한 접근로" : "",
+    rf.slippery ? "미끄러운 지반" : "",
     rf.steepSlope ? "급경사면" : "",
-    rf.waterHazard ? "침수·홍수" : "",
-    rf.rockfall ? "낙석·붕괴" : "",
-    rf.noRailing ? "난간없음" : "",
-    rf.suffocation ? "질식·유해가스" : "",
+    rf.waterHazard ? "수변위험" : "",
+    rf.rockfall ? "낙석위험" : "",
+    rf.noRailing ? "안전난간 미설치" : "",
+    rf.suffocation ? "산소결핍" : "",
     rf.electrocution ? "감전위험" : "",
-    rf.fire ? "화재·폭발" : "",
-  ].filter((v) => v !== "");
+    rf.fire ? "화재위험" : "",
+  ].filter(Boolean);
+
+  // 결재취소 가능 여부: 작성자 본인 OR 공사직원(REVIEWER/FINAL_APPROVER/ADMIN)
+  const isOwner = myUserId && doc.createdBy &&
+    String(doc.createdBy).toLowerCase() === String(myUserId).toLowerCase();
+  const isStaff = ["REVIEWER", "FINAL_APPROVER", "ADMIN"].includes(myRole);
+  const canCancel = doc.status !== "DRAFT" && (isOwner || isStaff);
 
   return (
     <div className="pb-32">
+      {/* 헤더 */}
       <div className="px-4 pt-4 pb-3 bg-white border-b border-gray-100">
         <Link href="/approvals" className="flex items-center gap-1 text-gray-400 text-sm mb-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -442,11 +470,12 @@ export default function ApprovalDetailPage() {
         <p className="text-xs text-gray-500 mt-0.5">{typeLabel}</p>
         {doc.submittedAt && (
           <p className="text-xs text-gray-400 mt-0.5">
-            제출일: {new Date(doc.submittedAt).toLocaleDateString("ko-KR")}
+            제출일 {new Date(doc.submittedAt).toLocaleDateString("ko-KR")}
           </p>
         )}
       </div>
 
+      {/* 탭 */}
       <div className="bg-white border-b border-gray-200 flex">
         {["내용", "결재현황"].map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)}
@@ -467,7 +496,7 @@ export default function ApprovalDetailPage() {
                 <Field label="신청일" value={fd.requestDate as string} />
                 <Field label="작업예정일" value={fd.workDate as string} />
                 <Field label="작업시간" value={`${fd.workStartTime ?? ""} ~ ${fd.workEndTime ?? ""}`} />
-                <Field label="과업명" value={fd.projectName as string} />
+                <Field label="공사명" value={fd.projectName as string} />
                 <Field label="업체명" value={fd.applicantCompany as string} />
                 <Field label="신청자" value={fd.applicantName as string} />
               </div>
@@ -478,7 +507,7 @@ export default function ApprovalDetailPage() {
               <div className="space-y-2">
                 <Field label="작업장소" value={fd.workLocation as string} />
                 <Field label="작업내용" value={fd.workContent as string} />
-                <Field label="작업원" value={fd.participants as string} />
+                <Field label="작업원 명단" value={fd.participants as string} />
               </div>
             </div>
 
@@ -488,7 +517,7 @@ export default function ApprovalDetailPage() {
                 {riskItems.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {riskItems.map((l) => (
-                      <span key={l} className="text-xs px-2 py-1 bg-red-50 text-red-600 rounded-lg">⚠️ {l}</span>
+                      <span key={l} className="text-xs px-2 py-1 bg-red-50 text-red-600 rounded-lg">⚠ {l}</span>
                     ))}
                   </div>
                 )}
@@ -500,8 +529,8 @@ export default function ApprovalDetailPage() {
                   </div>
                 )}
                 <div className="space-y-2 mt-2">
-                  <Field label="개선계획" value={fd.riskSummary as string} />
-                  <Field label="재해형태" value={fd.disasterType as string} />
+                  <Field label="위험요약" value={fd.riskSummary as string} />
+                  <Field label="재해유형" value={fd.disasterType as string} />
                 </div>
               </div>
             )}
@@ -513,11 +542,37 @@ export default function ApprovalDetailPage() {
               </div>
             )}
 
-            {fd.signatureData && (
+            {/* 서명 표시 - 신청인 + 승인 완료된 결재선만 표시 */}
+            {(fd.signatureData || approvalLines.some((l) => l.signatureData && l.stepStatus === "APPROVED")) && (
               <div className="bg-white rounded-2xl p-4 shadow-sm">
-                <h3 className="text-sm font-bold text-gray-900 mb-3">신청자 서명</h3>
-                <div className="border border-gray-200 rounded-xl overflow-hidden">
-                  <img src={fd.signatureData as string} alt="서명" className="w-full max-h-28 object-contain bg-white" />
+                <h3 className="text-sm font-bold text-gray-900 mb-3">서명</h3>
+                <div className="space-y-3">
+                  {/* 신청인 서명 */}
+                  {fd.signatureData && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">신청인 서명</p>
+                      <div className="border border-gray-200 rounded-xl overflow-hidden">
+                        <img src={fd.signatureData as string} alt="신청인 서명" className="w-full max-h-24 object-contain bg-white" />
+                      </div>
+                    </div>
+                  )}
+                  {/* 결재자 서명 - APPROVED 상태인 라인만 표시 */}
+                  {approvalLines
+                    .filter((l) => l.stepStatus === "APPROVED" && l.signatureData)
+                    .map((line) => {
+                      const roleLabel = line.approvalRole === "FINAL_APPROVER"
+                        ? (FINAL_ROLE_LABELS[doc.documentType] ?? "최종허가자")
+                        : (ROLE_LABELS[doc.documentType]?.[line.approvalOrder] ?? `${line.approvalOrder}단계 검토자`);
+                      return (
+                        <div key={line.id}>
+                          <p className="text-xs text-gray-500 mb-1">{roleLabel} ({line.approverName}) 서명</p>
+                          <div className="border border-gray-200 rounded-xl overflow-hidden">
+                            <img src={line.signatureData!} alt={`${roleLabel} 서명`} className="w-full max-h-24 object-contain bg-white" />
+                          </div>
+                        </div>
+                      );
+                    })
+                  }
                 </div>
               </div>
             )}
@@ -526,7 +581,7 @@ export default function ApprovalDetailPage() {
               <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
-                  검토의견 입력
+                  검토 의견 입력
                 </h3>
                 <textarea
                   value={comment}
@@ -555,7 +610,9 @@ export default function ApprovalDetailPage() {
               </div>
               {approvalLines.map((line) => {
                 const stepStyle = STEP_STYLE[line.stepStatus] ?? STEP_STYLE.PENDING;
-                const roleLabel = roleLabels[line.approvalOrder] ?? `${line.approvalOrder}단계`;
+                const roleLabel = line.approvalRole === "FINAL_APPROVER"
+                  ? (FINAL_ROLE_LABELS[doc.documentType] ?? "최종허가자")
+                  : (roleLabels[line.approvalOrder] ?? `${line.approvalOrder}단계`);
                 return (
                   <div key={line.id} className="flex items-start gap-3">
                     <div className="w-16 text-xs text-gray-500 shrink-0 pt-2.5">{roleLabel}</div>
@@ -582,26 +639,42 @@ export default function ApprovalDetailPage() {
         )}
       </div>
 
-      {isMyTurn && (
-        <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 flex gap-3">
-          <button onClick={() => setShowRejectConfirm(true)}
-            className="flex-1 py-3 rounded-xl border-2 border-red-200 text-sm font-medium text-red-600">
-            반려
+      {/* 하단 버튼 영역 */}
+      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 space-y-2">
+        {/* 결재 취소 버튼 (작성자 or ADMIN, DRAFT 제외) */}
+        {canCancel && (
+          <button
+            onClick={handleCancelApproval}
+            disabled={cancelling}
+            className="w-full py-2.5 rounded-xl text-sm font-medium border-2 border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50"
+          >
+            {cancelling ? "취소 중.." : "결재 취소 (재작성)"}
           </button>
-          <button onClick={() => setShowApproveConfirm(true)}
-            className="flex-1 py-3 rounded-xl text-white text-sm font-medium"
-            style={{ background: "#16a34a" }}>
-            {myApprovalOrder === 1 ? "검토완료 (다음단계 지정)" : "최종 승인"}
-          </button>
-        </div>
-      )}
+        )}
 
+        {/* 승인/반려 버튼 (내 차례일 때) */}
+        {isMyTurn && (
+          <div className="flex gap-3">
+            <button onClick={() => setShowRejectConfirm(true)}
+              className="flex-1 py-3 rounded-xl border-2 border-red-200 text-sm font-medium text-red-600">
+              반려
+            </button>
+            <button onClick={() => setShowApproveConfirm(true)}
+              className="flex-1 py-3 rounded-xl text-white text-sm font-medium"
+              style={{ background: "#16a34a" }}>
+              {doc.currentApprovalOrder === 1 ? "검토완료 (최종허가자 지정)" : "최종 승인"}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* 반려 확인 */}
       {showRejectConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
             <h3 className="text-base font-bold text-gray-900 mb-2">반려하시겠습니까?</h3>
-            <p className="text-sm text-gray-500 mb-4">반려 시 작성자에게 알림이 전송됩니다.</p>
-            {!comment.trim() && <p className="text-xs text-red-500 mb-3">반려 사유(검토의견)를 먼저 입력해주세요.</p>}
+            <p className="text-sm text-gray-500 mb-4">반려 처리 후 작성자에게 알림이 발송됩니다.</p>
+            {!comment.trim() && <p className="text-xs text-red-500 mb-3">반려 의견(검토의견)을 먼저 입력해주세요.</p>}
             <div className="flex gap-3">
               <button onClick={() => setShowRejectConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">취소</button>
               <button onClick={() => handleAction("REJECT")} disabled={!comment.trim()}
@@ -612,14 +685,15 @@ export default function ApprovalDetailPage() {
         </div>
       )}
 
+      {/* 승인 확인 */}
       {showApproveConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
             <h3 className="text-base font-bold text-gray-900 mb-2">
-              {myApprovalOrder === 1 ? "검토완료 후 최종허가자를 지정합니다" : "최종 승인하시겠습니까?"}
+              {doc.currentApprovalOrder === 1 ? "검토완료 후 최종허가자를 지정합니다" : "최종 승인하시겠습니까?"}
             </h3>
             <p className="text-sm text-gray-500 mb-4">
-              {myApprovalOrder === 1 ? "서명 후 최종허가자를 직접 지정합니다." : "승인 시 작성자에게 알림이 전송됩니다."}
+              {doc.currentApprovalOrder === 1 ? "서명 후 최종허가자를 지정합니다." : "최종 승인 후 되돌릴 수 없습니다."}
             </p>
             <div className="flex gap-3">
               <button onClick={() => setShowApproveConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">취소</button>
@@ -631,13 +705,14 @@ export default function ApprovalDetailPage() {
         </div>
       )}
 
+      {/* 서명 */}
       {showSign && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
           <div className="bg-white w-full rounded-t-3xl p-6 pb-10">
             <h2 className="text-base font-bold text-gray-900 mb-1">
               {pendingAction === "APPROVE" ? "승인 서명" : "반려 서명"}
             </h2>
-            <p className="text-xs text-gray-500 mb-4">아래 서명란에 서명 후 확인을 눌러주세요.</p>
+            <p className="text-xs text-gray-500 mb-4">서명 후 처리가 완료됩니다</p>
             <div className="border-2 border-gray-200 rounded-2xl overflow-hidden mb-3 bg-white">
               <canvas ref={canvasRef} width={600} height={160} className="w-full touch-none"
                 style={{ cursor: "crosshair" }}
@@ -646,18 +721,19 @@ export default function ApprovalDetailPage() {
               />
             </div>
             <div className="flex gap-2 mb-4">
-              <button onClick={clearCanvas} className="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">다시 서명</button>
+              <button onClick={clearCanvas} className="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">서명 지우기</button>
               <button onClick={() => setShowSign(false)} className="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">취소</button>
             </div>
             <button onClick={handleSubmitWithSign} disabled={processing}
               className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50"
               style={{ background: pendingAction === "APPROVE" ? "#16a34a" : "#dc2626" }}>
-              {processing ? "처리 중..." : pendingAction === "APPROVE" ? "서명 완료 및 승인" : "서명 완료 및 반려"}
+              {processing ? "처리 중.." : pendingAction === "APPROVE" ? "승인 완료" : "반려 완료"}
             </button>
           </div>
         </div>
       )}
 
+      {/* 최종허가자 지정 */}
       {showFinalApprover && doc && (
         <FinalApproverModal
           documentId={documentId}
@@ -665,7 +741,7 @@ export default function ApprovalDetailPage() {
           onClose={() => setShowFinalApprover(false)}
           onAssigned={() => {
             setShowFinalApprover(false);
-            alert("최종허가자가 지정되었습니다! 알림이 전송되었습니다.");
+            alert("최종허가자가 지정되었습니다! 알림이 발송됩니다.");
             router.push("/approvals");
           }}
         />

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,10 +40,18 @@ export default function LoginPage() {
   };
 
   const contacts = [
-    { region: "경기", name: "윤혁", title: "차장" },
-    { region: "충남", name: "임원일", title: "차장" },
-    { region: "경북", name: "이준엽", title: "과장" },
-    { region: "강원", name: "배환성", title: "차장" },
+    {
+      category: "용역관련",
+      name: "곽형균 차장",
+      org: "한국농어촌공사 안전기술본부 기술기획실 기획관리부",
+      tel: "042-479-8299",
+    },
+    {
+      category: "시스템관련",
+      name: "임원일 과장",
+      org: "한국농어촌공사 충남지역본부 기반관리부",
+      tel: "041-339-1844",
+    },
   ];
 
   return (
@@ -50,6 +59,7 @@ export default function LoginPage() {
       style={{ background: "linear-gradient(160deg, #dbeafe 0%, #eff6ff 50%, #dbeafe 100%)" }}>
       <div className="w-full max-w-sm">
         <div className="bg-white rounded-3xl shadow-lg p-8">
+          {/* 공유 버튼 */}
           <div className="flex justify-start mb-4">
             <button className="text-gray-400 hover:text-gray-600">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -59,18 +69,24 @@ export default function LoginPage() {
             </button>
           </div>
 
+          {/* 로고 + 시스템명 */}
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
-              style={{ background: "linear-gradient(135deg, #dbeafe, #bfdbfe)" }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="#2563eb">
-                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
-                <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+            <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-4 overflow-hidden bg-white shadow-sm">
+              <Image
+                src="/logo.png"
+                alt="안전기술본부 로고"
+                width={80}
+                height={80}
+                className="object-contain"
+              />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">안전관리 시스템</h1>
+            <h1 className="text-xl font-bold text-gray-900 text-center leading-tight">
+              안전기술본부<br />스마트 안전관리 시스템
+            </h1>
             <p className="text-sm text-gray-500 mt-1">계정에 로그인하세요</p>
           </div>
 
+          {/* 로그인 폼 */}
           <form onSubmit={handleLogin} className="space-y-4">
             {error && (
               <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl border border-red-100">
@@ -148,19 +164,31 @@ export default function LoginPage() {
             </Link>
           </div>
 
+          {/* 문의처 */}
           <div className="mt-6 pt-4 border-t border-gray-100">
-            <p className="text-xs text-gray-400 text-center mb-2">문의 :</p>
-            <div className="space-y-1">
+            <p className="text-xs text-gray-400 text-center mb-3">문의</p>
+            <div className="space-y-2.5">
               {contacts.map((c) => (
-                <div key={c.region} className="flex items-center justify-center gap-1 text-xs text-gray-500">
-                  <span>{c.region} {c.name} {c.title}</span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.56 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-                  </svg>
+                <div key={c.category} className="bg-gray-50 rounded-xl px-3 py-2.5">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="text-xs font-semibold text-blue-600">· {c.category}</span>
+                  </div>
+                  <p className="text-xs text-gray-500 leading-relaxed">{c.org}</p>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-xs font-medium text-gray-700">{c.name}</span>
+                    <a href={`tel:${c.tel.replace(/-/g, "")}`}
+                      className="flex items-center gap-1 text-xs text-blue-600 font-medium">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.56 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                      </svg>
+                      {c.tel}
+                    </a>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
+
         </div>
       </div>
     </div>

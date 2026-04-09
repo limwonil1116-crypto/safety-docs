@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { documents, documentApprovalLines, notifications } from "@/db/schema";
+import { documents, documentApprovalLines, documentSignatures, notifications } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-// GET /api/documents/[documentId]/approval-lines - 결재선 조회
+// GET /api/documents/[documentId]/approval-lines - 결재선 조회 (서명 포함)
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ documentId: string }> }
@@ -28,6 +28,7 @@ export async function GET(
         stepStatus: documentApprovalLines.stepStatus,
         actedAt: documentApprovalLines.actedAt,
         comment: documentApprovalLines.comment,
+        signatureId: documentApprovalLines.signatureId,
         approverName: users.name,
         approverOrg: users.organization,
       })
@@ -36,15 +37,36 @@ export async function GET(
       .where(eq(documentApprovalLines.documentId, documentId))
       .orderBy(documentApprovalLines.approvalOrder);
 
-    return NextResponse.json({ approvalLines: lines });
+    // 서명 데이터 조회
+    const signatures = await db
+      .select({
+        id: documentSignatures.id,
+        approvalLineId: documentSignatures.approvalLineId,
+        signatureData: documentSignatures.signatureData,
+      })
+      .from(documentSignatures)
+      .where(eq(documentSignatures.documentId, documentId));
+
+    const sigMap: Record<string, string> = {};
+    signatures.forEach((s) => {
+      if (s.approvalLineId && s.signatureData) {
+        sigMap[s.approvalLineId] = s.signatureData;
+      }
+    });
+
+    const enrichedLines = lines.map((line) => ({
+      ...line,
+      signatureData: sigMap[line.id] ?? null,
+    }));
+
+    return NextResponse.json({ approvalLines: enrichedLines });
   } catch (error) {
     console.error("[GET /api/documents/[documentId]/approval-lines]", error);
     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
   }
 }
 
-// POST /api/documents/[documentId]/approval-lines - 결재선 저장 + 제출
-// 작성자는 2단계(검토자)만 지정
+// POST /api/documents/[documentId]/approval-lines - 결재선 지정 + 제출
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ documentId: string }> }
@@ -82,17 +104,27 @@ export async function POST(
       .delete(documentApprovalLines)
       .where(eq(documentApprovalLines.documentId, documentId));
 
-    // 2단계(검토자)만 저장
-    await db.insert(documentApprovalLines).values({
+    // 1단계 결재선 생성
+    const [newLine] = await db.insert(documentApprovalLines).values({
       documentId,
       approverUserId: reviewerUserId,
       approvalOrder: 1,
       approvalRole: "REVIEWER",
       stepStatus: "WAITING",
       signatureRequired: true,
-    });
+    }).returning();
 
-    // 문서 상태 SUBMITTED로 변경
+    // 신청인 서명 저장
+    if (signatureData && newLine) {
+      await db.insert(documentSignatures).values({
+        documentId,
+        approvalLineId: newLine.id,
+        signerUserId: session.user.id,
+        signatureData,
+      }).catch(() => {}); // 서명 저장 실패해도 제출은 진행
+    }
+
+    // 문서 상태 SUBMITTED로 업데이트
     const updatedFormData = {
       ...(doc.formDataJson as object),
       ...(formDataJson ?? {}),
@@ -116,8 +148,8 @@ export async function POST(
     await db.insert(notifications).values({
       userId: reviewerUserId,
       type: "MY_TURN",
-      title: "결재 요청",
-      body: `${session.user.name}님이 검토를 요청했습니다.`,
+      title: "검토 요청",
+      body: `${session.user.name}님이 서류를 제출했습니다.`,
       targetDocumentId: documentId,
       isRead: false,
     });
@@ -129,7 +161,7 @@ export async function POST(
   }
 }
 
-// PATCH /api/documents/[documentId]/approval-lines - 3단계 지정 (2단계 검토자가 호출)
+// PATCH /api/documents/[documentId]/approval-lines - 최종허가자 지정 (2단계 검토자가 완료 후)
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ documentId: string }> }
@@ -158,7 +190,7 @@ export async function PATCH(
       return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
     }
 
-    // 3단계 결재선 추가
+    // 2단계 결재선 생성
     await db.insert(documentApprovalLines).values({
       documentId,
       approverUserId: finalApproverUserId,
@@ -168,7 +200,7 @@ export async function PATCH(
       signatureRequired: true,
     });
 
-    // 문서 상태 업데이트
+    // 문서 상태 IN_REVIEW로 업데이트
     await db
       .update(documents)
       .set({

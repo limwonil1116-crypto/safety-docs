@@ -8,6 +8,7 @@ interface ApprovalDoc {
   id: string;
   document_type: DocumentType;
   status: string;
+  current_approval_order?: number;
   task_name: string;
   contractor_company_name?: string;
   writer_name?: string;
@@ -18,11 +19,20 @@ interface ApprovalDoc {
 }
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
-  SUBMITTED: { bg: "bg-blue-100",  text: "text-blue-600",  label: "제출완료" },
-  IN_REVIEW: { bg: "bg-amber-100", text: "text-amber-600", label: "검토중" },
-  APPROVED:  { bg: "bg-green-100", text: "text-green-600", label: "검토완료" },
-  REJECTED:  { bg: "bg-red-100",   text: "text-red-600",   label: "반려" },
+  DRAFT:           { bg: "bg-gray-100",   text: "text-gray-500",   label: "작성중" },
+  SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료" },
+  IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중" },
+  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종결재 진행중" },
+  APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료" },
+  REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "반려" },
 };
+
+function getStatusKey(doc: ApprovalDoc): string {
+  if (doc.status === "IN_REVIEW" && doc.current_approval_order === 2) {
+    return "IN_REVIEW_FINAL";
+  }
+  return doc.status;
+}
 
 const TABS = [
   { key: "ALL",                label: "전체" },
@@ -33,7 +43,7 @@ const TABS = [
 ];
 
 const DATE_FILTERS = [
-  { key: "ALL",        label: "오늘" },
+  { key: "ALL",        label: "전체" },
   { key: "THIS_WEEK",  label: "이번 주" },
   { key: "THIS_MONTH", label: "이번 달" },
 ];
@@ -59,12 +69,12 @@ export default function ApprovalsPage() {
 
       const res = await fetch(`/api/approvals?${params.toString()}`);
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "불러오기 실패");
+      if (!res.ok) throw new Error(data.error || "데이터 오류");
       setDocs(data.documents ?? []);
       setTypeCounts(data.typeCounts ?? {});
       setMyTurnCount(data.myTurnCount ?? 0);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
+      setError(e instanceof Error ? e.message : "서버 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
@@ -87,7 +97,7 @@ export default function ApprovalsPage() {
       {/* 상단 헤더 */}
       <div className="px-4 pt-4 pb-3 bg-white border-b border-gray-100">
         <div className="flex items-center justify-between mb-2">
-          <h1 className="text-lg font-bold text-gray-900">승인 목록</h1>
+          <h1 className="text-lg font-bold text-gray-900">결재현황</h1>
           {myTurnCount > 0 && (
             <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-red-100 text-red-600">
               내 차례 {myTurnCount}건
@@ -151,7 +161,7 @@ export default function ApprovalsPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="과업명, 업체명, 작성자 검색"
+            placeholder="과업명, 업체명으로 검색하세요"
             className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -174,23 +184,39 @@ export default function ApprovalsPage() {
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
               <polyline points="14 2 14 8 20 8"/>
             </svg>
-            <p className="text-sm">해당 문서가 없습니다</p>
+            <p className="text-sm">승인 목록이 없습니다</p>
           </div>
         ) : (
           docs.map((doc) => {
-            const style = STATUS_STYLE[doc.status] ?? STATUS_STYLE.SUBMITTED;
+            const statusKey = getStatusKey(doc);
+            const style = STATUS_STYLE[statusKey] ?? STATUS_STYLE.SUBMITTED;
             const typeShort = DOCUMENT_TYPE_SHORT[doc.document_type] ?? doc.document_type;
             const typeLabel = DOCUMENT_TYPE_LABELS[doc.document_type] ?? doc.document_type;
             const isMyTurn = doc.is_my_turn === true || String(doc.is_my_turn) === "true";
             return (
-              <Link key={doc.id} href={`/approvals/${doc.id}`}>
+              <Link key={doc.id} href={
+                doc.status === "DRAFT"
+                  ? `/tasks/${(doc as any).task_id ?? ""}`
+                  : `/approvals/${doc.id}`
+              }>
                 <div className={`bg-white rounded-2xl p-4 shadow-sm border transition-shadow hover:shadow-md ${
-                  isMyTurn ? "border-blue-200" : "border-gray-100"
+                  isMyTurn ? "border-blue-200" :
+                  doc.status === "DRAFT" ? "border-dashed border-gray-200" :
+                  "border-gray-100"
                 }`}>
+                  {doc.status === "DRAFT" && (
+                    <div className="flex items-center gap-1.5 mb-2 text-xs text-gray-400">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                      작성 중 - 과업 페이지에서 이어서 작성
+                    </div>
+                  )}
                   {isMyTurn && (
                     <div className="flex items-center gap-1.5 mb-2 text-xs font-medium text-blue-600">
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse inline-block"/>
-                      내 차례입니다
+                      내 결재 차례입니다
                     </div>
                   )}
                   <div className="flex items-start justify-between mb-2">
@@ -222,7 +248,7 @@ export default function ApprovalsPage() {
                         <circle cx="12" cy="12" r="10"/>
                         <polyline points="12 6 12 12 16 14"/>
                       </svg>
-                      현재 검토자: {doc.current_approver_name}
+                      현재 결재자: {doc.current_approver_name}
                     </div>
                   )}
                 </div>
