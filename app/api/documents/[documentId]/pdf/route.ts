@@ -54,7 +54,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ docu
 
     if (download) {
       const { buffer, filename } = await generatePDF({ documentId, documentType: doc.documentType, formData: (doc.formDataJson as Record<string, unknown>) ?? {}, approvalLines: approvalLinesWithSig, createdAt: doc.createdAt.toISOString(), taskName, applicantSignature });
-      return new NextResponse(buffer, {
+      return new NextResponse(new Uint8Array(buffer), {
         headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`, "Content-Length": String(buffer.length) },
       });
     }
