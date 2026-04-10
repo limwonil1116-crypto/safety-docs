@@ -300,15 +300,34 @@ function PdfButtons({ documentId }: { documentId: string }) {
   const handlePreview = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/documents/${documentId}/pdf`);
-      const data = await res.json();
-      if (data.url) {
-        window.open(data.url, "_blank");
-      } else {
-        alert("PDF 생성에 실패했습니다.");
+      // force=true: 항상 새로 생성 (캐시 무시)
+      const res = await fetch(`/api/documents/${documentId}/pdf?force=true`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(`PDF 생성 실패: ${data.error || res.statusText}`);
+        return;
       }
-    } catch (e) { console.error(e); alert("PDF 미리보기에 실패했습니다."); }
-    finally { setLoading(false); }
+      const contentType = res.headers.get("Content-Type") || "";
+      if (contentType.includes("application/pdf")) {
+        // Blob 업로드 실패 → 직접 PDF 바이너리로 응답된 경우
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        window.open(url, "_blank");
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      } else {
+        const data = await res.json();
+        if (data.url) {
+          window.open(data.url, "_blank");
+        } else {
+          alert(`PDF 생성 실패: ${data.error || "알 수 없는 오류"}`);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      alert("PDF 미리보기 중 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDownload = () => {
