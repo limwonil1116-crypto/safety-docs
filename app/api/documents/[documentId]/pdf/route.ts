@@ -19,7 +19,7 @@ async function getApprovalLinesWithSig(documentId: string) {
     approverName: line.approverName ?? undefined,
     approverOrg: line.approverOrg ?? undefined,
     actedAt: line.actedAt?.toISOString(),
-    signatureData: signatures.find((s) => s.approvalLineId === line.id)?.signatureData ?? undefined,
+    signatureData: signatures.find((s: { approvalLineId: string; signatureData: string }) => s.approvalLineId === line.id)?.signatureData ?? undefined,
   }));
 }
 
