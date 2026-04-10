@@ -145,24 +145,24 @@ export default function NotificationsPage() {
       router.push(`/approvals/${notification.targetDocumentId}`);
     }
   };
-
-  const filtered = filter === "unread" ? list.filter((n) => !n.isRead) : list;
-
-  // ?좎쭨蹂?洹몃９??  const grouped: Record<string, NotificationItem[]> = {};
+  const grouped: Record<string, NotificationItem[]> = {};
   filtered.forEach((n) => {
     const date = new Date(n.sentAt);
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
-
     let key: string;
-    if (date.toDateString() === today.toDateString()) key = "?ㅻ뒛";
-    else if (date.toDateString() === yesterday.toDateString()) key = "?댁젣";
+    if (date.toDateString() === today.toDateString()) key = "오늘";
+    else if (date.toDateString() === yesterday.toDateString()) key = "어제";
     else key = date.toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
-
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(n);
   });
+  const groupKeys = Object.keys(grouped);
+
+
+      {/* 헤더 */}
+
 
   return (
     <div className="pb-20">
