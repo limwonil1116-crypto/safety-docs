@@ -156,11 +156,11 @@ export async function POST(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[POST /api/documents/[documentId]/approval-lines]", error);
-    return NextResponse.json({ error: "?쒕쾭 ?ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." }, { status: 500 });
+    return NextResponse.json({ error: "오류가 발생했습니다." }, { status: 500 });
   }
 }
 
-// PATCH /api/documents/[documentId]/approval-lines - 理쒖쥌?덇???吏??(2?④퀎 寃?좎옄媛 ?꾨즺 ??
+// PATCH - 최종허가자 지정
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ documentId: string }> }
