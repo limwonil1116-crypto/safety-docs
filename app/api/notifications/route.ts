@@ -42,7 +42,7 @@ export async function PATCH(req: NextRequest) {
       .set({ isRead: true, readAt: new Date() })
       .where(
         and(
-          eq(notifications.userId, session.user.id!)
+          eq(notifications.userId, session.user.id!),
           eq(notifications.isRead, false)
         )
       );
