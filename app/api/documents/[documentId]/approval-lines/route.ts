@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { documents, documentApprovalLines, documentSignatures, notifications } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-// GET /api/documents/[documentId]/approval-lines - 결재선 조회 (서명 포함)
+// GET /api/documents/[documentId]/approval-lines - 寃곗옱??議고쉶 (?쒕챸 ?ы븿)
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ documentId: string }> }
@@ -12,7 +12,7 @@ export async function GET(
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+      return NextResponse.json({ error: "?몄쬆???꾩슂?⑸땲??" }, { status: 401 });
     }
 
     const { documentId } = await params;
@@ -37,7 +37,7 @@ export async function GET(
       .where(eq(documentApprovalLines.documentId, documentId))
       .orderBy(documentApprovalLines.approvalOrder);
 
-    // 서명 데이터 조회
+    // ?쒕챸 ?곗씠??議고쉶
     const signatures = await db
       .select({
         id: documentSignatures.id,
@@ -48,7 +48,7 @@ export async function GET(
       .where(eq(documentSignatures.documentId, documentId));
 
     const sigMap: Record<string, string> = {};
-    signatures.forEach((s) => {
+    signatures.forEach((s: { approvalLineId: string; signatureData: string }) => {
       if (s.approvalLineId && s.signatureData) {
         sigMap[s.approvalLineId] = s.signatureData;
       }
@@ -62,11 +62,11 @@ export async function GET(
     return NextResponse.json({ approvalLines: enrichedLines });
   } catch (error) {
     console.error("[GET /api/documents/[documentId]/approval-lines]", error);
-    return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "?쒕쾭 ?ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." }, { status: 500 });
   }
 }
 
-// POST /api/documents/[documentId]/approval-lines - 결재선 지정 + 제출
+// POST /api/documents/[documentId]/approval-lines - 寃곗옱??吏??+ ?쒖텧
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ documentId: string }> }
@@ -74,7 +74,7 @@ export async function POST(
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+      return NextResponse.json({ error: "?몄쬆???꾩슂?⑸땲??" }, { status: 401 });
     }
 
     const { documentId } = await params;
@@ -82,7 +82,7 @@ export async function POST(
     const { reviewerUserId, formDataJson, signatureData } = body;
 
     if (!reviewerUserId) {
-      return NextResponse.json({ error: "검토자를 지정해주세요." }, { status: 400 });
+      return NextResponse.json({ error: "寃?좎옄瑜?吏?뺥빐二쇱꽭??" }, { status: 400 });
     }
 
     const [doc] = await db
@@ -92,19 +92,19 @@ export async function POST(
       .limit(1);
 
     if (!doc || doc.deletedAt) {
-      return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
+      return NextResponse.json({ error: "臾몄꽌瑜?李얠쓣 ???놁뒿?덈떎." }, { status: 404 });
     }
 
     if (!["DRAFT", "REJECTED"].includes(doc.status)) {
-      return NextResponse.json({ error: "제출할 수 없는 상태입니다." }, { status: 400 });
+      return NextResponse.json({ error: "?쒖텧?????녿뒗 ?곹깭?낅땲??" }, { status: 400 });
     }
 
-    // 기존 결재선 삭제
+    // 湲곗〈 寃곗옱????젣
     await db
       .delete(documentApprovalLines)
       .where(eq(documentApprovalLines.documentId, documentId));
 
-    // 1단계 결재선 생성
+    // 1?④퀎 寃곗옱???앹꽦
     const [newLine] = await db.insert(documentApprovalLines).values({
       documentId,
       approverUserId: reviewerUserId,
@@ -114,17 +114,16 @@ export async function POST(
       signatureRequired: true,
     }).returning();
 
-    // 신청인 서명 저장
-    if (signatureData && newLine) {
+    // ?좎껌???쒕챸 ???    if (signatureData && newLine) {
       await db.insert(documentSignatures).values({
         documentId,
         approvalLineId: newLine.id,
         signerUserId: session.user.id,
         signatureData,
-      }).catch(() => {}); // 서명 저장 실패해도 제출은 진행
+      }).catch(() => {}); // ?쒕챸 ????ㅽ뙣?대룄 ?쒖텧? 吏꾪뻾
     }
 
-    // 문서 상태 SUBMITTED로 업데이트
+    // 臾몄꽌 ?곹깭 SUBMITTED濡??낅뜲?댄듃
     const updatedFormData = {
       ...(doc.formDataJson as object),
       ...(formDataJson ?? {}),
@@ -144,12 +143,12 @@ export async function POST(
       })
       .where(eq(documents.id, documentId));
 
-    // 검토자에게 알림
+    // 寃?좎옄?먭쾶 ?뚮┝
     await db.insert(notifications).values({
       userId: reviewerUserId,
       type: "MY_TURN",
-      title: "검토 요청",
-      body: `${session.user.name}님이 서류를 제출했습니다.`,
+      title: "寃???붿껌",
+      body: `${session.user.name}?섏씠 ?쒕쪟瑜??쒖텧?덉뒿?덈떎.`,
       targetDocumentId: documentId,
       isRead: false,
     });
@@ -157,11 +156,11 @@ export async function POST(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[POST /api/documents/[documentId]/approval-lines]", error);
-    return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "?쒕쾭 ?ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." }, { status: 500 });
   }
 }
 
-// PATCH /api/documents/[documentId]/approval-lines - 최종허가자 지정 (2단계 검토자가 완료 후)
+// PATCH /api/documents/[documentId]/approval-lines - 理쒖쥌?덇???吏??(2?④퀎 寃?좎옄媛 ?꾨즺 ??
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ documentId: string }> }
@@ -169,7 +168,7 @@ export async function PATCH(
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+      return NextResponse.json({ error: "?몄쬆???꾩슂?⑸땲??" }, { status: 401 });
     }
 
     const { documentId } = await params;
@@ -177,7 +176,7 @@ export async function PATCH(
     const { finalApproverUserId } = body;
 
     if (!finalApproverUserId) {
-      return NextResponse.json({ error: "최종허가자를 지정해주세요." }, { status: 400 });
+      return NextResponse.json({ error: "理쒖쥌?덇??먮? 吏?뺥빐二쇱꽭??" }, { status: 400 });
     }
 
     const [doc] = await db
@@ -187,10 +186,10 @@ export async function PATCH(
       .limit(1);
 
     if (!doc) {
-      return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
+      return NextResponse.json({ error: "臾몄꽌瑜?李얠쓣 ???놁뒿?덈떎." }, { status: 404 });
     }
 
-    // 2단계 결재선 생성
+    // 2?④퀎 寃곗옱???앹꽦
     await db.insert(documentApprovalLines).values({
       documentId,
       approverUserId: finalApproverUserId,
@@ -200,7 +199,7 @@ export async function PATCH(
       signatureRequired: true,
     });
 
-    // 문서 상태 IN_REVIEW로 업데이트
+    // 臾몄꽌 ?곹깭 IN_REVIEW濡??낅뜲?댄듃
     await db
       .update(documents)
       .set({
@@ -211,12 +210,12 @@ export async function PATCH(
       })
       .where(eq(documents.id, documentId));
 
-    // 최종허가자에게 알림
+    // 理쒖쥌?덇??먯뿉寃??뚮┝
     await db.insert(notifications).values({
       userId: finalApproverUserId,
       type: "MY_TURN",
-      title: "최종 결재 요청",
-      body: `검토가 완료되어 최종 결재를 요청합니다.`,
+      title: "理쒖쥌 寃곗옱 ?붿껌",
+      body: `寃?좉? ?꾨즺?섏뼱 理쒖쥌 寃곗옱瑜??붿껌?⑸땲??`,
       targetDocumentId: documentId,
       isRead: false,
     });
@@ -224,6 +223,6 @@ export async function PATCH(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[PATCH /api/documents/[documentId]/approval-lines]", error);
-    return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "?쒕쾭 ?ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." }, { status: 500 });
   }
 }
