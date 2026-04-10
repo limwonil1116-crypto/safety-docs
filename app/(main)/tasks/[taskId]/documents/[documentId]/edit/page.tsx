@@ -1,4 +1,11 @@
 "use client";
+// app/(main)/tasks/[taskId]/documents/[documentId]/edit/page.tsx
+// 변경사항:
+// - 모바일 날짜/시간 input: 회색 배경 제거, 검은 텍스트, native picker 정상 동작
+// - LocationPickerModal: GPS 자동위치 로딩 추가
+// - 입력된 텍스트 color: #111 (검은색)
+// - PWA 설치 배너는 layout 또는 별도 위치에서 처리 (이 파일은 edit만)
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -13,6 +20,44 @@ const DOC_TYPE_INFO: Record<string, { title: string; short: string; approverLabe
   HOLIDAY_WORK:       { title: "휴일작업신청서",     short: "붙임3", approverLabel: "검토자",    confirmerLabel: "승인자" },
   POWER_OUTAGE:       { title: "정전작업허가서",     short: "붙임4", approverLabel: "허가자",    confirmerLabel: "확인자" },
 };
+
+// ===== 공통 input 스타일 - 모바일 최적화 =====
+// 회색 배경 없음, 검은 텍스트, 충분한 padding
+const inputClass = [
+  "w-full px-3 py-3",
+  "border border-gray-300 rounded-xl",
+  "text-sm text-gray-900",           // 검은 텍스트
+  "bg-white",                        // 흰 배경
+  "focus:outline-none focus:ring-2 focus:ring-blue-500",
+  "appearance-none",                 // iOS 기본 스타일 제거
+].join(" ");
+
+const textareaClass = [
+  "w-full px-3 py-3",
+  "border border-gray-300 rounded-xl",
+  "text-sm text-gray-900",
+  "bg-white",
+  "focus:outline-none focus:ring-2 focus:ring-blue-500",
+  "resize-none",
+].join(" ");
+
+// 날짜 input - 모바일에서 달력 picker가 제대로 열리도록
+const dateInputClass = [
+  "w-full px-3 py-3",
+  "border border-gray-300 rounded-xl",
+  "text-sm text-gray-900",
+  "bg-white",
+  "focus:outline-none focus:ring-2 focus:ring-blue-500",
+].join(" ");
+
+// 시간 input
+const timeInputClass = [
+  "w-full px-3 py-3",
+  "border border-gray-300 rounded-xl",
+  "text-sm text-gray-900",
+  "bg-white",
+  "focus:outline-none focus:ring-2 focus:ring-blue-500",
+].join(" ");
 
 function PrevDocsModal({ documentId, onSelect, onClose }: { documentId: string; onSelect: (fd: Record<string, unknown>) => void; onClose: () => void; }) {
   const [list, setList] = useState<PrevDoc[]>([]);
@@ -55,17 +100,25 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
   const [address, setAddress] = useState(initialAddress);
   const [lat, setLat] = useState<number | null>(initialLat);
   const [lng, setLng] = useState<number | null>(initialLng);
+  const [gpsLoading, setGpsLoading] = useState(false);
 
   useEffect(() => {
     const initMap = () => { window.kakao.maps.load(() => setMapLoaded(true)); };
     if (window.kakao?.maps?.services) { setMapLoaded(true); return; }
     if (window.kakao?.maps) { initMap(); return; }
     const existing = document.getElementById("kakao-map-script");
-    if (existing) { const check = setInterval(() => { if (window.kakao?.maps?.services) { setMapLoaded(true); clearInterval(check); } else if (window.kakao?.maps) { initMap(); clearInterval(check); } }, 200); return; }
+    if (existing) {
+      const check = setInterval(() => {
+        if (window.kakao?.maps?.services) { setMapLoaded(true); clearInterval(check); }
+        else if (window.kakao?.maps) { initMap(); clearInterval(check); }
+      }, 200);
+      return;
+    }
     const script = document.createElement("script");
     script.id = "kakao-map-script";
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false&libraries=services`;
-    script.onload = initMap; document.head.appendChild(script);
+    script.onload = initMap;
+    document.head.appendChild(script);
   }, []);
 
   useEffect(() => {
@@ -75,35 +128,89 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
     mapInstanceRef.current = map;
     const marker = new window.kakao.maps.Marker({ position: center, map });
     markerRef.current = marker;
+
+    // GPS 자동위치 - 초기 위치가 없을 때만
+    if (!initialLat && !initialLng && navigator.geolocation) {
+      setGpsLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const gLat = pos.coords.latitude;
+          const gLng = pos.coords.longitude;
+          setLat(gLat);
+          setLng(gLng);
+          const ll = new window.kakao.maps.LatLng(gLat, gLng);
+          map.setCenter(ll);
+          map.setLevel(4);
+          marker.setPosition(ll);
+          // 역지오코딩으로 주소 얻기
+          if (window.kakao.maps.services) {
+            const geocoder = new window.kakao.maps.services.Geocoder();
+            geocoder.coord2Address(gLng, gLat, (result: any, status: any) => {
+              if (status === window.kakao.maps.services.Status.OK) {
+                const addr = result[0].road_address
+                  ? result[0].road_address.address_name
+                  : result[0].address.address_name;
+                setAddress(addr);
+              }
+            });
+          }
+          setGpsLoading(false);
+        },
+        () => { setGpsLoading(false); }, // 실패해도 무시
+        { timeout: 8000 }
+      );
+    }
+
     window.kakao.maps.event.addListener(map, "click", (mouseEvent: any) => {
       const latlng = mouseEvent.latLng;
       marker.setPosition(latlng);
-      const newLat = latlng.getLat(); const newLng = latlng.getLng();
-      setLat(newLat); setLng(newLng);
-      if (!window.kakao.maps.services) { setAddress(`${newLat.toFixed(5)}, ${newLng.toFixed(5)}`); return; }
+      const newLat = latlng.getLat();
+      const newLng = latlng.getLng();
+      setLat(newLat);
+      setLng(newLng);
+      if (!window.kakao.maps.services) {
+        setAddress(`${newLat.toFixed(5)}, ${newLng.toFixed(5)}`);
+        return;
+      }
       const geocoder = new window.kakao.maps.services.Geocoder();
       geocoder.coord2Address(newLng, newLat, (result: any, status: any) => {
-        if (status === window.kakao.maps.services.Status.OK)
-          setAddress(result[0].road_address ? result[0].road_address.address_name : result[0].address.address_name);
+        if (status === window.kakao.maps.services.Status.OK) {
+          setAddress(result[0].road_address
+            ? result[0].road_address.address_name
+            : result[0].address.address_name);
+        }
       });
     });
   }, [mapLoaded]);
 
   const handleAddressSearch = () => {
-    const load = () => { new window.daum.Postcode({ oncomplete: (data: any) => {
-      const addr = data.roadAddress || data.jibunAddress; setAddress(addr);
-      const gc = new window.kakao.maps.services.Geocoder();
-      gc.addressSearch(addr, (result: any, status: any) => {
-        if (status === window.kakao.maps.services.Status.OK) {
-          const nLat = parseFloat(result[0].y); const nLng = parseFloat(result[0].x);
-          setLat(nLat); setLng(nLng);
-          const ll = new window.kakao.maps.LatLng(nLat, nLng);
-          mapInstanceRef.current?.setCenter(ll); markerRef.current?.setPosition(ll);
+    const load = () => {
+      new window.daum.Postcode({
+        oncomplete: (data: any) => {
+          const addr = data.roadAddress || data.jibunAddress;
+          setAddress(addr);
+          const gc = new window.kakao.maps.services.Geocoder();
+          gc.addressSearch(addr, (result: any, status: any) => {
+            if (status === window.kakao.maps.services.Status.OK) {
+              const nLat = parseFloat(result[0].y);
+              const nLng = parseFloat(result[0].x);
+              setLat(nLat);
+              setLng(nLng);
+              const ll = new window.kakao.maps.LatLng(nLat, nLng);
+              mapInstanceRef.current?.setCenter(ll);
+              markerRef.current?.setPosition(ll);
+            }
+          });
         }
-      });
-    }}).open(); };
+      }).open();
+    };
     if (window.daum?.Postcode) load();
-    else { const s = document.createElement("script"); s.src = "//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"; s.onload = load; document.head.appendChild(s); }
+    else {
+      const s = document.createElement("script");
+      s.src = "//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
+      s.onload = load;
+      document.head.appendChild(s);
+    }
   };
 
   return (
@@ -111,30 +218,58 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
       <div className="bg-white w-full rounded-t-3xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <h2 className="text-base font-bold text-gray-900">작업 위치 지정</h2>
-          <button onClick={onClose} className="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          <button onClick={onClose} className="text-gray-400">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
         <div className="p-5 pb-10 space-y-4">
           <div>
             <label className="block text-xs text-gray-500 mb-1.5">주소 검색</label>
             <div className="flex gap-2">
-              <input type="text" value={address} readOnly className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-700" />
-              <button onClick={handleAddressSearch} className="px-4 py-2.5 rounded-xl text-white text-sm font-medium" style={{ background: "#2563eb" }}>주소 검색</button>
+              <input type="text" value={address} readOnly
+                className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-700" />
+              <button onClick={handleAddressSearch}
+                className="px-4 py-2.5 rounded-xl text-white text-sm font-medium" style={{ background: "#2563eb" }}>
+                주소 검색
+              </button>
             </div>
           </div>
+
+          {gpsLoading && (
+            <div className="bg-blue-50 rounded-xl px-3 py-2 text-xs text-blue-600 flex items-center gap-2">
+              <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+              </svg>
+              현재 위치를 가져오는 중...
+            </div>
+          )}
+
           <div className="rounded-2xl overflow-hidden border border-gray-200">
-            <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 text-xs text-gray-500">지도를 클릭하면 위치를 직접 지정할 수 있습니다</div>
+            <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 text-xs text-gray-500">
+              지도를 클릭하면 위치를 직접 지정할 수 있습니다
+            </div>
             <div ref={mapRef} style={{ width: "100%", height: "280px" }}>
-              {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-50"><p className="text-sm text-gray-400">지도 로딩 중...</p></div>}
+              {!mapLoaded && (
+                <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                  <p className="text-sm text-gray-400">지도 로딩 중...</p>
+                </div>
+              )}
             </div>
           </div>
+
           {lat && lng && (
             <div className="bg-blue-50 rounded-xl px-3 py-2 text-xs text-blue-700 flex items-center gap-2">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+              </svg>
               {address || "위치 선택됨"} ({lat.toFixed(5)}, {lng.toFixed(5)})
             </div>
           )}
-          <button onClick={() => { if (lat && lng) onConfirm(address, lat, lng); }} disabled={!lat || !lng}
-            className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-40" style={{ background: "#2563eb" }}>
+
+          <button onClick={() => { if (lat && lng) onConfirm(address, lat, lng); }}
+            disabled={!lat || !lng}
+            className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-40"
+            style={{ background: "#2563eb" }}>
             이 위치로 설정
           </button>
         </div>
@@ -192,6 +327,7 @@ function ApprovalSignModal({ documentId, documentType, onClose, onSubmitted }: {
     const ctx = canvas.getContext("2d"); if (!ctx) return;
     ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
   };
+
   const handleSubmit = async () => {
     const canvas = canvasRef.current; if (!canvas) return;
     const signatureData = canvas.toDataURL("image/png");
@@ -213,18 +349,29 @@ function ApprovalSignModal({ documentId, documentType, onClose, onSubmitted }: {
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
       <div className="bg-white w-full rounded-t-3xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h2 className="text-base font-bold text-gray-900">{step === "approver" ? `결재자 지정 (${info.approverLabel})` : "서명"}</h2>
-          <button onClick={onClose} className="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          <h2 className="text-base font-bold text-gray-900">
+            {step === "approver" ? `결재자 지정 (${info.approverLabel})` : "서명"}
+          </h2>
+          <button onClick={onClose} className="text-gray-400">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
         {step === "approver" ? (
           <div className="p-5 pb-10">
-            <div className="bg-blue-50 rounded-xl p-3 mb-4 text-xs text-blue-700">{`${info.approverLabel}에게 결재 요청이 전송됩니다.`}</div>
+            <div className="bg-blue-50 rounded-xl p-3 mb-4 text-xs text-blue-700">
+              {`${info.approverLabel}에게 결재 요청이 전송됩니다.`}
+            </div>
             <div className={`p-3 rounded-xl border-2 mb-4 ${reviewer ? "border-blue-400 bg-blue-50" : "border-dashed border-gray-300"}`}>
               <div className="text-xs text-gray-500 mb-1">{info.approverLabel} <span className="text-red-500">*</span></div>
               {reviewer ? (
                 <div className="flex items-center justify-between">
-                  <div><span className="text-sm font-medium text-gray-900">{reviewer.name}</span><span className="text-xs text-gray-500 ml-2">{reviewer.organization}</span></div>
-                  <button onClick={() => setReviewer(null)} className="text-gray-400 hover:text-red-500"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                  <div>
+                    <span className="text-sm font-medium text-gray-900">{reviewer.name}</span>
+                    <span className="text-xs text-gray-500 ml-2">{reviewer.organization}</span>
+                  </div>
+                  <button onClick={() => setReviewer(null)} className="text-gray-400 hover:text-red-500">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
                 </div>
               ) : <p className="text-xs text-gray-400">아래 목록에서 선택해주세요</p>}
             </div>
@@ -238,13 +385,20 @@ function ApprovalSignModal({ documentId, documentType, onClose, onSubmitted }: {
                 <button key={u.id} onClick={() => setReviewer(u)}
                   className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-400 hover:bg-blue-50 text-left">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm shrink-0">{u.name[0]}</div>
-                  <div><div className="text-sm font-medium text-gray-900">{u.name}</div><div className="text-xs text-gray-500">{u.organization}{u.employeeNo ? ` · ${u.employeeNo}` : ""}</div></div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">{u.name}</div>
+                    <div className="text-xs text-gray-500">{u.organization}{u.employeeNo ? ` · ${u.employeeNo}` : ""}</div>
+                  </div>
                 </button>
               ))}
             </div>
             {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
-            <button onClick={() => { if (!reviewer) { setError(info.approverLabel + "를 선택해주세요."); return; } setError(""); setStep("sign"); }}
-              disabled={!reviewer} className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50" style={{ background: "#2563eb" }}>
+            <button onClick={() => {
+              if (!reviewer) { setError(info.approverLabel + "를 선택해주세요."); return; }
+              setError(""); setStep("sign");
+            }} disabled={!reviewer}
+              className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50"
+              style={{ background: "#2563eb" }}>
               다음 - 서명하기
             </button>
           </div>
@@ -252,7 +406,10 @@ function ApprovalSignModal({ documentId, documentType, onClose, onSubmitted }: {
           <div className="p-5 pb-10">
             <p className="text-sm text-gray-600 mb-4">아래에 서명해주세요.</p>
             <div className="bg-gray-50 rounded-xl p-3 mb-4 text-xs text-gray-600">
-              <div className="flex justify-between"><span>{info.approverLabel}</span><span className="font-medium text-gray-900">{reviewer?.name} ({reviewer?.organization})</span></div>
+              <div className="flex justify-between">
+                <span>{info.approverLabel}</span>
+                <span className="font-medium text-gray-900">{reviewer?.name} ({reviewer?.organization})</span>
+              </div>
             </div>
             <div className="border-2 border-gray-200 rounded-2xl overflow-hidden mb-3 bg-white">
               <canvas ref={canvasRef} width={600} height={200} className="w-full touch-none" style={{ cursor: "crosshair" }}
@@ -265,7 +422,8 @@ function ApprovalSignModal({ documentId, documentType, onClose, onSubmitted }: {
             </div>
             {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
             <button onClick={handleSubmit} disabled={submitting}
-              className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50" style={{ background: "#2563eb" }}>
+              className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50"
+              style={{ background: "#2563eb" }}>
               {submitting ? "제출 중..." : "서명 완료 및 제출"}
             </button>
           </div>
@@ -283,16 +441,17 @@ function SectionHeader({ num, title }: { num: number; title: string }) {
     </h3>
   );
 }
+
 function FormInput({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs text-gray-500 mb-1">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
+      <label className="block text-xs font-medium text-gray-600 mb-1.5">
+        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+      </label>
       {children}
     </div>
   );
 }
-const inputClass = "w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
-const textareaClass = "w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none";
 
 function LocationField({ workLatitude, workAddress, onOpenLocation, onClearLocation }: {
   workLatitude: number | null; workAddress: string; onOpenLocation: () => void; onClearLocation: () => void;
@@ -300,18 +459,73 @@ function LocationField({ workLatitude, workAddress, onOpenLocation, onClearLocat
   return (
     <div>
       <button onClick={onOpenLocation}
-        className={`w-full flex items-center justify-center gap-2 py-2 rounded-xl border text-sm font-medium transition-colors ${workLatitude ? "border-blue-400 bg-blue-50 text-blue-600" : "border-gray-200 text-gray-500 hover:bg-gray-50"}`}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        {workLatitude ? "위치 변경" : "📍 지도에서 위치 지정"}
+        className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-colors ${
+          workLatitude ? "border-blue-400 bg-blue-50 text-blue-600" : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
+        }`}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+        </svg>
+        {workLatitude ? "📍 위치 변경" : "📍 지도에서 위치 지정 (GPS 자동감지)"}
       </button>
       {workLatitude && workAddress && (
-        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-blue-600">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-          <span className="truncate">{workAddress}</span>
-          <button onClick={onClearLocation} className="shrink-0 text-gray-400 hover:text-red-500 ml-1">✕</button>
+        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg px-2.5 py-1.5">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+          </svg>
+          <span className="truncate flex-1">{workAddress}</span>
+          <button onClick={onClearLocation} className="shrink-0 text-gray-400 hover:text-red-500 ml-1 text-base leading-none">✕</button>
         </div>
       )}
     </div>
+  );
+}
+
+// ===== 작업기간 공통 컴포넌트 =====
+function WorkPeriodField({ startDate, endDate, startTime, endTime, onChangeStartDate, onChangeEndDate, onChangeStartTime, onChangeEndTime }: {
+  startDate: string; endDate: string; startTime: string; endTime: string;
+  onChangeStartDate: (v: string) => void; onChangeEndDate: (v: string) => void;
+  onChangeStartTime: (v: string) => void; onChangeEndTime: (v: string) => void;
+}) {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        <FormInput label="작업 시작일" required>
+          <input type="date" value={startDate}
+            onChange={e => onChangeStartDate(e.target.value)}
+            className={dateInputClass}
+            style={{ colorScheme: "light" }}
+          />
+        </FormInput>
+        <FormInput label="작업 종료일" required>
+          <input type="date" value={endDate} min={startDate}
+            onChange={e => onChangeEndDate(e.target.value)}
+            className={dateInputClass}
+            style={{ colorScheme: "light" }}
+          />
+        </FormInput>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <FormInput label="작업 시작 시간" required>
+          <input type="time" value={startTime}
+            onChange={e => onChangeStartTime(e.target.value)}
+            className={timeInputClass}
+            style={{ colorScheme: "light" }}
+          />
+        </FormInput>
+        <FormInput label="작업 종료 시간" required>
+          <input type="time" value={endTime}
+            onChange={e => onChangeEndTime(e.target.value)}
+            className={timeInputClass}
+            style={{ colorScheme: "light" }}
+          />
+        </FormInput>
+      </div>
+      {startDate && (
+        <div className="bg-blue-50 rounded-xl px-3 py-2 text-xs text-blue-700 flex items-center gap-2">
+          📅 작업수행기간: {startDate} {startTime} ~ {endDate || startDate} {endTime}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -333,8 +547,10 @@ function SafetyCheckTable({ items, onChange }: { items: SafetyCheckItem[]; onCha
           <div className="col-span-3 flex flex-col gap-1 items-start pl-1">
             {["해당", "해당없음"].map(opt => (
               <label key={opt} className="flex items-center gap-1 cursor-pointer">
-                <input type="radio" name={`applicable_${idx}`} value={opt} checked={item.applicable === opt}
-                  onChange={() => update(idx, "applicable", opt)} className="w-3 h-3 text-blue-600" />
+                <input type="radio" name={`applicable_${idx}`} value={opt}
+                  checked={item.applicable === opt}
+                  onChange={() => update(idx, "applicable", opt)}
+                  className="w-3 h-3 text-blue-600" />
                 <span className="text-xs text-gray-600">{opt}</span>
               </label>
             ))}
@@ -343,7 +559,7 @@ function SafetyCheckTable({ items, onChange }: { items: SafetyCheckItem[]; onCha
             {item.applicable === "해당" ? (
               <select value={OPTS.includes(item.result) ? item.result : (item.result ? "직접입력" : "")}
                 onChange={e => { if (e.target.value !== "직접입력") update(idx, "result", e.target.value); else update(idx, "result", ""); }}
-                className="w-full px-2 py-1 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-500">
+                className="w-full px-2 py-1 border border-gray-200 rounded-lg text-xs text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
                 <option value="">선택</option>
                 {OPTS.map(o => <option key={o} value={o}>{o}</option>)}
                 <option value="직접입력">직접입력</option>
@@ -356,46 +572,9 @@ function SafetyCheckTable({ items, onChange }: { items: SafetyCheckItem[]; onCha
   );
 }
 
-// ===== 작업기간 공통 컴포넌트 =====
-function WorkPeriodField({ startDate, endDate, startTime, endTime, onChangeStartDate, onChangeEndDate, onChangeStartTime, onChangeEndTime }: {
-  startDate: string; endDate: string; startTime: string; endTime: string;
-  onChangeStartDate: (v: string) => void; onChangeEndDate: (v: string) => void;
-  onChangeStartTime: (v: string) => void; onChangeEndTime: (v: string) => void;
-}) {
-  return (
-    <>
-      {/* 작업기간: 시작일 ~ 종료일 */}
-      <div className="grid grid-cols-2 gap-3">
-        <FormInput label="작업 시작일" required>
-          <input type="date" value={startDate} onChange={e => onChangeStartDate(e.target.value)} className={inputClass} />
-        </FormInput>
-        <FormInput label="작업 종료일" required>
-          <input type="date" value={endDate} min={startDate} onChange={e => onChangeEndDate(e.target.value)} className={inputClass} />
-        </FormInput>
-      </div>
-      {/* 작업시간: 시작시간 ~ 종료시간 */}
-      <div className="grid grid-cols-2 gap-3">
-        <FormInput label="작업 시작 시간" required>
-          <input type="time" value={startTime} onChange={e => onChangeStartTime(e.target.value)} className={inputClass} />
-        </FormInput>
-        <FormInput label="작업 종료 시간" required>
-          <input type="time" value={endTime} onChange={e => onChangeEndTime(e.target.value)} className={inputClass} />
-        </FormInput>
-      </div>
-      {/* 기간 미리보기 */}
-      {startDate && (
-        <div className="bg-blue-50 rounded-xl px-3 py-2 text-xs text-blue-700">
-          📅 작업수행기간: {startDate} {startTime} ~ {endDate || startDate} {endTime}
-        </div>
-      )}
-    </>
-  );
-}
-
 interface RiskRow { riskFactor: string; improvement: string; disasterType: string; }
 interface Form1 {
-  requestDate: string;
-  workStartDate: string; workEndDate: string;        // ← 기간으로 변경
+  requestDate: string; workStartDate: string; workEndDate: string;
   workStartTime: string; workEndTime: string;
   projectName: string; applicantCompany: string; applicantTitle: string; applicantName: string;
   workLocation: string; workContent: string; participants: string;
@@ -408,9 +587,9 @@ interface Form1 {
 }
 const defaultForm1: Form1 = {
   requestDate: new Date().toISOString().split("T")[0],
-  workStartDate: "", workEndDate: "",
-  workStartTime: "09:00", workEndTime: "18:00",
-  projectName: "", applicantCompany: "", applicantTitle: "", applicantName: "", workLocation: "", workContent: "", participants: "",
+  workStartDate: "", workEndDate: "", workStartTime: "09:00", workEndTime: "18:00",
+  projectName: "", applicantCompany: "", applicantTitle: "", applicantName: "",
+  workLocation: "", workContent: "", participants: "",
   riskHighPlace: false, riskHighPlaceDetail: "", riskWaterWork: false, riskWaterWorkDetail: "",
   riskConfinedSpace: false, riskPowerOutage: false, riskFireWork: false, riskOther: false, riskOtherDetail: "",
   factorNarrowAccess: false, factorSlippery: false, factorSteepSlope: false, factorWaterHazard: false,
@@ -431,7 +610,9 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         <SectionHeader num={1} title="작업허가 신청개요" />
         <div className="space-y-3">
           <FormInput label="신청일" required>
-            <input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={inputClass} />
+            <input type="date" value={form.requestDate}
+              onChange={e => onChange("requestDate", e.target.value)}
+              className={dateInputClass} style={{ colorScheme: "light" }} />
           </FormInput>
           <WorkPeriodField
             startDate={form.workStartDate} endDate={form.workEndDate}
@@ -441,18 +622,36 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             onChangeStartTime={v => onChange("workStartTime", v)}
             onChangeEndTime={v => onChange("workEndTime", v)}
           />
-          <FormInput label="용역명"><input type="text" value={taskName} readOnly className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
+          <FormInput label="용역명">
+            <input type="text" value={taskName} readOnly
+              className="w-full px-3 py-3 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" />
+          </FormInput>
           <div className="grid grid-cols-3 gap-2">
-            <FormInput label="업체명"><input type="text" value={form.applicantCompany} onChange={e => onChange("applicantCompany", e.target.value)} className={inputClass} /></FormInput>
-            <FormInput label="직책"><input type="text" value={form.applicantTitle} onChange={e => onChange("applicantTitle", e.target.value)} className={inputClass} /></FormInput>
-            <FormInput label="성명" required><input type="text" value={form.applicantName} onChange={e => onChange("applicantName", e.target.value)} className={inputClass} /></FormInput>
+            <FormInput label="업체명">
+              <input type="text" value={form.applicantCompany}
+                onChange={e => onChange("applicantCompany", e.target.value)} className={inputClass} />
+            </FormInput>
+            <FormInput label="직책">
+              <input type="text" value={form.applicantTitle}
+                onChange={e => onChange("applicantTitle", e.target.value)} className={inputClass} />
+            </FormInput>
+            <FormInput label="성명" required>
+              <input type="text" value={form.applicantName}
+                onChange={e => onChange("applicantName", e.target.value)} className={inputClass} />
+            </FormInput>
           </div>
           <FormInput label="작업장소" required>
-            <input type="text" value={form.workLocation} onChange={e => onChange("workLocation", e.target.value)} className={inputClass + " mb-1.5"} />
+            <input type="text" value={form.workLocation}
+              onChange={e => onChange("workLocation", e.target.value)}
+              className={inputClass + " mb-1.5"} />
             <LocationField workLatitude={workLatitude} workAddress={workAddress} onOpenLocation={onOpenLocation} onClearLocation={onClearLocation} />
           </FormInput>
-          <FormInput label="작업 내용" required><textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} /></FormInput>
-          <FormInput label="작업자명단"><textarea value={form.participants} onChange={e => onChange("participants", e.target.value)} rows={2} className={textareaClass} /></FormInput>
+          <FormInput label="작업 내용" required>
+            <textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} />
+          </FormInput>
+          <FormInput label="작업자명단">
+            <textarea value={form.participants} onChange={e => onChange("participants", e.target.value)} rows={2} className={textareaClass} />
+          </FormInput>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -467,11 +666,11 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
           {form.riskRows.map((row, idx) => (
             <div key={idx} className="grid grid-cols-12 gap-1 items-start">
               <textarea value={row.riskFactor} onChange={e => updateRow(idx, "riskFactor", e.target.value)} rows={2}
-                className="col-span-5 px-2 py-1.5 border border-gray-200 rounded-lg text-xs resize-none focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                className="col-span-5 px-2 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 bg-white resize-none focus:outline-none focus:ring-1 focus:ring-blue-500" />
               <textarea value={row.improvement} onChange={e => updateRow(idx, "improvement", e.target.value)} rows={2}
-                className="col-span-4 px-2 py-1.5 border border-gray-200 rounded-lg text-xs resize-none focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                className="col-span-4 px-2 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 bg-white resize-none focus:outline-none focus:ring-1 focus:ring-blue-500" />
               <input type="text" value={row.disasterType} onChange={e => updateRow(idx, "disasterType", e.target.value)}
-                className="col-span-2 px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                className="col-span-2 px-2 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
               <button onClick={() => { if (form.riskRows.length > 1) onChange("riskRows", form.riskRows.filter((_, i) => i !== idx)); }}
                 disabled={form.riskRows.length <= 1}
                 className="col-span-1 flex items-center justify-center text-gray-300 hover:text-red-400 disabled:opacity-20 pt-2">
@@ -505,10 +704,8 @@ const CONFINED_CHECKS: SafetyCheckItem[] = [
   { label: "작업 전 안전교육 실시 (TBM 등)", applicable: "", result: "" },
   { label: "작업복장 착용", applicable: "", result: "" },
 ];
-
 interface Form2 {
-  requestDate: string;
-  workStartDate: string; workEndDate: string;
+  requestDate: string; workStartDate: string; workEndDate: string;
   workStartTime: string; workEndTime: string;
   serviceName: string; applicantCompany: string; applicantTitle: string; applicantName: string;
   workLocation: string; workContent: string; entryList: string;
@@ -516,13 +713,11 @@ interface Form2 {
 }
 const defaultForm2: Form2 = {
   requestDate: new Date().toISOString().split("T")[0],
-  workStartDate: "", workEndDate: "",
-  workStartTime: "09:00", workEndTime: "18:00",
+  workStartDate: "", workEndDate: "", workStartTime: "09:00", workEndTime: "18:00",
   serviceName: "", applicantCompany: "", applicantTitle: "", applicantName: "",
   workLocation: "", workContent: "", entryList: "", needFireWork: "", useInternalEngine: "",
   safetyChecks: CONFINED_CHECKS.map(c => ({ ...c })), specialMeasures: "",
 };
-
 function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation, onClearLocation, taskName }: {
   form: Form2; onChange: (k: string, v: unknown) => void;
   workLatitude: number | null; workAddress: string; onOpenLocation: () => void; onClearLocation: () => void; taskName: string;
@@ -533,17 +728,12 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         <SectionHeader num={1} title="기본정보" />
         <div className="space-y-3">
           <FormInput label="신청일" required>
-            <input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={inputClass} />
+            <input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} />
           </FormInput>
-          <WorkPeriodField
-            startDate={form.workStartDate} endDate={form.workEndDate}
-            startTime={form.workStartTime} endTime={form.workEndTime}
-            onChangeStartDate={v => onChange("workStartDate", v)}
-            onChangeEndDate={v => onChange("workEndDate", v)}
-            onChangeStartTime={v => onChange("workStartTime", v)}
-            onChangeEndTime={v => onChange("workEndTime", v)}
-          />
-          <FormInput label="용역명"><input type="text" value={taskName} readOnly className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
+          <WorkPeriodField startDate={form.workStartDate} endDate={form.workEndDate} startTime={form.workStartTime} endTime={form.workEndTime}
+            onChangeStartDate={v => onChange("workStartDate", v)} onChangeEndDate={v => onChange("workEndDate", v)}
+            onChangeStartTime={v => onChange("workStartTime", v)} onChangeEndTime={v => onChange("workEndTime", v)} />
+          <FormInput label="용역명"><input type="text" value={taskName} readOnly className="w-full px-3 py-3 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
           <div className="grid grid-cols-3 gap-2">
             <FormInput label="업체명"><input type="text" value={form.applicantCompany} onChange={e => onChange("applicantCompany", e.target.value)} className={inputClass} /></FormInput>
             <FormInput label="직책"><input type="text" value={form.applicantTitle} onChange={e => onChange("applicantTitle", e.target.value)} className={inputClass} /></FormInput>
@@ -561,7 +751,7 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         <SectionHeader num={2} title="허가 조건" />
         <div className="space-y-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-2">화기작업 허가 필요여부</label>
+            <label className="block text-xs font-medium text-gray-600 mb-2">화기작업 허가 필요여부</label>
             <div className="flex gap-4">{["필요", "불필요"].map(opt => (
               <label key={opt} className="flex items-center gap-2 cursor-pointer">
                 <input type="radio" name="needFireWork2" value={opt} checked={form.needFireWork === opt} onChange={() => onChange("needFireWork", opt)} className="w-4 h-4 text-blue-600" />
@@ -570,7 +760,7 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             ))}</div>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-2">내연기관(양수기) 등 사용여부</label>
+            <label className="block text-xs font-medium text-gray-600 mb-2">내연기관(양수기) 등 사용여부</label>
             <div className="flex gap-4">{["사용", "미사용"].map(opt => (
               <label key={opt} className="flex items-center gap-2 cursor-pointer">
                 <input type="radio" name="useInternalEngine2" value={opt} checked={form.useInternalEngine === opt} onChange={() => onChange("useInternalEngine", opt)} className="w-4 h-4 text-blue-600" />
@@ -594,8 +784,7 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
 
 interface Participant3 { role: string; name: string; phone: string; }
 interface Form3 {
-  requestDate: string;
-  workStartDate: string; workEndDate: string;
+  requestDate: string; workStartDate: string; workEndDate: string;
   workStartTime: string; workEndTime: string;
   serviceName: string; contractorCompany: string; contractPeriodStart: string; contractPeriodEnd: string;
   facilityName: string; facilityLocation: string; facilityManager: string; facilityManagerGrade: string;
@@ -605,15 +794,13 @@ interface Form3 {
 }
 const defaultForm3: Form3 = {
   requestDate: new Date().toISOString().split("T")[0],
-  workStartDate: "", workEndDate: "",
-  workStartTime: "09:00", workEndTime: "18:00",
+  workStartDate: "", workEndDate: "", workStartTime: "09:00", workEndTime: "18:00",
   serviceName: "", contractorCompany: "", contractPeriodStart: "", contractPeriodEnd: "",
   facilityName: "", facilityLocation: "", facilityManager: "", facilityManagerGrade: "",
   workPosition: "", workContents: "",
   participants: [{ role: "안전보건관리책임자", name: "", phone: "" }, { role: "현장참여인원", name: "", phone: "" }, { role: "시설관리자", name: "", phone: "" }],
   riskFactors: "", improvementMeasures: "", reviewOpinion: "", reviewResult: "", applicantName: "", applicantOrg: "",
 };
-
 function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation, onClearLocation, taskName }: {
   form: Form3; onChange: (k: string, v: unknown) => void;
   workLatitude: number | null; workAddress: string; onOpenLocation: () => void; onClearLocation: () => void; taskName: string;
@@ -625,22 +812,15 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={1} title="용역 개요" />
         <div className="space-y-3">
-          <FormInput label="신고일" required>
-            <input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={inputClass} />
-          </FormInput>
-          <WorkPeriodField
-            startDate={form.workStartDate} endDate={form.workEndDate}
-            startTime={form.workStartTime} endTime={form.workEndTime}
-            onChangeStartDate={v => onChange("workStartDate", v)}
-            onChangeEndDate={v => onChange("workEndDate", v)}
-            onChangeStartTime={v => onChange("workStartTime", v)}
-            onChangeEndTime={v => onChange("workEndTime", v)}
-          />
-          <FormInput label="용역명" required><input type="text" value={taskName} readOnly className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
+          <FormInput label="신고일" required><input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
+          <WorkPeriodField startDate={form.workStartDate} endDate={form.workEndDate} startTime={form.workStartTime} endTime={form.workEndTime}
+            onChangeStartDate={v => onChange("workStartDate", v)} onChangeEndDate={v => onChange("workEndDate", v)}
+            onChangeStartTime={v => onChange("workStartTime", v)} onChangeEndTime={v => onChange("workEndTime", v)} />
+          <FormInput label="용역명" required><input type="text" value={taskName} readOnly className="w-full px-3 py-3 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
           <FormInput label="수급업체명"><input type="text" value={form.contractorCompany} onChange={e => onChange("contractorCompany", e.target.value)} className={inputClass} /></FormInput>
           <div className="grid grid-cols-2 gap-3">
-            <FormInput label="용역기간 시작"><input type="date" value={form.contractPeriodStart} onChange={e => onChange("contractPeriodStart", e.target.value)} className={inputClass} /></FormInput>
-            <FormInput label="용역기간 종료"><input type="date" value={form.contractPeriodEnd} onChange={e => onChange("contractPeriodEnd", e.target.value)} className={inputClass} /></FormInput>
+            <FormInput label="용역기간 시작"><input type="date" value={form.contractPeriodStart} onChange={e => onChange("contractPeriodStart", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
+            <FormInput label="용역기간 종료"><input type="date" value={form.contractPeriodEnd} onChange={e => onChange("contractPeriodEnd", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
           </div>
         </div>
       </div>
@@ -666,11 +846,8 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
           {form.participants.map((p, idx) => (
             <div key={idx} className="border border-gray-200 rounded-xl p-3">
               <div className="flex items-center justify-between mb-2">
-                <select value={p.role} onChange={e => updateP(idx, "role", e.target.value)}
-                  className="text-xs px-2 py-1 border border-gray-200 rounded-lg text-gray-700 focus:outline-none">
-                  <option value="안전보건관리책임자">안전보건관리책임자</option>
-                  <option value="현장참여인원">현장참여인원</option>
-                  <option value="시설관리자">시설관리자</option>
+                <select value={p.role} onChange={e => updateP(idx, "role", e.target.value)} className="text-xs px-2 py-1 border border-gray-200 rounded-lg text-gray-700 bg-white focus:outline-none">
+                  <option>안전보건관리책임자</option><option>현장참여인원</option><option>시설관리자</option>
                 </select>
                 {idx >= 1 && <button onClick={() => onChange("participants", form.participants.filter((_, i) => i !== idx))} className="text-gray-400 hover:text-red-500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
               </div>
@@ -683,8 +860,7 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         </div>
         <button onClick={() => onChange("participants", [...form.participants, { role: "현장참여인원", name: "", phone: "" }])}
           className="w-full py-2 rounded-xl border border-dashed border-gray-300 text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 flex items-center justify-center gap-1">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          참여자 추가
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>참여자 추가
         </button>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -725,8 +901,7 @@ const POWER_CHECKS: SafetyCheckItem[] = [
 ];
 interface InspectionItem { equipment: string; cutoffConfirmer: string; electrician: string; siteRepair: string; }
 interface Form4 {
-  requestDate: string;
-  workStartDate: string; workEndDate: string;
+  requestDate: string; workStartDate: string; workEndDate: string;
   workStartTime: string; workEndTime: string;
   serviceName: string; applicantCompany: string; applicantTitle: string; applicantName: string;
   workLocation: string; workContent: string; entryList: string;
@@ -735,14 +910,12 @@ interface Form4 {
 }
 const defaultForm4: Form4 = {
   requestDate: new Date().toISOString().split("T")[0],
-  workStartDate: "", workEndDate: "",
-  workStartTime: "09:00", workEndTime: "18:00",
+  workStartDate: "", workEndDate: "", workStartTime: "09:00", workEndTime: "18:00",
   serviceName: "", applicantCompany: "", applicantTitle: "", applicantName: "",
   workLocation: "", workContent: "", entryList: "", needConfinedSpace: "", needFireWork: "",
   safetyChecks: POWER_CHECKS.map(c => ({ ...c })),
   inspectionItems: [{ equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" }], specialMeasures: "",
 };
-
 function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation, onClearLocation, taskName }: {
   form: Form4; onChange: (k: string, v: unknown) => void;
   workLatitude: number | null; workAddress: string; onOpenLocation: () => void; onClearLocation: () => void; taskName: string;
@@ -754,18 +927,11 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={1} title="기본정보" />
         <div className="space-y-3">
-          <FormInput label="신청일" required>
-            <input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={inputClass} />
-          </FormInput>
-          <WorkPeriodField
-            startDate={form.workStartDate} endDate={form.workEndDate}
-            startTime={form.workStartTime} endTime={form.workEndTime}
-            onChangeStartDate={v => onChange("workStartDate", v)}
-            onChangeEndDate={v => onChange("workEndDate", v)}
-            onChangeStartTime={v => onChange("workStartTime", v)}
-            onChangeEndTime={v => onChange("workEndTime", v)}
-          />
-          <FormInput label="용역명"><input type="text" value={taskName} readOnly className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
+          <FormInput label="신청일" required><input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
+          <WorkPeriodField startDate={form.workStartDate} endDate={form.workEndDate} startTime={form.workStartTime} endTime={form.workEndTime}
+            onChangeStartDate={v => onChange("workStartDate", v)} onChangeEndDate={v => onChange("workEndDate", v)}
+            onChangeStartTime={v => onChange("workStartTime", v)} onChangeEndTime={v => onChange("workEndTime", v)} />
+          <FormInput label="용역명"><input type="text" value={taskName} readOnly className="w-full px-3 py-3 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
           <div className="grid grid-cols-3 gap-2">
             <FormInput label="업체명"><input type="text" value={form.applicantCompany} onChange={e => onChange("applicantCompany", e.target.value)} className={inputClass} /></FormInput>
             <FormInput label="직책"><input type="text" value={form.applicantTitle} onChange={e => onChange("applicantTitle", e.target.value)} className={inputClass} /></FormInput>
@@ -783,7 +949,7 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         <SectionHeader num={2} title="허가 조건" />
         <div className="space-y-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-2">밀폐공간출입 허가 필요여부</label>
+            <label className="block text-xs font-medium text-gray-600 mb-2">밀폐공간출입 허가 필요여부</label>
             <div className="flex gap-4">{["필요", "불필요"].map(opt => (
               <label key={opt} className="flex items-center gap-2 cursor-pointer">
                 <input type="radio" name="needConfinedSpace4" value={opt} checked={form.needConfinedSpace === opt} onChange={() => onChange("needConfinedSpace", opt)} className="w-4 h-4 text-blue-600" />
@@ -792,7 +958,7 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             ))}</div>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-2">화기작업 허가 필요여부</label>
+            <label className="block text-xs font-medium text-gray-600 mb-2">화기작업 허가 필요여부</label>
             <div className="flex gap-4">{["필요", "불필요"].map(opt => (
               <label key={opt} className="flex items-center gap-2 cursor-pointer">
                 <input type="radio" name="needFireWork4" value={opt} checked={form.needFireWork === opt} onChange={() => onChange("needFireWork", opt)} className="w-4 h-4 text-blue-600" />
@@ -818,15 +984,14 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             <div key={idx} className="grid grid-cols-4 gap-1 items-center">
               {(["equipment", "cutoffConfirmer", "electrician", "siteRepair"] as (keyof InspectionItem)[]).map(f => (
                 <input key={f} type="text" value={item[f]} onChange={e => updateInsp(idx, f, e.target.value)}
-                  className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
               ))}
             </div>
           ))}
         </div>
         <button onClick={() => onChange("inspectionItems", [...form.inspectionItems, { equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" }])}
           className="w-full py-2 rounded-xl border border-dashed border-gray-300 text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 flex items-center justify-center gap-1">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          행 추가
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>행 추가
         </button>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -845,7 +1010,6 @@ function buildFormData(dt: string, f1: Form1, f2: Form2, f3: Form3, f4: Form4) {
   return {};
 }
 
-// 기존 workDate 단일 값을 workStartDate/workEndDate로 마이그레이션
 function migrateFormData(fd: Record<string, unknown>): Record<string, unknown> {
   const result = { ...fd };
   if (fd.workDate && !fd.workStartDate) {
@@ -888,7 +1052,10 @@ export default function DocumentEditPage() {
 
   const fetchDocument = useCallback(async () => {
     try {
-      const [docRes, taskRes] = await Promise.all([fetch(`/api/documents/${documentId}`), fetch(`/api/tasks/${taskId}`)]);
+      const [docRes, taskRes] = await Promise.all([
+        fetch(`/api/documents/${documentId}`),
+        fetch(`/api/tasks/${taskId}`)
+      ]);
       const docData = await docRes.json();
       const taskData = await taskRes.json();
       if (taskRes.ok) setTaskName(taskData.task?.name ?? "");
@@ -897,7 +1064,6 @@ export default function DocumentEditPage() {
         const dtype: string = doc.documentType;
         setDocumentType(dtype);
         const rawFd: Record<string, unknown> = doc.formDataJson ?? {};
-        // 기존 workDate → workStartDate/workEndDate 마이그레이션
         const fd = migrateFormData(rawFd);
         if (Object.keys(fd).length > 0) {
           if (dtype === "SAFETY_WORK_PERMIT") setForm1(p => ({ ...p, ...fd } as Form1));
@@ -947,12 +1113,21 @@ export default function DocumentEditPage() {
   };
 
   const info = DOC_TYPE_INFO[documentType] ?? DOC_TYPE_INFO.SAFETY_WORK_PERMIT;
-  const locProps = { workLatitude, workAddress, onOpenLocation: () => setShowLocationPicker(true), onClearLocation: () => { setWorkLatitude(null); setWorkLongitude(null); setWorkAddress(""); } };
+  const locProps = {
+    workLatitude, workAddress,
+    onOpenLocation: () => setShowLocationPicker(true),
+    onClearLocation: () => { setWorkLatitude(null); setWorkLongitude(null); setWorkAddress(""); }
+  };
 
   if (loading) {
     return (
       <div className="p-4 space-y-4">
-        {[1,2,3].map(i => (<div key={i} className="bg-white rounded-2xl p-4 animate-pulse"><div className="h-4 bg-gray-200 rounded w-1/3 mb-3" /><div className="h-10 bg-gray-100 rounded w-full" /></div>))}
+        {[1,2,3].map(i => (
+          <div key={i} className="bg-white rounded-2xl p-4 animate-pulse">
+            <div className="h-4 bg-gray-200 rounded w-1/3 mb-3" />
+            <div className="h-10 bg-gray-100 rounded w-full" />
+          </div>
+        ))}
       </div>
     );
   }
@@ -973,16 +1148,20 @@ export default function DocumentEditPage() {
           </div>
           <div className="flex items-center gap-2">
             {lastSaved && <span className="text-xs text-gray-400">{lastSaved}</span>}
-            <button onClick={() => setShowPrev(true)} className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">이전 불러오기</button>
+            <button onClick={() => setShowPrev(true)} className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
+              이전 불러오기
+            </button>
           </div>
         </div>
       </div>
+
       <div className="p-4 space-y-4">
         {documentType === "SAFETY_WORK_PERMIT" && <Form1Fields form={form1} onChange={handleChange1} {...locProps} taskName={taskName} />}
         {documentType === "CONFINED_SPACE"     && <Form2Fields form={form2} onChange={handleChange2} {...locProps} taskName={taskName} />}
         {documentType === "HOLIDAY_WORK"       && <Form3Fields form={form3} onChange={handleChange3} {...locProps} taskName={taskName} />}
         {documentType === "POWER_OUTAGE"       && <Form4Fields form={form4} onChange={handleChange4} {...locProps} taskName={taskName} />}
       </div>
+
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 flex gap-3">
         <button onClick={() => handleSave(false)} disabled={saving}
           className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 disabled:opacity-60">
@@ -993,15 +1172,30 @@ export default function DocumentEditPage() {
           결재자 지정 및 제출
         </button>
       </div>
-      {showPrev && <PrevDocsModal documentId={documentId} onSelect={(fd) => {
-        const migrated = migrateFormData(fd);
-        if (documentType === "SAFETY_WORK_PERMIT") setForm1(p => ({ ...p, ...migrated } as Form1));
-        else if (documentType === "CONFINED_SPACE") setForm2(p => ({ ...p, ...migrated } as Form2));
-        else if (documentType === "HOLIDAY_WORK")   setForm3(p => ({ ...p, ...migrated } as Form3));
-        else if (documentType === "POWER_OUTAGE")   setForm4(p => ({ ...p, ...migrated } as Form4));
-      }} onClose={() => setShowPrev(false)} />}
-      {showLocationPicker && <LocationPickerModal initialAddress={workAddress} initialLat={workLatitude} initialLng={workLongitude} onConfirm={handleLocationConfirm} onClose={() => setShowLocationPicker(false)} />}
-      {showApproval && <ApprovalSignModal documentId={documentId} documentType={documentType} onClose={() => setShowApproval(false)} onSubmitted={() => { setShowApproval(false); alert("제출이 완료되었습니다. 결재자에게 알림이 전송됩니다."); router.push(`/tasks/${taskId}`); }} />}
+
+      {showPrev && (
+        <PrevDocsModal documentId={documentId} onSelect={(fd) => {
+          const migrated = migrateFormData(fd);
+          if (documentType === "SAFETY_WORK_PERMIT") setForm1(p => ({ ...p, ...migrated } as Form1));
+          else if (documentType === "CONFINED_SPACE") setForm2(p => ({ ...p, ...migrated } as Form2));
+          else if (documentType === "HOLIDAY_WORK")   setForm3(p => ({ ...p, ...migrated } as Form3));
+          else if (documentType === "POWER_OUTAGE")   setForm4(p => ({ ...p, ...migrated } as Form4));
+        }} onClose={() => setShowPrev(false)} />
+      )}
+      {showLocationPicker && (
+        <LocationPickerModal
+          initialAddress={workAddress} initialLat={workLatitude} initialLng={workLongitude}
+          onConfirm={handleLocationConfirm} onClose={() => setShowLocationPicker(false)} />
+      )}
+      {showApproval && (
+        <ApprovalSignModal documentId={documentId} documentType={documentType}
+          onClose={() => setShowApproval(false)}
+          onSubmitted={() => {
+            setShowApproval(false);
+            alert("제출이 완료되었습니다. 결재자에게 알림이 전송됩니다.");
+            router.push(`/tasks/${taskId}`);
+          }} />
+      )}
     </div>
   );
 }
