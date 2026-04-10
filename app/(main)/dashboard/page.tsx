@@ -14,17 +14,18 @@ interface DocumentMapItem {
   lat: number | null;
   lng: number | null;
   workAddress: string | null;
-  workDate: string | null;
+  workStartDate: string | null;
+  workEndDate: string | null;
   documentType: string;
 }
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string; pin: string }> = {
-  SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료",       pin: "#2563eb" },
-  IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중",         pin: "#d97706" },
-  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종결재 진행중", pin: "#ea580c" },
-  APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료",       pin: "#16a34a" },
-  REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "반려",           pin: "#dc2626" },
-  DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중",         pin: "#6b7280" },
+  SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료",           pin: "#2563eb" },
+  IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중",             pin: "#d97706" },
+  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종검토 진행중",     pin: "#ea580c" },
+  APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료",           pin: "#16a34a" },
+  REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "반려",               pin: "#dc2626" },
+  DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중",             pin: "#6b7280" },
 };
 
 const DOC_TYPE_LABEL: Record<string, string> = {
@@ -43,6 +44,19 @@ const DOC_TYPE_CAL_COLOR: Record<string, { bg: string; text: string; border: str
 
 declare global { interface Window { kakao: any; } }
 
+// 날짜 범위를 배열로 반환 (YYYY-MM-DD 형식)
+function getDateRange(startDate: string, endDate: string): string[] {
+  const dates: string[] = [];
+  const start = new Date(startDate + "T00:00:00");
+  const end = new Date(endDate + "T00:00:00");
+  const cur = new Date(start);
+  while (cur <= end) {
+    dates.push(cur.toISOString().split("T")[0]);
+    cur.setDate(cur.getDate() + 1);
+  }
+  return dates;
+}
+
 // ===== 캘린더 =====
 function CalendarView({ documents, onDocClick }: {
   documents: DocumentMapItem[];
@@ -53,14 +67,22 @@ function CalendarView({ documents, onDocClick }: {
   const [month, setMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  const approvedDocs = documents.filter((d) => d.status === "APPROVED" && d.workDate);
+  const approvedDocs = documents.filter((d) => d.status === "APPROVED" && (d.workStartDate || d.workEndDate));
 
+  // 날짜별 문서 매핑 (기간 전체에 표시)
   const docsByDate: Record<string, DocumentMapItem[]> = {};
   approvedDocs.forEach((d) => {
-    if (!d.workDate) return;
-    const key = d.workDate.slice(0, 10);
-    if (!docsByDate[key]) docsByDate[key] = [];
-    docsByDate[key].push(d);
+    const start = d.workStartDate;
+    const end = d.workEndDate || d.workStartDate;
+    if (!start) return;
+    const dateRange = getDateRange(start, end || start);
+    dateRange.forEach((dateKey) => {
+      if (!docsByDate[dateKey]) docsByDate[dateKey] = [];
+      // 중복 방지
+      if (!docsByDate[dateKey].find((x) => x.id === d.id)) {
+        docsByDate[dateKey].push(d);
+      }
+    });
   });
 
   const firstDay = new Date(year, month, 1).getDay();
@@ -113,6 +135,11 @@ function CalendarView({ documents, onDocClick }: {
           const dow = idx % 7;
           const cellDocs = cell.cur ? (docsByDate[cell.key] ?? []) : [];
 
+          // 기간 표시를 위한 스타일 계산
+          const isStart = (doc: DocumentMapItem) => doc.workStartDate === cell.key;
+          const isEnd = (doc: DocumentMapItem) => (doc.workEndDate || doc.workStartDate) === cell.key;
+          const isSingle = (doc: DocumentMapItem) => doc.workStartDate === (doc.workEndDate || doc.workStartDate);
+
           return (
             <div key={idx}
               onClick={() => hasDocs && setSelectedDate(isSelected ? null : cell.key)}
@@ -128,16 +155,37 @@ function CalendarView({ documents, onDocClick }: {
               <div className="space-y-0.5">
                 {cellDocs.slice(0, 3).map((doc, i) => {
                   const col = DOC_TYPE_CAL_COLOR[doc.documentType] ?? DOC_TYPE_CAL_COLOR.SAFETY_WORK_PERMIT;
+                  const single = isSingle(doc);
+                  const start = isStart(doc);
+                  const end = isEnd(doc);
+                  // 기간 표시: 시작일은 왼쪽 둥글게, 종료일은 오른쪽 둥글게, 중간은 직각
+                  const borderRadius = single
+                    ? "4px"
+                    : start
+                    ? "4px 0 0 4px"
+                    : end
+                    ? "0 4px 4px 0"
+                    : "0";
+                  const marginLeft = (!single && !start) ? "-4px" : "0";
+                  const marginRight = (!single && !end) ? "-4px" : "0";
+
                   return (
                     <div key={i}
-                      style={{ backgroundColor: col.bg, color: col.text, borderLeft: `2.5px solid ${col.border}` }}
-                      className="text-[9px] px-1 py-0.5 rounded-r truncate leading-tight font-medium"
+                      style={{
+                        backgroundColor: col.bg,
+                        color: col.text,
+                        borderLeft: start || single ? `2.5px solid ${col.border}` : "none",
+                        borderRadius,
+                        marginLeft,
+                        marginRight,
+                      }}
+                      className="text-[9px] px-1 py-0.5 truncate leading-tight font-medium"
                     >
-                      {doc.taskName.length > 6 ? doc.taskName.slice(0,6)+"…" : doc.taskName}
+                      {(start || single) ? (doc.taskName.length > 6 ? doc.taskName.slice(0,6)+"…" : doc.taskName) : ""}
                     </div>
                   );
                 })}
-                {cellDocs.length > 3 && <div className="text-[9px] text-gray-400 pl-1">+{cellDocs.length - 3}개</div>}
+                {cellDocs.length > 3 && <div className="text-[9px] text-gray-400 pl-1">+{cellDocs.length - 3}건</div>}
               </div>
             </div>
           );
@@ -165,6 +213,9 @@ function CalendarView({ documents, onDocClick }: {
           <div className="divide-y divide-gray-50">
             {selectedDocs.map((doc) => {
               const col = DOC_TYPE_CAL_COLOR[doc.documentType] ?? DOC_TYPE_CAL_COLOR.SAFETY_WORK_PERMIT;
+              const periodText = doc.workStartDate && doc.workEndDate && doc.workStartDate !== doc.workEndDate
+                ? `${doc.workStartDate} ~ ${doc.workEndDate}`
+                : doc.workStartDate || "";
               return (
                 <div key={doc.id} className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-gray-50"
                   onClick={() => onDocClick(doc)}>
@@ -172,7 +223,7 @@ function CalendarView({ documents, onDocClick }: {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900 truncate">{doc.taskName}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{DOC_TYPE_LABEL[doc.documentType]}</p>
-                    <p className="text-xs text-gray-400">{doc.workDate}</p>
+                    <p className="text-xs text-gray-400">{periodText}</p>
                   </div>
                   <span className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
                     style={{ backgroundColor: col.bg, color: col.text }}>
@@ -188,7 +239,7 @@ function CalendarView({ documents, onDocClick }: {
   );
 }
 
-// ===== 메인 대시보드 =====
+// ===== 메인 페이지 =====
 export default function DashboardPage() {
   const router = useRouter();
   const mapRef = useRef<HTMLDivElement>(null);
@@ -213,10 +264,15 @@ export default function DashboardPage() {
         const docs: DocumentMapItem[] = (data.documents ?? []).map((d: any) => {
           const statusKey = d.status === "IN_REVIEW" && d.currentApprovalOrder === 2 ? "IN_REVIEW_FINAL" : d.status;
           const fd = d.formDataJson ?? {};
+          // workStartDate/workEndDate 우선, 없으면 workDate fallback
+          const workStartDate: string | null =
+            fd.workStartDate ?? fd.workDate ?? null;
+          const workEndDate: string | null =
+            fd.workEndDate ?? fd.workDate ?? null;
           return {
             id: d.id,
             taskId: d.taskId ?? "",
-            taskName: d.task?.name ?? "용역없음",
+            taskName: d.task?.name ?? "알수없음",
             company: d.creator?.organization ?? "-",
             type: DOC_TYPE_LABEL[d.documentType] ?? d.documentType,
             documentType: d.documentType,
@@ -225,7 +281,8 @@ export default function DashboardPage() {
             lat: d.workLatitude ?? null,
             lng: d.workLongitude ?? null,
             workAddress: d.workAddress ?? null,
-            workDate: fd.workDate ?? null,
+            workStartDate,
+            workEndDate,
           };
         });
         setDocuments(docs);
@@ -266,7 +323,10 @@ export default function DashboardPage() {
         new window.kakao.maps.Size(32, 40), { offset: new window.kakao.maps.Point(16, 40) }
       );
       const marker = new window.kakao.maps.Marker({ position: pos, map, image: markerImage });
-      const infoContent = `<div style="padding:8px 12px;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);min-width:140px;font-family:sans-serif;cursor:pointer"><p style="font-size:12px;font-weight:600;color:#111;margin:0 0 2px;">${doc.taskName}</p><p style="font-size:11px;color:#666;margin:0 0 4px;">${doc.type}</p>${doc.workAddress?`<p style="font-size:10px;color:#888;margin:0 0 4px;">${doc.workAddress}</p>`:""}<span style="font-size:11px;padding:2px 8px;border-radius:99px;background:${pinColor}20;color:${pinColor};font-weight:500;">${STATUS_STYLE[doc.status]?.label??doc.status}</span></div>`;
+      const periodText = doc.workStartDate && doc.workEndDate && doc.workStartDate !== doc.workEndDate
+        ? `${doc.workStartDate} ~ ${doc.workEndDate}`
+        : doc.workStartDate || "";
+      const infoContent = `<div style="padding:8px 12px;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);min-width:140px;font-family:sans-serif;cursor:pointer"><p style="font-size:12px;font-weight:600;color:#111;margin:0 0 2px;">${doc.taskName}</p><p style="font-size:11px;color:#666;margin:0 0 4px;">${doc.type}</p>${doc.workAddress?`<p style="font-size:10px;color:#888;margin:0 0 4px;">${doc.workAddress}</p>`:""}<p style="font-size:10px;color:#888;margin:0 0 4px;">${periodText}</p><span style="font-size:11px;padding:2px 8px;border-radius:99px;background:${pinColor}20;color:${pinColor};font-weight:500;">${STATUS_STYLE[doc.status]?.label??doc.status}</span></div>`;
       const infowindow = new window.kakao.maps.InfoWindow({ content: infoContent, removable: true });
       window.kakao.maps.event.addListener(marker, "click", () => infowindow.open(map, marker));
     });
@@ -274,9 +334,9 @@ export default function DashboardPage() {
 
   const filtered = filterTab === "ALL" ? documents : documents.filter((d) => d.documentType === filterTab);
 
-  // 서류 상세 이동
+  // 문서 클릭 → 결재 상세로 이동 (올바른 경로)
   const handleDocClick = (doc: DocumentMapItem) => {
-    router.push(`/tasks/${doc.taskId}/documents/${doc.id}/detail`);
+    router.push(`/approvals/${doc.id}`);
   };
 
   return (
@@ -296,7 +356,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* 필터 탭 */}
+      {/* 탭 필터 */}
       <div className="bg-white border-b border-gray-200 flex mt-4 overflow-x-auto">
         {[
           { key: "ALL",               label: "전체" },
@@ -369,7 +429,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 서류 목록 - 행 클릭 시 상세보기 이동 */}
+      {/* 서류 목록 - 클릭 시 올바른 경로로 이동 */}
       <div className="mx-4 mt-4 bg-white rounded-2xl shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
           <h3 className="text-sm font-bold text-gray-900">서류 목록</h3>

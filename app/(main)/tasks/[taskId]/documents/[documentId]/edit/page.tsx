@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -356,9 +356,47 @@ function SafetyCheckTable({ items, onChange }: { items: SafetyCheckItem[]; onCha
   );
 }
 
+// ===== 작업기간 공통 컴포넌트 =====
+function WorkPeriodField({ startDate, endDate, startTime, endTime, onChangeStartDate, onChangeEndDate, onChangeStartTime, onChangeEndTime }: {
+  startDate: string; endDate: string; startTime: string; endTime: string;
+  onChangeStartDate: (v: string) => void; onChangeEndDate: (v: string) => void;
+  onChangeStartTime: (v: string) => void; onChangeEndTime: (v: string) => void;
+}) {
+  return (
+    <>
+      {/* 작업기간: 시작일 ~ 종료일 */}
+      <div className="grid grid-cols-2 gap-3">
+        <FormInput label="작업 시작일" required>
+          <input type="date" value={startDate} onChange={e => onChangeStartDate(e.target.value)} className={inputClass} />
+        </FormInput>
+        <FormInput label="작업 종료일" required>
+          <input type="date" value={endDate} min={startDate} onChange={e => onChangeEndDate(e.target.value)} className={inputClass} />
+        </FormInput>
+      </div>
+      {/* 작업시간: 시작시간 ~ 종료시간 */}
+      <div className="grid grid-cols-2 gap-3">
+        <FormInput label="작업 시작 시간" required>
+          <input type="time" value={startTime} onChange={e => onChangeStartTime(e.target.value)} className={inputClass} />
+        </FormInput>
+        <FormInput label="작업 종료 시간" required>
+          <input type="time" value={endTime} onChange={e => onChangeEndTime(e.target.value)} className={inputClass} />
+        </FormInput>
+      </div>
+      {/* 기간 미리보기 */}
+      {startDate && (
+        <div className="bg-blue-50 rounded-xl px-3 py-2 text-xs text-blue-700">
+          📅 작업수행기간: {startDate} {startTime} ~ {endDate || startDate} {endTime}
+        </div>
+      )}
+    </>
+  );
+}
+
 interface RiskRow { riskFactor: string; improvement: string; disasterType: string; }
 interface Form1 {
-  requestDate: string; workDate: string; workStartTime: string; workEndTime: string;
+  requestDate: string;
+  workStartDate: string; workEndDate: string;        // ← 기간으로 변경
+  workStartTime: string; workEndTime: string;
   projectName: string; applicantCompany: string; applicantTitle: string; applicantName: string;
   workLocation: string; workContent: string; participants: string;
   riskHighPlace: boolean; riskHighPlaceDetail: string; riskWaterWork: boolean; riskWaterWorkDetail: string;
@@ -369,7 +407,9 @@ interface Form1 {
   riskRows: RiskRow[]; reviewOpinion: string; reviewResult: string;
 }
 const defaultForm1: Form1 = {
-  requestDate: new Date().toISOString().split("T")[0], workDate: "", workStartTime: "09:00", workEndTime: "18:00",
+  requestDate: new Date().toISOString().split("T")[0],
+  workStartDate: "", workEndDate: "",
+  workStartTime: "09:00", workEndTime: "18:00",
   projectName: "", applicantCompany: "", applicantTitle: "", applicantName: "", workLocation: "", workContent: "", participants: "",
   riskHighPlace: false, riskHighPlaceDetail: "", riskWaterWork: false, riskWaterWorkDetail: "",
   riskConfinedSpace: false, riskPowerOutage: false, riskFireWork: false, riskOther: false, riskOtherDetail: "",
@@ -390,14 +430,17 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={1} title="작업허가 신청개요" />
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <FormInput label="신청일" required><input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={inputClass} /></FormInput>
-            <FormInput label="작업예정일"><input type="date" value={form.workDate} onChange={e => onChange("workDate", e.target.value)} className={inputClass} /></FormInput>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <FormInput label="작업 시작" required><input type="time" value={form.workStartTime} onChange={e => onChange("workStartTime", e.target.value)} className={inputClass} /></FormInput>
-            <FormInput label="작업 종료" required><input type="time" value={form.workEndTime} onChange={e => onChange("workEndTime", e.target.value)} className={inputClass} /></FormInput>
-          </div>
+          <FormInput label="신청일" required>
+            <input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={inputClass} />
+          </FormInput>
+          <WorkPeriodField
+            startDate={form.workStartDate} endDate={form.workEndDate}
+            startTime={form.workStartTime} endTime={form.workEndTime}
+            onChangeStartDate={v => onChange("workStartDate", v)}
+            onChangeEndDate={v => onChange("workEndDate", v)}
+            onChangeStartTime={v => onChange("workStartTime", v)}
+            onChangeEndTime={v => onChange("workEndTime", v)}
+          />
           <FormInput label="용역명"><input type="text" value={taskName} readOnly className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
           <div className="grid grid-cols-3 gap-2">
             <FormInput label="업체명"><input type="text" value={form.applicantCompany} onChange={e => onChange("applicantCompany", e.target.value)} className={inputClass} /></FormInput>
@@ -464,13 +507,17 @@ const CONFINED_CHECKS: SafetyCheckItem[] = [
 ];
 
 interface Form2 {
-  requestDate: string; workDate: string; workStartTime: string; workEndTime: string;
+  requestDate: string;
+  workStartDate: string; workEndDate: string;
+  workStartTime: string; workEndTime: string;
   serviceName: string; applicantCompany: string; applicantTitle: string; applicantName: string;
   workLocation: string; workContent: string; entryList: string;
   needFireWork: string; useInternalEngine: string; safetyChecks: SafetyCheckItem[]; specialMeasures: string;
 }
 const defaultForm2: Form2 = {
-  requestDate: new Date().toISOString().split("T")[0], workDate: "", workStartTime: "09:00", workEndTime: "18:00",
+  requestDate: new Date().toISOString().split("T")[0],
+  workStartDate: "", workEndDate: "",
+  workStartTime: "09:00", workEndTime: "18:00",
   serviceName: "", applicantCompany: "", applicantTitle: "", applicantName: "",
   workLocation: "", workContent: "", entryList: "", needFireWork: "", useInternalEngine: "",
   safetyChecks: CONFINED_CHECKS.map(c => ({ ...c })), specialMeasures: "",
@@ -485,14 +532,17 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={1} title="기본정보" />
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <FormInput label="신청일" required><input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={inputClass} /></FormInput>
-            <FormInput label="작업일자" required><input type="date" value={form.workDate} onChange={e => onChange("workDate", e.target.value)} className={inputClass} /></FormInput>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <FormInput label="작업 시작 시간" required><input type="time" value={form.workStartTime} onChange={e => onChange("workStartTime", e.target.value)} className={inputClass} /></FormInput>
-            <FormInput label="작업 종료 시간" required><input type="time" value={form.workEndTime} onChange={e => onChange("workEndTime", e.target.value)} className={inputClass} /></FormInput>
-          </div>
+          <FormInput label="신청일" required>
+            <input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={inputClass} />
+          </FormInput>
+          <WorkPeriodField
+            startDate={form.workStartDate} endDate={form.workEndDate}
+            startTime={form.workStartTime} endTime={form.workEndTime}
+            onChangeStartDate={v => onChange("workStartDate", v)}
+            onChangeEndDate={v => onChange("workEndDate", v)}
+            onChangeStartTime={v => onChange("workStartTime", v)}
+            onChangeEndTime={v => onChange("workEndTime", v)}
+          />
           <FormInput label="용역명"><input type="text" value={taskName} readOnly className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
           <div className="grid grid-cols-3 gap-2">
             <FormInput label="업체명"><input type="text" value={form.applicantCompany} onChange={e => onChange("applicantCompany", e.target.value)} className={inputClass} /></FormInput>
@@ -544,7 +594,9 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
 
 interface Participant3 { role: string; name: string; phone: string; }
 interface Form3 {
-  requestDate: string; workDate: string; workStartTime: string; workEndTime: string;
+  requestDate: string;
+  workStartDate: string; workEndDate: string;
+  workStartTime: string; workEndTime: string;
   serviceName: string; contractorCompany: string; contractPeriodStart: string; contractPeriodEnd: string;
   facilityName: string; facilityLocation: string; facilityManager: string; facilityManagerGrade: string;
   workPosition: string; workContents: string; participants: Participant3[];
@@ -552,7 +604,9 @@ interface Form3 {
   applicantName: string; applicantOrg: string;
 }
 const defaultForm3: Form3 = {
-  requestDate: new Date().toISOString().split("T")[0], workDate: "", workStartTime: "09:00", workEndTime: "18:00",
+  requestDate: new Date().toISOString().split("T")[0],
+  workStartDate: "", workEndDate: "",
+  workStartTime: "09:00", workEndTime: "18:00",
   serviceName: "", contractorCompany: "", contractPeriodStart: "", contractPeriodEnd: "",
   facilityName: "", facilityLocation: "", facilityManager: "", facilityManagerGrade: "",
   workPosition: "", workContents: "",
@@ -571,14 +625,17 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={1} title="용역 개요" />
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <FormInput label="신고일" required><input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={inputClass} /></FormInput>
-            <FormInput label="작업일자" required><input type="date" value={form.workDate} onChange={e => onChange("workDate", e.target.value)} className={inputClass} /></FormInput>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <FormInput label="작업 시작 시간" required><input type="time" value={form.workStartTime} onChange={e => onChange("workStartTime", e.target.value)} className={inputClass} /></FormInput>
-            <FormInput label="작업 종료 시간" required><input type="time" value={form.workEndTime} onChange={e => onChange("workEndTime", e.target.value)} className={inputClass} /></FormInput>
-          </div>
+          <FormInput label="신고일" required>
+            <input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={inputClass} />
+          </FormInput>
+          <WorkPeriodField
+            startDate={form.workStartDate} endDate={form.workEndDate}
+            startTime={form.workStartTime} endTime={form.workEndTime}
+            onChangeStartDate={v => onChange("workStartDate", v)}
+            onChangeEndDate={v => onChange("workEndDate", v)}
+            onChangeStartTime={v => onChange("workStartTime", v)}
+            onChangeEndTime={v => onChange("workEndTime", v)}
+          />
           <FormInput label="용역명" required><input type="text" value={taskName} readOnly className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
           <FormInput label="수급업체명"><input type="text" value={form.contractorCompany} onChange={e => onChange("contractorCompany", e.target.value)} className={inputClass} /></FormInput>
           <div className="grid grid-cols-2 gap-3">
@@ -668,14 +725,18 @@ const POWER_CHECKS: SafetyCheckItem[] = [
 ];
 interface InspectionItem { equipment: string; cutoffConfirmer: string; electrician: string; siteRepair: string; }
 interface Form4 {
-  requestDate: string; workDate: string; workStartTime: string; workEndTime: string;
+  requestDate: string;
+  workStartDate: string; workEndDate: string;
+  workStartTime: string; workEndTime: string;
   serviceName: string; applicantCompany: string; applicantTitle: string; applicantName: string;
   workLocation: string; workContent: string; entryList: string;
   needConfinedSpace: string; needFireWork: string; safetyChecks: SafetyCheckItem[];
   inspectionItems: InspectionItem[]; specialMeasures: string;
 }
 const defaultForm4: Form4 = {
-  requestDate: new Date().toISOString().split("T")[0], workDate: "", workStartTime: "09:00", workEndTime: "18:00",
+  requestDate: new Date().toISOString().split("T")[0],
+  workStartDate: "", workEndDate: "",
+  workStartTime: "09:00", workEndTime: "18:00",
   serviceName: "", applicantCompany: "", applicantTitle: "", applicantName: "",
   workLocation: "", workContent: "", entryList: "", needConfinedSpace: "", needFireWork: "",
   safetyChecks: POWER_CHECKS.map(c => ({ ...c })),
@@ -693,14 +754,17 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={1} title="기본정보" />
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <FormInput label="신청일" required><input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={inputClass} /></FormInput>
-            <FormInput label="작업일자" required><input type="date" value={form.workDate} onChange={e => onChange("workDate", e.target.value)} className={inputClass} /></FormInput>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <FormInput label="작업 시작 시간" required><input type="time" value={form.workStartTime} onChange={e => onChange("workStartTime", e.target.value)} className={inputClass} /></FormInput>
-            <FormInput label="작업 종료 시간" required><input type="time" value={form.workEndTime} onChange={e => onChange("workEndTime", e.target.value)} className={inputClass} /></FormInput>
-          </div>
+          <FormInput label="신청일" required>
+            <input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={inputClass} />
+          </FormInput>
+          <WorkPeriodField
+            startDate={form.workStartDate} endDate={form.workEndDate}
+            startTime={form.workStartTime} endTime={form.workEndTime}
+            onChangeStartDate={v => onChange("workStartDate", v)}
+            onChangeEndDate={v => onChange("workEndDate", v)}
+            onChangeStartTime={v => onChange("workStartTime", v)}
+            onChangeEndTime={v => onChange("workEndTime", v)}
+          />
           <FormInput label="용역명"><input type="text" value={taskName} readOnly className="w-full px-3 py-2 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
           <div className="grid grid-cols-3 gap-2">
             <FormInput label="업체명"><input type="text" value={form.applicantCompany} onChange={e => onChange("applicantCompany", e.target.value)} className={inputClass} /></FormInput>
@@ -781,6 +845,16 @@ function buildFormData(dt: string, f1: Form1, f2: Form2, f3: Form3, f4: Form4) {
   return {};
 }
 
+// 기존 workDate 단일 값을 workStartDate/workEndDate로 마이그레이션
+function migrateFormData(fd: Record<string, unknown>): Record<string, unknown> {
+  const result = { ...fd };
+  if (fd.workDate && !fd.workStartDate) {
+    result.workStartDate = fd.workDate;
+    result.workEndDate = fd.workDate;
+  }
+  return result;
+}
+
 export default function DocumentEditPage() {
   const params = useParams();
   const router = useRouter();
@@ -822,7 +896,9 @@ export default function DocumentEditPage() {
         const doc = docData.document;
         const dtype: string = doc.documentType;
         setDocumentType(dtype);
-        const fd: Record<string, unknown> = doc.formDataJson ?? {};
+        const rawFd: Record<string, unknown> = doc.formDataJson ?? {};
+        // 기존 workDate → workStartDate/workEndDate 마이그레이션
+        const fd = migrateFormData(rawFd);
         if (Object.keys(fd).length > 0) {
           if (dtype === "SAFETY_WORK_PERMIT") setForm1(p => ({ ...p, ...fd } as Form1));
           else if (dtype === "CONFINED_SPACE") setForm2(p => ({ ...p, ...fd } as Form2));
@@ -918,10 +994,11 @@ export default function DocumentEditPage() {
         </button>
       </div>
       {showPrev && <PrevDocsModal documentId={documentId} onSelect={(fd) => {
-        if (documentType === "SAFETY_WORK_PERMIT") setForm1(p => ({ ...p, ...fd } as Form1));
-        else if (documentType === "CONFINED_SPACE") setForm2(p => ({ ...p, ...fd } as Form2));
-        else if (documentType === "HOLIDAY_WORK")   setForm3(p => ({ ...p, ...fd } as Form3));
-        else if (documentType === "POWER_OUTAGE")   setForm4(p => ({ ...p, ...fd } as Form4));
+        const migrated = migrateFormData(fd);
+        if (documentType === "SAFETY_WORK_PERMIT") setForm1(p => ({ ...p, ...migrated } as Form1));
+        else if (documentType === "CONFINED_SPACE") setForm2(p => ({ ...p, ...migrated } as Form2));
+        else if (documentType === "HOLIDAY_WORK")   setForm3(p => ({ ...p, ...migrated } as Form3));
+        else if (documentType === "POWER_OUTAGE")   setForm4(p => ({ ...p, ...migrated } as Form4));
       }} onClose={() => setShowPrev(false)} />}
       {showLocationPicker && <LocationPickerModal initialAddress={workAddress} initialLat={workLatitude} initialLng={workLongitude} onConfirm={handleLocationConfirm} onClose={() => setShowLocationPicker(false)} />}
       {showApproval && <ApprovalSignModal documentId={documentId} documentType={documentType} onClose={() => setShowApproval(false)} onSubmitted={() => { setShowApproval(false); alert("제출이 완료되었습니다. 결재자에게 알림이 전송됩니다."); router.push(`/tasks/${taskId}`); }} />}

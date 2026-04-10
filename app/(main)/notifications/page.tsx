@@ -1,9 +1,8 @@
-﻿"use client";
+"use client";
 import React from "react";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
-// ===== ???=====
 interface NotificationItem {
   id: string;
   type: string;
@@ -15,7 +14,6 @@ interface NotificationItem {
   readAt: string | null;
 }
 
-// ===== ?뚮┝ ??낅퀎 ?꾩씠肄??됱긽 =====
 const TYPE_CONFIG: Record<string, { icon: React.ReactElement; color: string; bg: string }> = {
   APPROVED: {
     color: "text-green-600",
@@ -132,7 +130,6 @@ export default function NotificationsPage() {
   };
 
   const handleClick = async (notification: NotificationItem) => {
-    // ?쎌쓬 泥섎━
     if (!notification.isRead) {
       await fetch(`/api/notifications/${notification.id}`, { method: "PATCH" });
       setList((prev) =>
@@ -140,12 +137,13 @@ export default function NotificationsPage() {
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
-    // 臾몄꽌濡??대룞
     if (notification.targetDocumentId) {
       router.push(`/approvals/${notification.targetDocumentId}`);
     }
   };
+
   const filtered = filter === "unread" ? list.filter((n) => !n.isRead) : list;
+
   const grouped: Record<string, NotificationItem[]> = {};
   filtered.forEach((n) => {
     const date = new Date(n.sentAt);
@@ -159,18 +157,14 @@ export default function NotificationsPage() {
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(n);
   });
-  const groupKeys = Object.keys(grouped);
-
-      {/* 헤더 */}
-
 
   return (
     <div className="pb-20">
-      {/* ?ㅻ뜑 */}
+      {/* 헤더 */}
       <div className="px-4 pt-4 pb-3 bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <h1 className="text-base font-bold text-gray-900">?뚮┝</h1>
+            <h1 className="text-base font-bold text-gray-900">알림</h1>
             {unreadCount > 0 && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500 text-white font-medium">
                 {unreadCount}
@@ -180,16 +174,16 @@ export default function NotificationsPage() {
           {unreadCount > 0 && (
             <button onClick={handleMarkAll} disabled={markingAll}
               className="text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50 font-medium">
-              {markingAll ? "泥섎━ 以?.." : "紐⑤몢 ?쎌쓬"}
+              {markingAll ? "처리 중..." : "모두 읽음"}
             </button>
           )}
         </div>
 
-        {/* ?꾪꽣 ??*/}
+        {/* 탭 필터 */}
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
           {[
-            { key: "all", label: "?꾩껜" },
-            { key: "unread", label: `?쎌? ?딆쓬${unreadCount > 0 ? ` (${unreadCount})` : ""}` },
+            { key: "all", label: "전체" },
+            { key: "unread", label: `읽지 않음${unreadCount > 0 ? ` (${unreadCount})` : ""}` },
           ].map((tab) => (
             <button key={tab.key} onClick={() => setFilter(tab.key as "all" | "unread")}
               className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
@@ -201,7 +195,7 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      {/* 紐⑸줉 */}
+      {/* 목록 */}
       {loading ? (
         <div className="p-4 space-y-3">
           {[1, 2, 3, 4].map((i) => (
@@ -224,14 +218,14 @@ export default function NotificationsPage() {
             <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
           </svg>
           <p className="text-sm font-medium">
-            {filter === "unread" ? "?쎌? ?딆? ?뚮┝???놁뒿?덈떎" : "?뚮┝???놁뒿?덈떎"}
+            {filter === "unread" ? "읽지 않은 알림이 없습니다" : "알림이 없습니다"}
           </p>
         </div>
       ) : (
         <div className="p-4 space-y-6">
           {Object.entries(grouped).map(([dateLabel, items]) => (
             <div key={dateLabel}>
-              {/* ?좎쭨 援щ텇??*/}
+              {/* 날짜 구분선 */}
               <div className="flex items-center gap-3 mb-3">
                 <div className="flex-1 h-px bg-gray-200" />
                 <span className="text-xs text-gray-400 font-medium shrink-0">{dateLabel}</span>
@@ -253,18 +247,18 @@ export default function NotificationsPage() {
                           : "border-blue-100 cursor-pointer hover:border-blue-300 hover:shadow-md"
                       } ${hasLink ? "cursor-pointer" : ""}`}
                     >
-                      {/* ?쎌? ?딆쓬 dot */}
+                      {/* 읽지 않은 dot */}
                       {!notification.isRead && (
                         <div className="absolute top-3.5 right-3.5 w-2 h-2 rounded-full bg-blue-500" />
                       )}
 
                       <div className="flex items-start gap-3">
-                        {/* ?꾩씠肄?*/}
+                        {/* 아이콘 */}
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${config.bg} ${config.color}`}>
                           {config.icon}
                         </div>
 
-                        {/* ?댁슜 */}
+                        {/* 내용 */}
                         <div className="flex-1 min-w-0 pr-4">
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <p className={`text-sm font-medium leading-tight ${
@@ -282,7 +276,7 @@ export default function NotificationsPage() {
                             <span className="text-xs text-gray-400">{timeAgo(notification.sentAt)}</span>
                             {hasLink && (
                               <span className="text-xs text-blue-500 flex items-center gap-0.5">
-                                寃곗옱 蹂닿린
+                                상세 보기
                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                   <polyline points="9 18 15 12 9 6"/>
                                 </svg>

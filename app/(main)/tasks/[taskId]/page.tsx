@@ -37,12 +37,11 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> 
   DRAFT:              { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중" },
   SUBMITTED:          { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료" },
   IN_REVIEW:          { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중" },
-  IN_REVIEW_FINAL:    { bg: "bg-orange-100", text: "text-orange-600", label: "최종결재 진행중" },
+  IN_REVIEW_FINAL:    { bg: "bg-orange-100", text: "text-orange-600", label: "최종검토 진행중" },
   APPROVED:           { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료" },
   REJECTED:           { bg: "bg-red-100",    text: "text-red-600",    label: "반려" },
 };
 
-// 결재 단계에 따라 상태 라벨 결정
 function getStatusKey(doc: DocumentItem): string {
   if (doc.status === "IN_REVIEW" && doc.currentApprovalOrder === 2) {
     return "IN_REVIEW_FINAL";
@@ -79,7 +78,7 @@ function CreateDocumentModal({
   const [error, setError] = useState("");
 
   const handleCreate = async () => {
-    if (!selected) { setError("서류 종류를 선택하세요."); return; }
+    if (!selected) { setError("서류 종류를 선택해주세요."); return; }
     setLoading(true);
     setError("");
     try {
@@ -92,7 +91,7 @@ function CreateDocumentModal({
       if (!res.ok) throw new Error(data.error || "오류 발생");
       onCreated(data.document.id);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "서버 오류가 발생했습니다.");
+      setError(e instanceof Error ? e.message : "알 수 없는 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
@@ -102,7 +101,7 @@ function CreateDocumentModal({
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
       <div className="bg-white w-full rounded-t-3xl p-6 pb-10">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-bold text-gray-900">서류 신규 작성</h2>
+          <h2 className="text-base font-bold text-gray-900">서류 양식 작성</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -141,7 +140,7 @@ function CreateDocumentModal({
           className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50"
           style={{ background: "#2563eb" }}
         >
-          {loading ? "생성 중.." : "서류 작성 시작"}
+          {loading ? "작성 중..." : "서류 작성 시작"}
         </button>
       </div>
     </div>
@@ -162,13 +161,13 @@ export default function TaskDetailPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const handleCancelApproval = async (docId: string) => {
-    if (!confirm("결재를 취소하고 재작성 상태로 되돌리시겠습니까?\n(결재선이 초기화됩니다)")) return;
+    if (!confirm("결재를 취소하고 작성중 상태로 되돌리시겠습니까?\n(결재라인이 초기화됩니다)")) return;
     setCancellingId(docId);
     try {
       const res = await fetch(`/api/documents/${docId}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "오류 발생");
-      alert("결재가 취소되었습니다. 문서를 재작성할 수 있습니다.");
+      alert("결재가 취소되었습니다. 서류를 다시 작성할 수 있습니다.");
       fetchData();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "취소에 실패했습니다.");
@@ -178,7 +177,7 @@ export default function TaskDetailPage() {
   };
 
   const handleDeleteDocument = async (docId: string, docType: string) => {
-    if (!confirm(`"${docType}" 서류를 삭제하시겠습니까?\n\n⚠ 삭제된 서류는 복구할 수 없습니다.`)) return;
+    if (!confirm(`"${docType}" 서류를 삭제하시겠습니까?\n\n삭제된 서류는 복구할 수 없습니다.`)) return;
     try {
       const res = await fetch(`/api/documents/${docId}/delete`, { method: "DELETE" });
       const data = await res.json();
@@ -199,7 +198,7 @@ export default function TaskDetailPage() {
       setTask(data.task);
       setDocList(data.documents);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "서버 오류가 발생했습니다.");
+      setError(e instanceof Error ? e.message : "알 수 없는 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
@@ -257,7 +256,7 @@ export default function TaskDetailPage() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="15 18 9 12 15 6" />
           </svg>
-          과업 목록
+          용역 목록
         </Link>
         <h2 className="text-white font-bold text-base">{task?.name}</h2>
         {task?.contractorCompanyName && <p className="text-blue-200 text-xs mt-0.5">{task.contractorCompanyName}</p>}
@@ -326,9 +325,19 @@ export default function TaskDetailPage() {
                     </span>
                   )}
                 </div>
-                {/* 결재선 담당자 표시 - PENDING 포함 전체 */}
+
+                {/* 결재 단계 표시 - 1단계(신청자) / 2단계 / 3단계 */}
                 {doc.approvalLines && doc.approvalLines.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
+                    {/* 1단계: 신청자 (작성자) */}
+                    <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg ${
+                      doc.status !== "DRAFT" ? "bg-green-50 text-green-600" : "bg-gray-50 text-gray-400"
+                    }`}>
+                      <span className="font-medium">1단계</span>
+                      <span>{doc.writerName ?? "신청자"}</span>
+                      {doc.status !== "DRAFT" && <span>✓</span>}
+                    </div>
+                    {/* 2단계 이상: approvalLines */}
                     {doc.approvalLines.map((line) => {
                       const isDone = line.stepStatus === "APPROVED";
                       const isActive = line.stepStatus === "WAITING";
@@ -341,8 +350,8 @@ export default function TaskDetailPage() {
                             isRejected ? "bg-red-50 text-red-500" :
                             "bg-gray-50 text-gray-400"
                           }`}>
-                          <span className="font-medium">{line.approvalOrder}단계</span>
-                          <span>{line.approverName ?? "미지정"}</span>
+                          <span className="font-medium">{line.approvalOrder + 1}단계</span>
+                          <span>{line.approverName ?? "미정"}</span>
                           {line.approverOrg && <span className="opacity-60">· {line.approverOrg}</span>}
                           {isDone     && <span>✓</span>}
                           {isActive   && <span className="animate-pulse">●</span>}
@@ -352,15 +361,16 @@ export default function TaskDetailPage() {
                     })}
                   </div>
                 )}
+
                 <div className="flex gap-2 mt-3">
-                  {/* 상세보기 버튼 - 항상 표시 */}
-                  <Link
-                    href={`/tasks/${taskId}/documents/${doc.id}/detail`}
+                  {/* 상세보기 버튼 - /approvals/[documentId] 로 이동 (올바른 경로) */}
+                  <button
+                    onClick={() => router.push(`/approvals/${doc.id}`)}
                     className="flex-1 text-center py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50"
                   >
                     상세 보기
-                  </Link>
-                  {/* 수정 버튼 - DRAFT/REJECTED만 */}
+                  </button>
+                  {/* 편집 버튼 - DRAFT/REJECTED만 */}
                   {canEdit && (
                     <Link
                       href={`/tasks/${taskId}/documents/${doc.id}/edit`}
@@ -370,17 +380,17 @@ export default function TaskDetailPage() {
                       {doc.status === "REJECTED" ? "재작성" : "이어서 작성"}
                     </Link>
                   )}
-                  {/* 결재 취소 버튼 - DRAFT/REJECTED 제외한 모든 상태 */}
+                  {/* 결재 취소 버튼 - DRAFT/REJECTED 제외 전부 */}
                   {!canEdit && doc.status !== "DRAFT" && (
                     <button
                       onClick={() => handleCancelApproval(doc.id)}
                       disabled={cancellingId === doc.id}
                       className="flex-1 py-2 rounded-xl text-sm font-medium border-2 border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50"
                     >
-                      {cancellingId === doc.id ? "취소중.." : "결재 취소"}
+                      {cancellingId === doc.id ? "취소중..." : "결재 취소"}
                     </button>
                   )}
-                  {/* 삭제 버튼 - 항상 표시 (DRAFT 상태일 때만) */}
+                  {/* 삭제 버튼 - DRAFT만 */}
                   {doc.status === "DRAFT" && (
                     <button
                       onClick={() => handleDeleteDocument(doc.id, DOCUMENT_TYPE_LABELS[doc.documentType] ?? doc.documentType)}
