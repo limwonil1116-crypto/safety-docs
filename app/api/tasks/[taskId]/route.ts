@@ -57,7 +57,7 @@ export async function GET(
         .select({ id: users.id, name: users.name })
         .from(users)
         .where(inArray(users.id, approverIds));
-      approvers.forEach((a) => { approverMap[a.id] = a.name; });
+      approvers.forEach((a: { id: string; name: string }) => { approverMap[a.id] = a.name; });
     }
 
     // 臾몄꽌蹂?寃곗옱??議고쉶
