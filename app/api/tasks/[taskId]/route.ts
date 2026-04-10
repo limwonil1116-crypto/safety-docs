@@ -78,7 +78,7 @@ export async function GET(
         .where(inArray(documentApprovalLines.documentId, docIds))
         .orderBy(documentApprovalLines.approvalOrder);
 
-      lines.forEach((line) => {
+      lines.forEach((line: typeof lines[0]) => {
         if (!approvalLinesMap[line.documentId]) approvalLinesMap[line.documentId] = [];
         approvalLinesMap[line.documentId].push({
           approvalOrder: line.approvalOrder,
