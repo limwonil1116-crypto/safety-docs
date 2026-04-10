@@ -326,6 +326,16 @@ export default function DashboardPage() {
       const periodText = doc.workStartDate && doc.workEndDate && doc.workStartDate !== doc.workEndDate
         ? `${doc.workStartDate} ~ ${doc.workEndDate}`
         : doc.workStartDate || "";
+      // 마커 위 용역명 라벨 - 항상 표시
+      const shortName = doc.taskName.length > 8 ? doc.taskName.slice(0, 8) + "…" : doc.taskName;
+      const labelContent = `<div style="background:${pinColor};color:white;font-size:10px;font-weight:600;padding:3px 7px;border-radius:10px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.25);font-family:sans-serif;margin-bottom:4px;">${shortName}</div>`;
+      const labelOverlay = new window.kakao.maps.CustomOverlay({
+        position: pos,
+        content: labelContent,
+        yAnchor: 2.7,
+        map,
+      });
+      // 클릭 시 상세 infowindow
       const infoContent = `<div style="padding:8px 12px;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);min-width:140px;font-family:sans-serif;cursor:pointer"><p style="font-size:12px;font-weight:600;color:#111;margin:0 0 2px;">${doc.taskName}</p><p style="font-size:11px;color:#666;margin:0 0 4px;">${doc.type}</p>${doc.workAddress?`<p style="font-size:10px;color:#888;margin:0 0 4px;">${doc.workAddress}</p>`:""}<p style="font-size:10px;color:#888;margin:0 0 4px;">${periodText}</p><span style="font-size:11px;padding:2px 8px;border-radius:99px;background:${pinColor}20;color:${pinColor};font-weight:500;">${STATUS_STYLE[doc.status]?.label??doc.status}</span></div>`;
       const infowindow = new window.kakao.maps.InfoWindow({ content: infoContent, removable: true });
       window.kakao.maps.event.addListener(marker, "click", () => infowindow.open(map, marker));

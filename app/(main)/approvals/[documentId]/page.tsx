@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
@@ -38,13 +38,6 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> 
   REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "반려" },
   DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중" },
 };
-const STEP_STYLE: Record<string, { bg: string; text: string; label: string }> = {
-  PENDING:  { bg: "bg-gray-100",  text: "text-gray-500",  label: "대기" },
-  WAITING:  { bg: "bg-amber-100", text: "text-amber-600", label: "검토중" },
-  APPROVED: { bg: "bg-green-100", text: "text-green-600", label: "승인" },
-  REJECTED: { bg: "bg-red-100",   text: "text-red-600",   label: "반려" },
-  SKIPPED:  { bg: "bg-gray-100",  text: "text-gray-400",  label: "생략" },
-};
 const ROLE_LABELS: Record<string, Record<number, string>> = {
   SAFETY_WORK_PERMIT: { 1: "최종검토자", 2: "최종허가자" },
   CONFINED_SPACE:     { 1: "허가자",     2: "확인자" },
@@ -68,6 +61,161 @@ function Field({ label, value }: { label: string; value?: string | null }) {
     <div className="flex gap-3">
       <span className="text-gray-400 w-24 flex-shrink-0 text-sm">{label}</span>
       <span className="text-gray-900 text-sm">{value}</span>
+    </div>
+  );
+}
+
+// ===== 결재 단계 아이콘 (붙임2 스타일) =====
+function StepIcon({ type, status }: { type: "submit" | "review" | "approve"; status: "done" | "active" | "pending" | "rejected" }) {
+  const colors = {
+    done:     { bg: "#2563eb", stroke: "white" },
+    active:   { bg: "#f59e0b", stroke: "white" },
+    rejected: { bg: "#dc2626", stroke: "white" },
+    pending:  { bg: "#e5e7eb", stroke: "#9ca3af" },
+  };
+  const c = colors[status];
+
+  const icons = {
+    submit: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.stroke} strokeWidth="2" strokeLinecap="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
+      </svg>
+    ),
+    review: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.stroke} strokeWidth="2" strokeLinecap="round">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+    ),
+    approve: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.stroke} strokeWidth="2" strokeLinecap="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        {status === "done" && <polyline points="9 12 11 14 15 10" strokeWidth="2.5"/>}
+        {status === "rejected" && <><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></>}
+      </svg>
+    ),
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <div className="w-12 h-12 rounded-full flex items-center justify-center shadow-sm transition-all"
+        style={{ backgroundColor: c.bg, boxShadow: status === "active" ? `0 0 0 3px ${c.bg}33` : undefined }}>
+        {icons[type]}
+      </div>
+      {status === "active" && (
+        <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+      )}
+    </div>
+  );
+}
+
+// ===== 결재 흐름 시각화 =====
+function ApprovalFlow({ doc, approvalLines, writerName }: {
+  doc: DocumentDetail;
+  approvalLines: ApprovalLine[];
+  writerName: string;
+}) {
+  const isSubmitted = doc.status !== "DRAFT";
+  const line1 = approvalLines.find(l => l.approvalOrder === 1);
+  const line2 = approvalLines.find(l => l.approvalOrder === 2);
+
+  const getStepStatus = (line?: ApprovalLine): "done" | "active" | "pending" | "rejected" => {
+    if (!line) return "pending";
+    if (line.stepStatus === "APPROVED") return "done";
+    if (line.stepStatus === "REJECTED") return "rejected";
+    if (line.stepStatus === "WAITING") return "active";
+    return "pending";
+  };
+
+  const roleLabels = ROLE_LABELS[doc.documentType] ?? {};
+  const finalLabel = FINAL_ROLE_LABELS[doc.documentType] ?? "최종허가자";
+
+  const steps = [
+    {
+      icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />,
+      label: "신청인",
+      name: writerName,
+      status: isSubmitted ? "done" : "active",
+    },
+    ...(line1 ? [{
+      icon: <StepIcon type="review" status={getStepStatus(line1)} />,
+      label: roleLabels[1] ?? "검토자",
+      name: line1.approverName ?? "",
+      comment: line1.comment,
+      actedAt: line1.actedAt,
+      status: getStepStatus(line1),
+    }] : []),
+    ...(line2 ? [{
+      icon: <StepIcon type="approve" status={getStepStatus(line2)} />,
+      label: line2.approvalRole === "FINAL_APPROVER" ? finalLabel : (roleLabels[2] ?? "허가자"),
+      name: line2.approverName ?? "",
+      comment: line2.comment,
+      actedAt: line2.actedAt,
+      status: getStepStatus(line2),
+    }] : []),
+  ];
+
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-sm">
+      <h3 className="text-sm font-bold text-gray-900 mb-4">결재 흐름</h3>
+      {/* 아이콘 플로우 */}
+      <div className="flex items-start justify-around mb-4 relative">
+        {/* 연결선 */}
+        <div className="absolute top-6 left-[10%] right-[10%] h-0.5 bg-gray-200 z-0" />
+        {steps.map((step, i) => (
+          <div key={i} className="flex flex-col items-center gap-1 z-10 flex-1">
+            {step.icon}
+            <span className="text-[10px] font-semibold text-gray-500 text-center mt-1">{step.label}</span>
+            <span className="text-[10px] text-gray-700 text-center font-medium truncate max-w-[70px]">{step.name}</span>
+          </div>
+        ))}
+      </div>
+      {/* 상세 정보 */}
+      <div className="space-y-2 mt-3 border-t border-gray-100 pt-3">
+        {steps.map((step, i) => (
+          <div key={i} className={`flex items-start gap-3 p-2.5 rounded-xl ${
+            step.status === "done"     ? "bg-green-50" :
+            step.status === "active"   ? "bg-amber-50" :
+            step.status === "rejected" ? "bg-red-50" :
+            "bg-gray-50"
+          }`}>
+            <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+              step.status === "done"     ? "bg-green-500" :
+              step.status === "active"   ? "bg-amber-400 animate-pulse" :
+              step.status === "rejected" ? "bg-red-500" :
+              "bg-gray-300"
+            }`} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-gray-700">{step.label}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                  step.status === "done"     ? "bg-green-100 text-green-600" :
+                  step.status === "active"   ? "bg-amber-100 text-amber-600" :
+                  step.status === "rejected" ? "bg-red-100 text-red-600" :
+                  "bg-gray-100 text-gray-400"
+                }`}>
+                  {step.status === "done" ? "완료" : step.status === "active" ? "진행중" : step.status === "rejected" ? "반려" : "대기"}
+                </span>
+              </div>
+              <span className="text-xs text-gray-600">{step.name}</span>
+              {step.comment && (
+                <div className="mt-1 text-xs text-gray-500 bg-white/70 rounded-lg px-2 py-1">
+                  💬 {step.comment}
+                </div>
+              )}
+              {step.actedAt && (
+                <span className="text-[10px] text-gray-400 mt-0.5 block">
+                  {new Date(step.actedAt).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -144,6 +292,87 @@ function FinalApproverModal({ documentId, documentType, onClose, onAssigned }: {
   );
 }
 
+// ===== PDF 버튼 컴포넌트 =====
+function PdfButtons({ documentId }: { documentId: string }) {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+
+  const handlePreview = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/documents/${documentId}/pdf`);
+      const data = await res.json();
+      if (data.url) {
+        setPreviewUrl(data.url);
+        setShowPreview(true);
+      }
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  };
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/documents/${documentId}/pdf?download=true`);
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const match = disposition.match(/filename\*=UTF-8''(.+)/);
+      const filename = match ? decodeURIComponent(match[1]) : "법정서류.pdf";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) { console.error(e); alert("PDF 다운로드에 실패했습니다."); }
+    finally { setDownloading(false); }
+  };
+
+  return (
+    <>
+      <div className="flex gap-2">
+        <button onClick={handlePreview} disabled={loading}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-blue-200 text-blue-600 text-sm font-medium hover:bg-blue-50 disabled:opacity-50">
+          {loading ? (
+            <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          )}
+          {loading ? "생성 중..." : "미리보기"}
+        </button>
+        <button onClick={handleDownload} disabled={downloading}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-green-200 text-green-600 text-sm font-medium hover:bg-green-50 disabled:opacity-50">
+          {downloading ? (
+            <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          )}
+          {downloading ? "다운로드 중..." : "PDF 다운로드"}
+        </button>
+      </div>
+
+      {/* PDF 미리보기 모달 */}
+      {showPreview && previewUrl && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 bg-white">
+            <span className="text-sm font-bold text-gray-900">법정서류 미리보기</span>
+            <div className="flex items-center gap-2">
+              <button onClick={handleDownload}
+                className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-medium">
+                다운로드
+              </button>
+              <button onClick={() => setShowPreview(false)} className="text-gray-500">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          </div>
+          <iframe src={previewUrl} className="flex-1 w-full" title="PDF 미리보기" />
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function ApprovalDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -151,10 +380,10 @@ export default function ApprovalDetailPage() {
   const [doc, setDoc] = useState<DocumentDetail | null>(null);
   const [approvalLines, setApprovalLines] = useState<ApprovalLine[]>([]);
   const [taskName, setTaskName] = useState("");
+  const [writerName, setWriterName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isMyTurn, setIsMyTurn] = useState(false);
-  const [myApprovalOrder, setMyApprovalOrder] = useState(0);
   const [myUserId, setMyUserId] = useState("");
   const [myRole, setMyRole] = useState("");
   const [activeTab, setActiveTab] = useState("내용");
@@ -168,6 +397,8 @@ export default function ApprovalDetailPage() {
   const [pendingAction, setPendingAction] = useState<"APPROVE" | "REJECT" | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
+  // 서명창 고정을 위한 ref
+  const signModalRef = useRef<HTMLDivElement>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError("");
@@ -185,22 +416,41 @@ export default function ApprovalDetailPage() {
       setApprovalLines(lines);
       const taskRes = await fetch(`/api/tasks/${docObj.taskId}`);
       const taskData = await taskRes.json();
-      if (taskRes.ok) setTaskName(taskData.task?.name ?? "");
+      if (taskRes.ok) {
+        setTaskName(taskData.task?.name ?? "");
+      }
       const meRes = await fetch("/api/users/me");
       if (meRes.ok) {
         const meData = await meRes.json();
         const myId = meData.user?.id;
         setMyUserId(myId);
         setMyRole(meData.user?.role ?? "");
+        setWriterName(meData.user?.name ?? "");
         setIsMyTurn(docObj.currentApproverUserId === myId);
-        const myLine = lines.find((l: ApprovalLine & { approverUserId?: string }) => l.approverUserId === myId);
-        setMyApprovalOrder(myLine?.approvalOrder ?? 0);
       }
     } catch (e: unknown) { setError(e instanceof Error ? e.message : "오류가 발생했습니다."); }
     finally { setLoading(false); }
   }, [documentId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // 서명 모달 열릴 때 body 스크롤 잠금 → 서명창 흔들림 방지
+  useEffect(() => {
+    if (showSign) {
+      const scrollY = window.scrollY;
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = "100%";
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.width = "";
+        document.body.style.overflow = "";
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [showSign]);
 
   const handleCancelApproval = async () => {
     if (!confirm("결재를 취소하고 작성중 상태로 되돌리시겠습니까?\n(결재선이 초기화됩니다)")) return;
@@ -230,15 +480,19 @@ export default function ApprovalDetailPage() {
     return { x: (e.clientX - rect.left) * (canvas.width / rect.width), y: (e.clientY - rect.top) * (canvas.height / rect.height) };
   };
   const startDraw = (e: React.MouseEvent | React.TouchEvent) => {
-    const canvas = canvasRef.current; if (!canvas) return; e.preventDefault();
+    const canvas = canvasRef.current; if (!canvas) return; e.preventDefault(); e.stopPropagation();
     isDrawing.current = true; const ctx = canvas.getContext("2d"); if (!ctx) return;
     const pos = getPos(e, canvas); ctx.beginPath(); ctx.moveTo(pos.x, pos.y);
   };
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDrawing.current) return; const canvas = canvasRef.current; if (!canvas) return; e.preventDefault();
+    if (!isDrawing.current) return; const canvas = canvasRef.current; if (!canvas) return;
+    e.preventDefault(); e.stopPropagation();
     const ctx = canvas.getContext("2d"); if (!ctx) return; const pos = getPos(e, canvas); ctx.lineTo(pos.x, pos.y); ctx.stroke();
   };
-  const endDraw = () => { isDrawing.current = false; };
+  const endDraw = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    isDrawing.current = false;
+  };
   const clearCanvas = () => {
     const canvas = canvasRef.current; if (!canvas) return;
     const ctx = canvas.getContext("2d"); if (!ctx) return;
@@ -301,26 +555,19 @@ export default function ApprovalDetailPage() {
   const typeShort = DOCUMENT_TYPE_SHORT[doc.documentType] ?? doc.documentType;
   const typeLabel = DOCUMENT_TYPE_LABELS[doc.documentType] ?? doc.documentType;
   const statusStyle = STATUS_STYLE[statusKey] ?? STATUS_STYLE.SUBMITTED;
-  const roleLabels = ROLE_LABELS[doc.documentType] ?? {};
-  const rw = (fd.riskWorkTypes ?? {}) as Record<string, boolean>;
-  const rf = (fd.riskFactors ?? {}) as Record<string, boolean>;
-  const riskItems = [
-    rw.highPlace ? "고소작업" : "", rw.waterWork ? "수상/수변" : "",
-    rw.confinedSpace ? "밀폐공간" : "", rw.powerOutage ? "정전작업" : "", rw.fireWork ? "화기작업" : "",
-  ].filter(Boolean);
-  const factorItems = [
-    rf.narrowAccess ? "진출입로 협소" : "", rf.slippery ? "미끄러운 지반" : "",
-    rf.steepSlope ? "급경사면" : "", rf.waterHazard ? "파랑·유수위험" : "",
-    rf.rockfall ? "낙석위험" : "", rf.noRailing ? "안전난간 미설치" : "",
-    rf.suffocation ? "질식·화재·폭발" : "", rf.electrocution ? "감전위험" : "", rf.fire ? "화재·폭발위험" : "",
-  ].filter(Boolean);
 
   const isOwner = myUserId && doc.createdBy && String(doc.createdBy).toLowerCase() === String(myUserId).toLowerCase();
   const isStaff = ["REVIEWER", "FINAL_APPROVER", "ADMIN"].includes(myRole);
-  const canCancel = doc.status !== "DRAFT" && (isOwner || isStaff);
+  const canCancel = doc.status !== "DRAFT" && doc.status !== "APPROVED" && (isOwner || isStaff);
+  const isApproved = doc.status === "APPROVED";
+
+  // 작업기간 표시 (workStartDate/workEndDate 우선)
+  const workPeriod = fd.workStartDate && fd.workEndDate
+    ? `${fd.workStartDate} ~ ${fd.workEndDate}`
+    : (fd.workDate as string) || "";
 
   return (
-    <div className="pb-32">
+    <div className="pb-40">
       <div className="px-4 pt-4 pb-3 bg-white border-b border-gray-100">
         <Link href="/approvals" className="flex items-center gap-1 text-gray-400 text-sm mb-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
@@ -352,9 +599,9 @@ export default function ApprovalDetailPage() {
               <h3 className="text-sm font-bold text-gray-900 mb-3">기본정보</h3>
               <div className="space-y-2">
                 <Field label="신청일" value={fd.requestDate as string} />
-                <Field label="작업예정일" value={fd.workDate as string} />
+                <Field label="작업기간" value={workPeriod} />
                 <Field label="작업시간" value={`${fd.workStartTime ?? ""} ~ ${fd.workEndTime ?? ""}`} />
-                <Field label="용역명" value={fd.projectName as string} />
+                <Field label="용역명" value={(fd.projectName ?? fd.serviceName) as string} />
                 <Field label="업체명" value={fd.applicantCompany as string} />
                 <Field label="신청자" value={fd.applicantName as string} />
               </div>
@@ -367,19 +614,8 @@ export default function ApprovalDetailPage() {
                 <Field label="작업원 명단" value={fd.participants as string} />
               </div>
             </div>
-            {(riskItems.length > 0 || factorItems.length > 0) && (
-              <div className="bg-white rounded-2xl p-4 shadow-sm">
-                <h3 className="text-sm font-bold text-gray-900 mb-3">위험공종 / 위험요인</h3>
-                {riskItems.length > 0 && <div className="flex flex-wrap gap-1.5 mb-2">{riskItems.map(l => <span key={l} className="text-xs px-2 py-1 bg-red-50 text-red-600 rounded-lg">⚠ {l}</span>)}</div>}
-                {factorItems.length > 0 && <div className="flex flex-wrap gap-1.5">{factorItems.map(l => <span key={l} className="text-xs px-2 py-1 bg-amber-50 text-amber-600 rounded-lg">{l}</span>)}</div>}
-              </div>
-            )}
-            {fd.specialNotes && (
-              <div className="bg-white rounded-2xl p-4 shadow-sm">
-                <h3 className="text-sm font-bold text-gray-900 mb-2">특이사항</h3>
-                <p className="text-sm text-gray-700">{fd.specialNotes as string}</p>
-              </div>
-            )}
+
+            {/* 서명 표시 */}
             {(fd.signatureData || approvalLines.some(l => l.signatureData && l.stepStatus === "APPROVED")) && (
               <div className="bg-white rounded-2xl p-4 shadow-sm">
                 <h3 className="text-sm font-bold text-gray-900 mb-3">서명</h3>
@@ -408,6 +644,22 @@ export default function ApprovalDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* PDF 버튼 - 승인완료 시 표시 */}
+            {isApproved && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  법정서류 PDF
+                </h3>
+                <PdfButtons documentId={documentId} />
+              </div>
+            )}
+
+            {/* 검토 의견 입력 (내 차례일 때) */}
             {isMyTurn && (
               <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -422,45 +674,29 @@ export default function ApprovalDetailPage() {
             )}
           </>
         )}
+
         {activeTab === "결재현황" && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h3 className="text-sm font-bold text-gray-900 mb-3">결재선</h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-16 text-xs text-gray-500 shrink-0">신청인</div>
-                <div className="flex-1 flex items-center justify-between p-2.5 rounded-xl bg-green-50">
-                  <span className="text-sm font-medium text-gray-900">{(fd.applicantName as string) || "작성자"}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-600">제출완료</span>
-                </div>
+          <>
+            <ApprovalFlow doc={doc} approvalLines={approvalLines} writerName={(fd.applicantName as string) || writerName} />
+            {/* 승인완료 시 PDF 버튼도 결재현황 탭에 표시 */}
+            {isApproved && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  법정서류 PDF
+                </h3>
+                <PdfButtons documentId={documentId} />
               </div>
-              {approvalLines.map(line => {
-                const stepStyle = STEP_STYLE[line.stepStatus] ?? STEP_STYLE.PENDING;
-                const roleLabel = line.approvalRole === "FINAL_APPROVER"
-                  ? (FINAL_ROLE_LABELS[doc.documentType] ?? "최종허가자")
-                  : (roleLabels[line.approvalOrder] ?? `${line.approvalOrder}단계`);
-                return (
-                  <div key={line.id} className="flex items-start gap-3">
-                    <div className="w-16 text-xs text-gray-500 shrink-0 pt-2.5">{roleLabel}</div>
-                    <div className={`flex-1 p-2.5 rounded-xl ${stepStyle.bg}`}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-sm font-medium text-gray-900">{line.approverName}</span>
-                          {line.approverOrg && <span className="text-xs text-gray-500 ml-1.5">{line.approverOrg}</span>}
-                        </div>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stepStyle.text}`}>{stepStyle.label}</span>
-                      </div>
-                      {line.comment && <div className="mt-1.5 text-xs text-gray-600 bg-white/60 rounded-lg p-2">💬 {line.comment}</div>}
-                      {line.actedAt && <div className="mt-1 text-xs text-gray-400">{new Date(line.actedAt).toLocaleDateString("ko-KR")}</div>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+            )}
+          </>
         )}
       </div>
 
-      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 space-y-2">
+      {/* 하단 버튼 - 네비바 위에 충분한 여백 */}
+      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-3 pb-4 space-y-2">
         {canCancel && (
           <button onClick={handleCancelApproval} disabled={cancelling}
             className="w-full py-2.5 rounded-xl text-sm font-medium border-2 border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50">
@@ -471,7 +707,7 @@ export default function ApprovalDetailPage() {
           <div className="flex gap-3">
             <button onClick={() => setShowRejectConfirm(true)} className="flex-1 py-3 rounded-xl border-2 border-red-200 text-sm font-medium text-red-600">반려</button>
             <button onClick={() => setShowApproveConfirm(true)} className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#16a34a" }}>
-              {doc.currentApprovalOrder === 1 ? "검토완료 (최종허가자 지정)" : "최종 승인"}
+              {doc.currentApprovalOrder === 1 ? "검토완료" : "최종 승인"}
             </button>
           </div>
         )}
@@ -509,27 +745,69 @@ export default function ApprovalDetailPage() {
         </div>
       )}
 
+      {/* 서명 모달 - 완전 고정, 스크롤 차단 */}
       {showSign && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-          <div className="bg-white w-full rounded-t-3xl p-6 pb-10">
-            <h2 className="text-base font-bold text-gray-900 mb-1">
-              {pendingAction === "APPROVE" ? "승인 서명" : "반려 서명"}
-            </h2>
-            <p className="text-xs text-gray-500 mb-4">서명 후 처리가 완료됩니다.</p>
-            <div className="border-2 border-gray-200 rounded-2xl overflow-hidden mb-3 bg-white">
-              <canvas ref={canvasRef} width={600} height={160} className="w-full touch-none" style={{ cursor: "crosshair" }}
-                onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
-                onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
+        <div
+          ref={signModalRef}
+          className="fixed inset-0 bg-black/50 z-50 flex items-end"
+          style={{ touchAction: "none" }}
+          onTouchMove={e => e.preventDefault()}
+        >
+          <div className="bg-white w-full rounded-t-3xl"
+            style={{
+              paddingBottom: "env(safe-area-inset-bottom, 20px)",
+              maxHeight: "75vh",
+            }}>
+            <div className="px-6 pt-6 pb-2">
+              <h2 className="text-base font-bold text-gray-900 mb-1">
+                {pendingAction === "APPROVE" ? "승인 서명" : "반려 서명"}
+              </h2>
+              <p className="text-xs text-gray-500">서명 후 처리가 완료됩니다.</p>
             </div>
-            <div className="flex gap-2 mb-4">
-              <button onClick={clearCanvas} className="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">서명 지우기</button>
-              <button onClick={() => setShowSign(false)} className="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">취소</button>
+
+            {/* 서명 캔버스 */}
+            <div className="px-6 py-3">
+              <div className="border-2 border-gray-200 rounded-2xl overflow-hidden bg-white relative">
+                <div className="absolute top-2 left-3 text-xs text-gray-300 pointer-events-none">여기에 서명하세요</div>
+                <canvas
+                  ref={canvasRef}
+                  width={600}
+                  height={180}
+                  className="w-full"
+                  style={{
+                    cursor: "crosshair",
+                    touchAction: "none",   // ← 핵심: 터치 스크롤 완전 차단
+                    display: "block",
+                  }}
+                  onMouseDown={startDraw}
+                  onMouseMove={draw}
+                  onMouseUp={endDraw}
+                  onMouseLeave={endDraw}
+                  onTouchStart={startDraw}
+                  onTouchMove={draw}
+                  onTouchEnd={endDraw}
+                />
+              </div>
             </div>
-            <button onClick={handleSubmitWithSign} disabled={processing}
-              className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50"
-              style={{ background: pendingAction === "APPROVE" ? "#16a34a" : "#dc2626" }}>
-              {processing ? "처리 중..." : pendingAction === "APPROVE" ? "승인 완료" : "반려 완료"}
-            </button>
+
+            {/* 버튼들 - 네비바와 겹치지 않게 충분한 padding */}
+            <div className="px-6 pb-8 space-y-2">
+              <div className="flex gap-2">
+                <button onClick={clearCanvas}
+                  className="flex-1 py-3 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium">
+                  서명 지우기
+                </button>
+                <button onClick={() => setShowSign(false)}
+                  className="flex-1 py-3 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium">
+                  취소
+                </button>
+              </div>
+              <button onClick={handleSubmitWithSign} disabled={processing}
+                className="w-full py-3.5 rounded-xl text-white font-medium text-sm disabled:opacity-50"
+                style={{ background: pendingAction === "APPROVE" ? "#16a34a" : "#dc2626" }}>
+                {processing ? "처리 중..." : pendingAction === "APPROVE" ? "✓ 승인 완료" : "반려 완료"}
+              </button>
+            </div>
           </div>
         </div>
       )}
