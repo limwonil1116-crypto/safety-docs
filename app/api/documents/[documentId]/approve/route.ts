@@ -1,4 +1,4 @@
-// app/api/documents/[documentId]/approve/route.ts
+﻿// app/api/documents/[documentId]/approve/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
@@ -13,7 +13,7 @@ import {
 import { eq, sql } from "drizzle-orm";
 import { generateAndUploadPDF } from "@/lib/pdf/generator";
 
-// POST /api/documents/[documentId]/approve - 승인 또는 반려
+// POST /api/documents/[documentId]/approve - ?뱀씤 ?먮뒗 諛섎젮
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ documentId: string }> }
@@ -21,7 +21,7 @@ export async function POST(
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+      return NextResponse.json({ error: "?몄쬆???꾩슂?⑸땲??" }, { status: 401 });
     }
 
     const { documentId } = await params;
@@ -29,14 +29,14 @@ export async function POST(
     const { action, comment, signatureData } = body;
 
     if (!["APPROVE", "REJECT"].includes(action)) {
-      return NextResponse.json({ error: "올바르지 않은 액션입니다." }, { status: 400 });
+      return NextResponse.json({ error: "?щ컮瑜댁? ?딆? ?≪뀡?낅땲??" }, { status: 400 });
     }
 
     if (action === "REJECT" && !comment?.trim()) {
-      return NextResponse.json({ error: "반려 사유를 입력해주세요." }, { status: 400 });
+      return NextResponse.json({ error: "諛섎젮 ?ъ쑀瑜??낅젰?댁＜?몄슂." }, { status: 400 });
     }
 
-    // 문서 조회
+    // 臾몄꽌 議고쉶
     const [doc] = await db
       .select()
       .from(documents)
@@ -44,15 +44,15 @@ export async function POST(
       .limit(1);
 
     if (!doc || doc.deletedAt) {
-      return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
+      return NextResponse.json({ error: "臾몄꽌瑜?李얠쓣 ???놁뒿?덈떎." }, { status: 404 });
     }
 
-    // 결재 권한 확인
+    // 寃곗옱 沅뚰븳 ?뺤씤
     if (doc.currentApproverUserId !== session.user.id) {
-      return NextResponse.json({ error: "현재 결재 차례가 아닙니다." }, { status: 403 });
+      return NextResponse.json({ error: "?꾩옱 寃곗옱 李⑤?媛 ?꾨떃?덈떎." }, { status: 403 });
     }
 
-    // 현재 결재선 조회
+    // ?꾩옱 寃곗옱??議고쉶
     const [currentLine] = await db
       .select()
       .from(documentApprovalLines)
@@ -64,11 +64,11 @@ export async function POST(
       .limit(1);
 
     if (!currentLine) {
-      return NextResponse.json({ error: "결재선을 찾을 수 없습니다." }, { status: 404 });
+      return NextResponse.json({ error: "寃곗옱?좎쓣 李얠쓣 ???놁뒿?덈떎." }, { status: 404 });
     }
 
     if (action === "REJECT") {
-      // 반려 처리
+      // 諛섎젮 泥섎━
       await db
         .update(documentApprovalLines)
         .set({
@@ -93,8 +93,8 @@ export async function POST(
       await db.insert(notifications).values({
         userId: doc.createdBy,
         type: "REJECTED",
-        title: "서류가 반려되었습니다",
-        body: `반려 사유: ${comment}`,
+        title: "?쒕쪟媛 諛섎젮?섏뿀?듬땲??,
+        body: `諛섎젮 ?ъ쑀: ${comment}`,
         targetDocumentId: documentId,
         isRead: false,
       });
@@ -102,8 +102,7 @@ export async function POST(
       return NextResponse.json({ success: true, action: "REJECTED" });
 
     } else {
-      // 승인 처리 - 서명 저장
-      await db
+      // ?뱀씤 泥섎━ - ?쒕챸 ???      await db
         .update(documentApprovalLines)
         .set({
           stepStatus: "APPROVED",
@@ -113,8 +112,7 @@ export async function POST(
         })
         .where(eq(documentApprovalLines.id, currentLine.id));
 
-      // 서명 데이터 저장
-      if (signatureData) {
+      // ?쒕챸 ?곗씠?????      if (signatureData) {
         await db
           .delete(documentSignatures)
           .where(
@@ -131,8 +129,7 @@ export async function POST(
       }
 
       if (currentLine.approvalOrder === 1) {
-        // 1단계 승인 → 최종허가자 지정 대기
-        await db
+        // 1?④퀎 ?뱀씤 ??理쒖쥌?덇???吏???湲?        await db
           .update(documents)
           .set({
             status: "IN_REVIEW",
@@ -144,7 +141,7 @@ export async function POST(
         return NextResponse.json({ success: true, action: "NEED_FINAL_APPROVER" });
 
       } else {
-        // 2단계(최종) 승인 → APPROVED + PDF 자동 생성
+        // 2?④퀎(理쒖쥌) ?뱀씤 ??APPROVED + PDF ?먮룞 ?앹꽦
         await db
           .update(documents)
           .set({
@@ -155,17 +152,17 @@ export async function POST(
           })
           .where(eq(documents.id, documentId));
 
-        // 작성자에게 승인 완료 알림
+        // ?묒꽦?먯뿉寃??뱀씤 ?꾨즺 ?뚮┝
         await db.insert(notifications).values({
           userId: doc.createdBy,
           type: "APPROVED",
-          title: "서류가 최종 승인되었습니다",
-          body: "서류가 최종 승인되었습니다. PDF를 다운로드할 수 있습니다.",
+          title: "?쒕쪟媛 理쒖쥌 ?뱀씤?섏뿀?듬땲??,
+          body: "?쒕쪟媛 理쒖쥌 ?뱀씤?섏뿀?듬땲?? PDF瑜??ㅼ슫濡쒕뱶?????덉뒿?덈떎.",
           targetDocumentId: documentId,
           isRead: false,
         });
 
-        // 비동기로 PDF 자동 생성 (응답 지연 없이)
+        // 鍮꾨룞湲곕줈 PDF ?먮룞 ?앹꽦 (?묐떟 吏???놁씠)
         generatePDFBackground(documentId, doc).catch((err) => {
           console.error("[PDF Auto-Generate Error]", err);
         });
@@ -175,11 +172,11 @@ export async function POST(
     }
   } catch (error) {
     console.error("[POST /api/documents/[documentId]/approve]", error);
-    return NextResponse.json({ error: "오류가 발생했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "?ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." }, { status: 500 });
   }
 }
 
-// 백그라운드 PDF 생성 함수
+// 諛깃렇?쇱슫??PDF ?앹꽦 ?⑥닔
 async function generatePDFBackground(
   documentId: string,
   doc: { documentType: string; formDataJson: unknown; createdAt: Date }
@@ -206,7 +203,7 @@ async function generatePDFBackground(
     const approvalLinesWithSig = lines.map((line) => ({
       approvalOrder: line.approvalOrder,
       approverName: line.approverName ?? undefined,
-      approverOrg: line.approverOrg ?? undefined,
+    const approvalLinesWithSig = lines.map((line: typeof lines[0]) => ({
       actedAt: line.actedAt?.toISOString(),
       signatureData: signatures.find((s) => s.approvalLineId === line.id)?.signatureData ?? undefined,
     }));
@@ -231,7 +228,7 @@ async function generatePDFBackground(
       generatedAt: new Date(),
     });
 
-    console.log(`[PDF Auto-Generated] ${documentId} → ${url}`);
+    console.log(`[PDF Auto-Generated] ${documentId} ??${url}`);
   } catch (err) {
     console.error(`[PDF Auto-Generate Failed] ${documentId}`, err);
   }
