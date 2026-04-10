@@ -42,7 +42,7 @@ export async function GET(
     signatures.forEach((s: { approvalLineId: string; signatureData: string }) => {
       if (s.approvalLineId && s.signatureData) sigMap[s.approvalLineId] = s.signatureData;
     });
-    const enrichedLines = lines.map((line) => ({ ...line, signatureData: sigMap[line.id] ?? null }));
+    const enrichedLines = lines.map((line: typeof lines[0]) => ({ ...line, signatureData: sigMap[line.id] ?? null }));
     return NextResponse.json({ approvalLines: enrichedLines });
   } catch (error) {
     console.error("[GET approval-lines]", error);
