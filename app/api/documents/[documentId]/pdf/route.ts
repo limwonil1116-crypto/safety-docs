@@ -14,7 +14,7 @@ async function getApprovalLinesWithSig(documentId: string) {
     .where(eq(documentApprovalLines.documentId, documentId))
     .orderBy(documentApprovalLines.approvalOrder);
   const signatures = await db.select().from(documentSignatures).where(eq(documentSignatures.documentId, documentId));
-  return lines.map((line) => ({
+  return lines.map((line: typeof lines[0]) => ({
     approvalOrder: line.approvalOrder,
     approverName: line.approverName ?? undefined,
     approverOrg: line.approverOrg ?? undefined,
