@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { tasks, documents, users, documentApprovalLines } from "@/db/schema";
@@ -11,7 +11,7 @@ export async function GET(
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+      return NextResponse.json({ error: "?몄쬆???꾩슂?⑸땲??" }, { status: 401 });
     }
 
     const { taskId } = await params;
@@ -23,7 +23,7 @@ export async function GET(
       .limit(1);
 
     if (!task || task.deletedAt) {
-      return NextResponse.json({ error: "과업을 찾을 수 없습니다." }, { status: 404 });
+      return NextResponse.json({ error: "怨쇱뾽??李얠쓣 ???놁뒿?덈떎." }, { status: 404 });
     }
 
     const docList = await db
@@ -46,10 +46,10 @@ export async function GET(
       .where(and(eq(documents.taskId, taskId), isNull(documents.deletedAt)))
       .orderBy(sql`${documents.updatedAt} desc`);
 
-    // 현재 결재자 이름 조회
+    // ?꾩옱 寃곗옱???대쫫 議고쉶
     const approverIds = docList
-      .filter((d) => d.currentApproverUserId)
-      .map((d) => d.currentApproverUserId as string);
+      .filter((d: typeof docList[0]) => d.currentApproverUserId)
+      .map((d: typeof docList[0]) => d.currentApproverUserId as string);
 
     const approverMap: Record<string, string> = {};
     if (approverIds.length > 0) {
@@ -60,7 +60,7 @@ export async function GET(
       approvers.forEach((a) => { approverMap[a.id] = a.name; });
     }
 
-    // 문서별 결재선 조회
+    // 臾몄꽌蹂?寃곗옱??議고쉶
     const docIds = docList.map((d) => d.id);
     let approvalLinesMap: Record<string, { approvalOrder: number; approverName: string | null; approverOrg: string | null; stepStatus: string }[]> = {};
 
@@ -107,7 +107,7 @@ export async function GET(
     return NextResponse.json({ task, documents: enrichedDocs });
   } catch (error) {
     console.error("[GET /api/tasks/[taskId]]", error);
-    return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "?쒕쾭 ?ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." }, { status: 500 });
   }
 }
 
@@ -118,7 +118,7 @@ export async function PATCH(
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+      return NextResponse.json({ error: "?몄쬆???꾩슂?⑸땲??" }, { status: 401 });
     }
 
     const { taskId } = await params;
@@ -132,7 +132,7 @@ export async function PATCH(
       .limit(1);
 
     if (!existing || existing.deletedAt) {
-      return NextResponse.json({ error: "과업을 찾을 수 없습니다." }, { status: 404 });
+      return NextResponse.json({ error: "怨쇱뾽??李얠쓣 ???놁뒿?덈떎." }, { status: 404 });
     }
 
     const updateData: Partial<typeof tasks.$inferInsert> = { updatedAt: new Date() };
@@ -152,7 +152,7 @@ export async function PATCH(
     return NextResponse.json({ task: updated });
   } catch (error) {
     console.error("[PATCH /api/tasks/[taskId]]", error);
-    return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "?쒕쾭 ?ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." }, { status: 500 });
   }
 }
 
@@ -163,7 +163,7 @@ export async function DELETE(
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+      return NextResponse.json({ error: "?몄쬆???꾩슂?⑸땲??" }, { status: 401 });
     }
 
     const { taskId } = await params;
@@ -175,12 +175,12 @@ export async function DELETE(
       .returning();
 
     if (!updated) {
-      return NextResponse.json({ error: "과업을 찾을 수 없습니다." }, { status: 404 });
+      return NextResponse.json({ error: "怨쇱뾽??李얠쓣 ???놁뒿?덈떎." }, { status: 404 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[DELETE /api/tasks/[taskId]]", error);
-    return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "?쒕쾭 ?ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." }, { status: 500 });
   }
 }
