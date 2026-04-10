@@ -50,168 +50,157 @@ function CB({ checked }: { checked: boolean }) {
   );
 }
 
-// ===== 서명 섹션 =====
-// 양식 이미지와 동일한 구조:
-// - 신청인: 단독 열 (왼쪽)
-// - 허가자/확인자: 오른쪽 열에 상하(위아래) 배치
-// - 각 셀: (서명) 텍스트 위에 서명 이미지 오버랩
+function Footer({ documentId, createdAt }: { documentId: string; createdAt: string }) {
+  return (
+    <View style={S.footer}>
+      <Text style={S.footerText}>{`문서번호: ${documentId.slice(0, 8)}`}</Text>
+      <Text style={S.footerText}>{`생성일시: ${new Date(createdAt).toLocaleString("ko-KR")} | 한국농어촌공사 안전관리시스템`}</Text>
+    </View>
+  );
+}
 
-function SignatureCell({ roleLabel, deptLabel, name, signatureData, borderRight = true }: {
+// ===== 붙임1 전용: 신청인 행에 서명 이미지 인라인 표시 =====
+// 양식: (업체명) X  (직책) X  (성명) X  [서명이미지]
+function ApplicantRowWithSign({ applicantCompany, applicantTitle, applicantName, signatureData }: {
+  applicantCompany?: string;
+  applicantTitle?: string;
+  applicantName?: string;
+  signatureData?: string;
+}) {
+  return (
+    <View style={[S.tr, { alignItems: "center", minHeight: 28 }]}>
+      <Text style={[S.il, { width: 75 }]}>신청인</Text>
+      <Text style={[S.iv, { flex: 1, borderRight: "0.5px solid " + C.border }]}>
+        {`(업체명) ${applicantCompany || ""}`}
+      </Text>
+      <Text style={[S.iv, { flex: 1, borderRight: "0.5px solid " + C.border }]}>
+        {`(직책) ${applicantTitle || ""}`}
+      </Text>
+      {/* 성명 + 서명이미지 인라인 */}
+      <View style={{ flex: 1.5, flexDirection: "row", alignItems: "center", padding: "2 5", gap: 4 }}>
+        <Text style={{ fontSize: 9, flex: 1 }}>{`(성명) ${applicantName || ""}`}</Text>
+        {signatureData ? (
+          <Image src={signatureData} style={{ width: 55, height: 22, objectFit: "contain" }} />
+        ) : (
+          <View style={{ width: 55, height: 22, border: "0.5px dashed #ccc" }} />
+        )}
+      </View>
+    </View>
+  );
+}
+
+// ===== 붙임2/3/4 서명란: 1줄 가로 배치 =====
+// 각 셀: [역할명 | 부서·직책 | (서명)텍스트+이미지오버랩 | 성명]
+// → 가로로 한 줄: 역할/부서직책(좌) + 서명이미지(중앙) + 성명(우)
+function SignRow({ roleLabel, deptLabel, name, signatureData, borderBottom = true }: {
   roleLabel: string;
   deptLabel?: string;
   name?: string;
   signatureData?: string;
-  borderRight?: boolean;
+  borderBottom?: boolean;
 }) {
   return (
     <View style={{
-      flex: 1,
-      borderRight: borderRight ? "0.5px solid " + C.border : "none",
-      padding: "5 6",
+      flexDirection: "row",
       alignItems: "center",
-      justifyContent: "center",
-      minHeight: 75,
+      borderBottom: borderBottom ? "0.5px solid " + C.border : "none",
+      minHeight: 38,
+      padding: "4 6",
     }}>
-      {/* 역할 레이블 */}
-      <Text style={{ fontSize: 8.5, fontWeight: "bold", color: C.navy, textAlign: "center" }}>{roleLabel}</Text>
-      {deptLabel && (
-        <Text style={{ fontSize: 6.5, color: "#555", textAlign: "center", marginTop: 1 }}>{deptLabel}</Text>
-      )}
-      {/* (서명) 텍스트 + 이미지 오버랩 영역 */}
-      <View style={{ position: "relative", width: 80, height: 42, marginTop: 4, alignItems: "center", justifyContent: "center" }}>
-        {/* (서명) 텍스트 - 항상 표시 */}
-        <Text style={{ fontSize: 8, color: "#999", textAlign: "center" }}>(서명)</Text>
-        {/* 서명 이미지 - 오버랩 (position absolute) */}
+      {/* 좌: 역할명 + 부서직책 */}
+      <View style={{ flex: 2, flexDirection: "column", justifyContent: "center" }}>
+        <Text style={{ fontSize: 8.5, fontWeight: "bold", color: C.navy }}>{roleLabel}</Text>
+        {deptLabel && (
+          <Text style={{ fontSize: 7, color: "#555", marginTop: 1 }}>{deptLabel}</Text>
+        )}
+      </View>
+      {/* 중앙: (서명) 텍스트 위에 이미지 오버랩 */}
+      <View style={{ flex: 2, alignItems: "center", justifyContent: "center", position: "relative", height: 30 }}>
+        <Text style={{ fontSize: 8, color: "#aaa" }}>(서명)</Text>
         {signatureData && (
           <Image
             src={signatureData}
             style={{
               position: "absolute",
-              top: 0,
-              left: 0,
-              width: 80,
-              height: 42,
+              top: 0, left: 0, right: 0, bottom: 0,
+              width: "100%",
+              height: 30,
               objectFit: "contain",
             }}
           />
         )}
       </View>
-      {/* 성명 */}
-      <Text style={{ fontSize: 8.5, textAlign: "center", marginTop: 2 }}>
-        {`(성명) ${name || ""}`}
-      </Text>
+      {/* 우: 성명 */}
+      <View style={{ flex: 2, alignItems: "flex-end", justifyContent: "center" }}>
+        <Text style={{ fontSize: 8.5 }}>{`(성명) ${name || ""}`}</Text>
+      </View>
     </View>
   );
 }
 
-// 붙임2/3/4 서명 섹션: 신청인(좌) + 허가자/확인자 상하(우)
+// 붙임2/3/4 서명 섹션: 신청인 + 허가자(위) + 확인자(아래) 
+// 신청인은 전체 1행, 허가자/확인자는 오른쪽에 상하 2행
 function SignSection3({ applicant, upper, lower }: {
   applicant: { roleLabel: string; deptLabel?: string; name?: string; signatureData?: string };
   upper:     { roleLabel: string; deptLabel?: string; name?: string; signatureData?: string };
   lower:     { roleLabel: string; deptLabel?: string; name?: string; signatureData?: string };
 }) {
   return (
-    <View style={{ border: "0.8px solid " + C.border, marginTop: 7, flexDirection: "row" }}>
-      {/* 왼쪽: 신청인 - 전체 높이 */}
-      <View style={{
-        flex: 1,
-        borderRight: "0.5px solid " + C.border,
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "5 6",
-      }}>
-        <Text style={{ fontSize: 8.5, fontWeight: "bold", color: C.navy, textAlign: "center" }}>{applicant.roleLabel}</Text>
-        {applicant.deptLabel && (
-          <Text style={{ fontSize: 6.5, color: "#555", textAlign: "center", marginTop: 1 }}>{applicant.deptLabel}</Text>
-        )}
-        <View style={{ position: "relative", width: 80, height: 42, marginTop: 4, alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ fontSize: 8, color: "#999", textAlign: "center" }}>(서명)</Text>
-          {applicant.signatureData && (
-            <Image
-              src={applicant.signatureData}
-              style={{ position: "absolute", top: 0, left: 0, width: 80, height: 42, objectFit: "contain" }}
-            />
-          )}
-        </View>
-        <Text style={{ fontSize: 8.5, textAlign: "center", marginTop: 2 }}>{`(성명) ${applicant.name || ""}`}</Text>
-      </View>
-      {/* 오른쪽: 상하 2칸 */}
-      <View style={{ flex: 2, flexDirection: "column" }}>
-        {/* 위: 허가자 */}
-        <View style={{
-          borderBottom: "0.5px solid " + C.border,
-          padding: "4 6",
-          alignItems: "center",
-          minHeight: 70,
-          justifyContent: "center",
-        }}>
-          <Text style={{ fontSize: 8.5, fontWeight: "bold", color: C.navy, textAlign: "center" }}>{upper.roleLabel}</Text>
-          {upper.deptLabel && (
-            <Text style={{ fontSize: 6.5, color: "#555", textAlign: "center", marginTop: 1 }}>{upper.deptLabel}</Text>
-          )}
-          <View style={{ position: "relative", width: 80, height: 36, marginTop: 3, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ fontSize: 8, color: "#999", textAlign: "center" }}>(서명)</Text>
-            {upper.signatureData && (
-              <Image
-                src={upper.signatureData}
-                style={{ position: "absolute", top: 0, left: 0, width: 80, height: 36, objectFit: "contain" }}
-              />
-            )}
-          </View>
-          <Text style={{ fontSize: 8.5, textAlign: "center", marginTop: 2 }}>{`(성명) ${upper.name || ""}`}</Text>
-        </View>
-        {/* 아래: 확인자 */}
-        <View style={{
-          padding: "4 6",
-          alignItems: "center",
-          minHeight: 70,
-          justifyContent: "center",
-        }}>
-          <Text style={{ fontSize: 8.5, fontWeight: "bold", color: C.navy, textAlign: "center" }}>{lower.roleLabel}</Text>
-          {lower.deptLabel && (
-            <Text style={{ fontSize: 6.5, color: "#555", textAlign: "center", marginTop: 1 }}>{lower.deptLabel}</Text>
-          )}
-          <View style={{ position: "relative", width: 80, height: 36, marginTop: 3, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ fontSize: 8, color: "#999", textAlign: "center" }}>(서명)</Text>
-            {lower.signatureData && (
-              <Image
-                src={lower.signatureData}
-                style={{ position: "absolute", top: 0, left: 0, width: 80, height: 36, objectFit: "contain" }}
-              />
-            )}
-          </View>
-          <Text style={{ fontSize: 8.5, textAlign: "center", marginTop: 2 }}>{`(성명) ${lower.name || ""}`}</Text>
-        </View>
-      </View>
+    <View style={{ border: "0.8px solid " + C.border, marginTop: 7 }}>
+      {/* 신청인 행 (1줄 가로) */}
+      <SignRow
+        roleLabel={applicant.roleLabel}
+        deptLabel={applicant.deptLabel}
+        name={applicant.name}
+        signatureData={applicant.signatureData}
+        borderBottom={true}
+      />
+      {/* 허가자 행 (1줄 가로) */}
+      <SignRow
+        roleLabel={upper.roleLabel}
+        deptLabel={upper.deptLabel}
+        name={upper.name}
+        signatureData={upper.signatureData}
+        borderBottom={true}
+      />
+      {/* 확인자 행 (1줄 가로) */}
+      <SignRow
+        roleLabel={lower.roleLabel}
+        deptLabel={lower.deptLabel}
+        name={lower.name}
+        signatureData={lower.signatureData}
+        borderBottom={false}
+      />
     </View>
   );
 }
 
-// 붙임1 서명 섹션: 3열 균등 배치
+// 붙임1 서명 섹션: 3열 균등 배치 (기존 유지)
 function SignSection1({ entries }: {
   entries: Array<{ roleLabel: string; deptLabel?: string; name?: string; signatureData?: string }>;
 }) {
   return (
     <View style={{ border: "0.8px solid " + C.border, marginTop: 7, flexDirection: "row" }}>
       {entries.map((e, i) => (
-        <SignatureCell
-          key={i}
-          roleLabel={e.roleLabel}
-          deptLabel={e.deptLabel}
-          name={e.name}
-          signatureData={e.signatureData}
-          borderRight={i < entries.length - 1}
-        />
+        <View key={i} style={{
+          flex: 1,
+          borderRight: i < entries.length - 1 ? "0.5px solid " + C.border : "none",
+          padding: "5 6",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: 75,
+        }}>
+          <Text style={{ fontSize: 8.5, fontWeight: "bold", color: C.navy, textAlign: "center" }}>{e.roleLabel}</Text>
+          {e.deptLabel && <Text style={{ fontSize: 6.5, color: "#555", textAlign: "center", marginTop: 1 }}>{e.deptLabel}</Text>}
+          <View style={{ position: "relative", width: 80, height: 40, marginTop: 4, alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ fontSize: 8, color: "#999" }}>(서명)</Text>
+            {e.signatureData && (
+              <Image src={e.signatureData} style={{ position: "absolute", top: 0, left: 0, width: 80, height: 40, objectFit: "contain" }} />
+            )}
+          </View>
+          <Text style={{ fontSize: 8.5, textAlign: "center", marginTop: 2 }}>{`(성명) ${e.name || ""}`}</Text>
+        </View>
       ))}
-    </View>
-  );
-}
-
-function Footer({ documentId, createdAt }: { documentId: string; createdAt: string }) {
-  return (
-    <View style={S.footer}>
-      <Text style={S.footerText}>{`문서번호: ${documentId.slice(0, 8)}`}</Text>
-      <Text style={S.footerText}>{`생성일시: ${new Date(createdAt).toLocaleString("ko-KR")} | 한국농어촌공사 안전관리시스템`}</Text>
     </View>
   );
 }
@@ -245,7 +234,6 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
     { key: "factorElectricFire",  label: "감전·전기불꽃 화재" },
     { key: "factorSparkFire",     label: "스파크·화염에 의한 화재" },
   ];
-  // workStartDate/workEndDate 우선, 없으면 workDate fallback
   const workPeriod = fd.workStartDate && fd.workEndDate
     ? `${fd.workStartDate} ~ ${fd.workEndDate}`
     : fd.workStartDate || fd.workDate || "";
@@ -272,12 +260,13 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
             <Text style={[S.il, { width: 75 }]}>용역명</Text>
             <Text style={S.iv}>{taskName || fd.projectName || ""}</Text>
           </View>
-          <View style={S.tr}>
-            <Text style={[S.il, { width: 75 }]}>신청인</Text>
-            <Text style={[S.iv, { flex: 1, borderRight: "0.5px solid " + C.border }]}>{`(업체명) ${fd.applicantCompany||""}`}</Text>
-            <Text style={[S.iv, { flex: 1, borderRight: "0.5px solid " + C.border }]}>{`(직책) ${fd.applicantTitle||""}`}</Text>
-            <Text style={[S.iv, { flex: 1 }]}>{`(성명) ${fd.applicantName||""}`}</Text>
-          </View>
+          {/* 붙임1 신청인: 업체명/직책/성명+서명이미지 인라인 */}
+          <ApplicantRowWithSign
+            applicantCompany={fd.applicantCompany}
+            applicantTitle={fd.applicantTitle}
+            applicantName={fd.applicantName}
+            signatureData={applicantSignature}
+          />
           <View style={S.tr}>
             <Text style={[S.il, { width: 75 }]}>작업 내용</Text>
             <Text style={S.iv}>{fd.workContent||""}</Text>
@@ -340,9 +329,8 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
             <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 35 }]}>{fd.reviewResult||""}</Text>
           </View>
         </View>
-        {/* 붙임1: 3열 균등 배치 */}
+        {/* 붙임1 하단 서명란: 3열 (검토자/허가자는 별도 열) */}
         <SignSection1 entries={[
-          { roleLabel: "신청인", deptLabel: fd.applicantCompany || "", name: fd.applicantName, signatureData: applicantSignature },
           { roleLabel: "최종 검토자 (용역감독)", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a1?.approverName, signatureData: a1?.signatureData },
           { roleLabel: "최종 허가자 (용역감독)", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a2?.approverName, signatureData: a2?.signatureData },
         ]} />
@@ -420,7 +408,7 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
         <View style={[S.table, { marginBottom: 5 }]}>
           <Text style={[S.td, { borderRight: 0, minHeight: 40 }]}>{fd.specialMeasures||""}</Text>
         </View>
-        {/* 붙임2: 신청인(좌) + 허가자/확인자 상하(우) */}
+        {/* 붙임2: 1줄 가로 배치 (신청인 → 허가자 → 확인자) */}
         <SignSection3
           applicant={{ roleLabel: "신청인", deptLabel: fd.applicantCompany || "", name: fd.applicantName, signatureData: applicantSignature }}
           upper={{ roleLabel: "(계획확인) 허가자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a1?.approverName, signatureData: a1?.signatureData }}
@@ -508,7 +496,7 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
           </View>
         </View>
         <Text style={{ fontSize: 9, textAlign: "center", marginVertical: 4 }}>위와 같이 휴일작업을 신청하오니 승인하여 주시기 바랍니다.</Text>
-        {/* 붙임3: 신청인(좌) + 검토자/승인자 상하(우) */}
+        {/* 붙임3: 1줄 가로 배치 (신청자 → 검토자 → 승인자) */}
         <SignSection3
           applicant={{ roleLabel: "신청자 (안전보건관리책임자)", deptLabel: `소속: ${fd.applicantOrg||""}`, name: fd.applicantName, signatureData: applicantSignature }}
           upper={{ roleLabel: "검토자 (용역감독원)", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a1?.approverName, signatureData: a1?.signatureData }}
@@ -614,7 +602,7 @@ export function PowerOutagePDF({ formData: fd, approvalLines, documentId, create
         <View style={[S.table, { marginBottom: 5 }]}>
           <Text style={[S.td, { borderRight: 0, minHeight: 55 }]}>{fd.specialMeasures||""}</Text>
         </View>
-        {/* 붙임4: 신청인(좌) + 허가자/확인자 상하(우) */}
+        {/* 붙임4: 1줄 가로 배치 (신청인 → 허가자 → 확인자) */}
         <SignSection3
           applicant={{ roleLabel: "신청인", deptLabel: fd.applicantCompany || "", name: fd.applicantName, signatureData: applicantSignature }}
           upper={{ roleLabel: "(계획확인) 허가자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a1?.approverName, signatureData: a1?.signatureData }}

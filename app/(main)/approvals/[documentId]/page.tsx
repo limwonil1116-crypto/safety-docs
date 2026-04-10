@@ -292,12 +292,10 @@ function FinalApproverModal({ documentId, documentType, onClose, onAssigned }: {
   );
 }
 
-// ===== PDF 버튼 컴포넌트 =====
+// ===== PDF 버튼 - 모바일 호환 =====
 function PdfButtons({ documentId }: { documentId: string }) {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
 
   const handlePreview = async () => {
     setLoading(true);
@@ -305,71 +303,47 @@ function PdfButtons({ documentId }: { documentId: string }) {
       const res = await fetch(`/api/documents/${documentId}/pdf`);
       const data = await res.json();
       if (data.url) {
-        setPreviewUrl(data.url);
-        setShowPreview(true);
+        window.open(data.url, "_blank");
+      } else {
+        alert("PDF 생성에 실패했습니다.");
       }
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); alert("PDF 미리보기에 실패했습니다."); }
     finally { setLoading(false); }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     setDownloading(true);
-    try {
-      const res = await fetch(`/api/documents/${documentId}/pdf?download=true`);
-      const blob = await res.blob();
-      const disposition = res.headers.get("Content-Disposition") ?? "";
-      const match = disposition.match(/filename\*=UTF-8''(.+)/);
-      const filename = match ? decodeURIComponent(match[1]) : "법정서류.pdf";
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = filename; a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) { console.error(e); alert("PDF 다운로드에 실패했습니다."); }
-    finally { setDownloading(false); }
+    const a = document.createElement("a");
+    a.href = `/api/documents/${documentId}/pdf?download=true`;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => setDownloading(false), 2000);
   };
 
   return (
-    <>
-      <div className="flex gap-2">
-        <button onClick={handlePreview} disabled={loading}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-blue-200 text-blue-600 text-sm font-medium hover:bg-blue-50 disabled:opacity-50">
-          {loading ? (
-            <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-          ) : (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          )}
-          {loading ? "생성 중..." : "미리보기"}
-        </button>
-        <button onClick={handleDownload} disabled={downloading}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-green-200 text-green-600 text-sm font-medium hover:bg-green-50 disabled:opacity-50">
-          {downloading ? (
-            <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-          ) : (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          )}
-          {downloading ? "다운로드 중..." : "PDF 다운로드"}
-        </button>
-      </div>
-
-      {/* PDF 미리보기 모달 */}
-      {showPreview && previewUrl && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex flex-col">
-          <div className="flex items-center justify-between px-4 py-3 bg-white">
-            <span className="text-sm font-bold text-gray-900">법정서류 미리보기</span>
-            <div className="flex items-center gap-2">
-              <button onClick={handleDownload}
-                className="px-3 py-1.5 rounded-lg bg-green-500 text-white text-xs font-medium">
-                다운로드
-              </button>
-              <button onClick={() => setShowPreview(false)} className="text-gray-500">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
-            </div>
-          </div>
-          <iframe src={previewUrl} className="flex-1 w-full" title="PDF 미리보기" />
-        </div>
-      )}
-    </>
+    <div className="flex gap-2">
+      <button onClick={handlePreview} disabled={loading}
+        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-blue-200 text-blue-600 text-sm font-medium hover:bg-blue-50 disabled:opacity-50 active:bg-blue-100">
+        {loading ? (
+          <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        )}
+        {loading ? "생성 중..." : "미리보기"}
+      </button>
+      <button onClick={handleDownload} disabled={downloading}
+        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-green-200 text-green-600 text-sm font-medium hover:bg-green-50 disabled:opacity-50 active:bg-green-100">
+        {downloading ? (
+          <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        )}
+        {downloading ? "다운로드 중..." : "PDF 다운로드"}
+      </button>
+    </div>
   );
 }
 
