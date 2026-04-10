@@ -59,46 +59,36 @@ function Footer({ documentId, createdAt }: { documentId: string; createdAt: stri
   );
 }
 
-// ===== 날짜+시간 → "M월 D일 HH:MM" 형식 변환 =====
+// ===== 날짜+시간 → "M월 D일 HH시 MM분" 형식 =====
 function formatDateTime(dateStr?: string, timeStr?: string): string {
   if (!dateStr) return "";
   try {
     const d = new Date(dateStr + "T00:00:00");
     const month = d.getMonth() + 1;
-    const day = d.getDate();
+    const day   = d.getDate();
     const datePart = `${month}월 ${day}일`;
     if (!timeStr) return datePart;
-    // "09:00" → "09시 00분"
     const [h, m] = timeStr.split(":");
-    const timePart = `${h}시 ${m || "00"}분`;
-    return `${datePart} ${timePart}`;
+    return `${datePart} ${h}시 ${m || "00"}분`;
   } catch {
     return `${dateStr} ${timeStr || ""}`;
   }
 }
 
-// "2026-04-18 09:00 ~ 2026-04-23 18:00" 형식으로 작업수행시간 생성
 function buildWorkPeriodText(fd: Record<string, any>): string {
   const startDate = fd.workStartDate || fd.workDate || "";
   const endDate   = fd.workEndDate   || fd.workDate || "";
   const startTime = fd.workStartTime || "";
   const endTime   = fd.workEndTime   || "";
-
   if (!startDate) return "";
-
   const start = formatDateTime(startDate, startTime);
   const end   = formatDateTime(endDate,   endTime);
-
-  if (start === end) return start;
-  return `${start} ~ ${end}`;
+  return start === end ? start : `${start} ~ ${end}`;
 }
 
-// ===== 붙임1 전용: 신청인 행에 서명 이미지 인라인 =====
+// ===== 붙임1 신청인 행: 업체명/직책/성명+서명 인라인 =====
 function ApplicantRowWithSign({ applicantCompany, applicantTitle, applicantName, signatureData }: {
-  applicantCompany?: string;
-  applicantTitle?: string;
-  applicantName?: string;
-  signatureData?: string;
+  applicantCompany?: string; applicantTitle?: string; applicantName?: string; signatureData?: string;
 }) {
   return (
     <View style={[S.tr, { alignItems: "center", minHeight: 28 }]}>
@@ -115,24 +105,17 @@ function ApplicantRowWithSign({ applicantCompany, applicantTitle, applicantName,
   );
 }
 
-// ===== 붙임2/3/4 신청인 행 (상단 표에 인라인 서명 포함) =====
-// "○ 신 청 인" 레이블 행에 서명 이미지까지 포함
+// ===== 붙임2/3/4 신청인 행: 맨 위에 서명 포함 =====
 function ConfinedApplicantRow({ label, applicantCompany, applicantTitle, applicantName, signatureData, labelWidth = 98 }: {
-  label: string;
-  applicantCompany?: string;
-  applicantTitle?: string;
-  applicantName?: string;
-  signatureData?: string;
-  labelWidth?: number;
+  label: string; applicantCompany?: string; applicantTitle?: string; applicantName?: string;
+  signatureData?: string; labelWidth?: number;
 }) {
   return (
     <View style={[S.tr, { alignItems: "center", minHeight: 26 }]}>
       <Text style={[S.il, { width: labelWidth }]}>{label}</Text>
-      {/* 업체명 직책 성명 */}
       <Text style={[S.iv, { flex: 2, borderRight: "0.5px solid " + C.border }]}>
         {`(업체명) ${applicantCompany || ""}   (직책) ${applicantTitle || ""}   (성명) ${applicantName || ""}`}
       </Text>
-      {/* 서명 이미지 */}
       <View style={{ width: 70, padding: "2 4", alignItems: "center", justifyContent: "center" }}>
         {signatureData
           ? <Image src={signatureData} style={{ width: 62, height: 20, objectFit: "contain" }} />
@@ -142,54 +125,43 @@ function ConfinedApplicantRow({ label, applicantCompany, applicantTitle, applica
   );
 }
 
-// ===== 허가자/확인자 서명란 - 표 형태 =====
-// | (역할) 허가자              |
-// | (부서) 안전기술본부 (직책) 용역감독원 |
-// | (성명) 임원일  서명: [이미지] |
-function ApproverSignTable({ entries, marginTop = 7 }: {
-  entries: Array<{ roleLabel: string; deptLabel?: string; name?: string; signatureData?: string }>;
-  marginTop?: number;
+// ===== 허가자/확인자 1줄 행 =====
+// | (계획확인) 허가자 | (부서) 안전기술본부 (직책) 용역감독원 | (성명) 임원일 | [서명이미지] |
+function ApproverRow({ roleLabel, dept, position, name, signatureData, borderBottom = true }: {
+  roleLabel: string; dept?: string; position?: string; name?: string;
+  signatureData?: string; borderBottom?: boolean;
 }) {
+  const deptText = [dept ? `(부서) ${dept}` : "", position ? `(직책) ${position}` : ""].filter(Boolean).join("   ");
   return (
-    <View style={{ border: "0.8px solid " + C.border, marginTop }}>
-      {entries.map((e, i) => (
-        <View key={i} style={{
-          borderBottom: i < entries.length - 1 ? "0.5px solid " + C.border : "none",
-        }}>
-          {/* 역할 헤더 행 */}
-          <View style={{
-            backgroundColor: C.sectionBg,
-            borderBottom: "0.5px solid " + C.border,
-            padding: "3 6",
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 8,
-          }}>
-            <Text style={{ fontSize: 8.5, fontWeight: "bold", color: C.navy }}>{e.roleLabel}</Text>
-            {e.deptLabel && (
-              <Text style={{ fontSize: 7, color: "#444" }}>{e.deptLabel}</Text>
-            )}
-          </View>
-          {/* 성명 + 서명 행 */}
-          <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 32 }}>
-            {/* 성명 */}
-            <Text style={{ fontSize: 9, flex: 1 }}>{`(성명) ${e.name || ""}`}</Text>
-            {/* 서명 레이블 + 이미지 */}
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, borderLeft: "0.5px solid " + C.border, paddingLeft: 8 }}>
-              <Text style={{ fontSize: 8, color: "#666" }}>서명</Text>
-              <View style={{ width: 1, height: 20, backgroundColor: C.border, marginHorizontal: 3 }} />
-              {e.signatureData
-                ? <Image src={e.signatureData} style={{ width: 80, height: 28, objectFit: "contain" }} />
-                : <View style={{ width: 80, height: 28, border: "0.5px dashed #ccc" }} />}
-            </View>
-          </View>
-        </View>
-      ))}
+    <View style={{
+      flexDirection: "row",
+      alignItems: "center",
+      borderBottom: borderBottom ? "0.5px solid " + C.border : "none",
+      minHeight: 30,
+    }}>
+      {/* 역할 */}
+      <View style={{ width: 80, padding: "3 5", backgroundColor: C.labelBg, borderRight: "0.5px solid " + C.border, justifyContent: "center", alignSelf: "stretch" }}>
+        <Text style={{ fontSize: 8, fontWeight: "bold", color: C.navy }}>{roleLabel}</Text>
+      </View>
+      {/* 부서·직책 */}
+      <Text style={{ flex: 2, fontSize: 8, padding: "3 5", borderRight: "0.5px solid " + C.border }}>
+        {deptText || "(부서) 안전기술본부   (직책) 용역감독원"}
+      </Text>
+      {/* 성명 */}
+      <Text style={{ width: 70, fontSize: 8.5, padding: "3 5", borderRight: "0.5px solid " + C.border }}>
+        {`(성명) ${name || ""}`}
+      </Text>
+      {/* 서명 이미지 */}
+      <View style={{ width: 80, padding: "2 4", alignItems: "center", justifyContent: "center" }}>
+        {signatureData
+          ? <Image src={signatureData} style={{ width: 72, height: 24, objectFit: "contain" }} />
+          : <View style={{ width: 72, height: 24, border: "0.5px dashed #ccc" }} />}
+      </View>
     </View>
   );
 }
 
-// 붙임1 하단 서명란: 검토자/허가자 표
+// ===== 붙임1 하단 서명란: 3열 균등 =====
 function SignSection1({ entries }: {
   entries: Array<{ roleLabel: string; deptLabel?: string; name?: string; signatureData?: string }>;
 }) {
@@ -197,12 +169,8 @@ function SignSection1({ entries }: {
     <View style={{ border: "0.8px solid " + C.border, marginTop: 7, flexDirection: "row" }}>
       {entries.map((e, i) => (
         <View key={i} style={{
-          flex: 1,
-          borderRight: i < entries.length - 1 ? "0.5px solid " + C.border : "none",
-          padding: "5 6",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: 70,
+          flex: 1, borderRight: i < entries.length - 1 ? "0.5px solid " + C.border : "none",
+          padding: "5 6", alignItems: "center", justifyContent: "center", minHeight: 70,
         }}>
           <Text style={{ fontSize: 8.5, fontWeight: "bold", color: C.navy, textAlign: "center" }}>{e.roleLabel}</Text>
           {e.deptLabel && <Text style={{ fontSize: 6.5, color: "#555", textAlign: "center", marginTop: 1 }}>{e.deptLabel}</Text>}
@@ -212,6 +180,27 @@ function SignSection1({ entries }: {
           </View>
           <Text style={{ fontSize: 8.5, textAlign: "center", marginTop: 2 }}>{`(성명) ${e.name || ""}`}</Text>
         </View>
+      ))}
+    </View>
+  );
+}
+
+// ===== 붙임2/3/4 허가자+확인자 섹션 (각 1줄) =====
+function ApproverSection({ entries }: {
+  entries: Array<{ roleLabel: string; dept?: string; position?: string; name?: string; signatureData?: string }>;
+}) {
+  return (
+    <View style={{ border: "0.8px solid " + C.border, marginTop: 7 }}>
+      {entries.map((e, i) => (
+        <ApproverRow
+          key={i}
+          roleLabel={e.roleLabel}
+          dept={e.dept}
+          position={e.position}
+          name={e.name}
+          signatureData={e.signatureData}
+          borderBottom={i < entries.length - 1}
+        />
       ))}
     </View>
   );
@@ -337,8 +326,8 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
           </View>
         </View>
         <SignSection1 entries={[
-          { roleLabel: "최종 검토자 (용역감독)", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a1?.approverName, signatureData: a1?.signatureData },
-          { roleLabel: "최종 허가자 (용역감독)", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a2?.approverName, signatureData: a2?.signatureData },
+          { roleLabel: "최종 검토자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a1?.approverName, signatureData: a1?.signatureData },
+          { roleLabel: "최종 허가자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a2?.approverName, signatureData: a2?.signatureData },
         ]} />
         <Footer documentId={documentId} createdAt={createdAt} />
       </Page>
@@ -364,16 +353,9 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
           <Text style={S.titleMain}>밀폐공간 작업 허가서<Text style={S.titleSub}>(수급업체용)</Text></Text>
         </View>
         <View style={S.table}>
-          {/* 신청인 - 맨 위, 서명 포함 */}
-          <ConfinedApplicantRow
-            label="○ 신 청 인"
-            applicantCompany={fd.applicantCompany}
-            applicantTitle={fd.applicantTitle}
-            applicantName={fd.applicantName}
-            signatureData={applicantSignature}
-          />
+          <ConfinedApplicantRow label="○ 신 청 인" applicantCompany={fd.applicantCompany} applicantTitle={fd.applicantTitle} applicantName={fd.applicantName} signatureData={applicantSignature} />
           {[
-            { label: "○ 용 역 명", val: taskName || fd.serviceName || "" },
+            { label: "○ 용 역 명",    val: taskName || fd.serviceName || "" },
             { label: "○ 작업수행시간", val: workPeriodText },
             { label: "○ 작 업 장 소", val: fd.workLocation || "" },
             { label: "○ 작 업 내 용", val: fd.workContent || "" },
@@ -419,10 +401,9 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
         <View style={[S.table, { marginBottom: 5 }]}>
           <Text style={[S.td, { borderRight: 0, minHeight: 40 }]}>{fd.specialMeasures||""}</Text>
         </View>
-        {/* 허가자/확인자 서명 표: (성명) 000  서명: [이미지] */}
-        <ApproverSignTable entries={[
-          { roleLabel: "(계획확인) 허가자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a1?.approverName, signatureData: a1?.signatureData },
-          { roleLabel: "(이행확인) 확인자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a2?.approverName, signatureData: a2?.signatureData },
+        <ApproverSection entries={[
+          { roleLabel: "(계획확인) 허가자", dept: "안전기술본부", position: "용역감독원", name: a1?.approverName, signatureData: a1?.signatureData },
+          { roleLabel: "(이행확인) 확인자", dept: "안전기술본부", position: "용역감독원", name: a2?.approverName, signatureData: a2?.signatureData },
         ]} />
         <Footer documentId={documentId} createdAt={createdAt} />
       </Page>
@@ -504,22 +485,22 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
           </View>
         </View>
         <Text style={{ fontSize: 9, textAlign: "center", marginVertical: 4 }}>위와 같이 휴일작업을 신청하오니 승인하여 주시기 바랍니다.</Text>
-        {/* 신청자 서명 */}
-        <View style={{ border: "0.8px solid " + C.border, marginBottom: 4 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 30 }}>
-            <Text style={{ fontSize: 8.5, flex: 1 }}>
-              {`신청자 (안전보건관리책임자)   소속: ${fd.applicantOrg||""}   (성명) ${fd.applicantName||""}`}
-            </Text>
-            {applicantSignature
-              ? <Image src={applicantSignature} style={{ width: 70, height: 24, objectFit: "contain" }} />
-              : <View style={{ width: 70, height: 24, border: "0.5px dashed #ccc" }} />}
-          </View>
+        {/* 신청자 1줄 */}
+        <View style={{ border: "0.8px solid " + C.border, marginBottom: 2 }}>
+          <ApproverRow
+            roleLabel="신청자"
+            dept={fd.applicantOrg || ""}
+            position=""
+            name={fd.applicantName}
+            signatureData={applicantSignature}
+            borderBottom={false}
+          />
         </View>
-        {/* 검토자/승인자 서명 표 */}
-        <ApproverSignTable entries={[
-          { roleLabel: "검토자 (용역감독원)", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a1?.approverName, signatureData: a1?.signatureData },
-          { roleLabel: "승인자 (관리감독자)", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a2?.approverName, signatureData: a2?.signatureData },
-        ]} marginTop={0} />
+        {/* 검토자/승인자 1줄씩 */}
+        <ApproverSection entries={[
+          { roleLabel: "검토자 (용역감독원)", dept: "안전기술본부", position: "용역감독원", name: a1?.approverName, signatureData: a1?.signatureData },
+          { roleLabel: "승인자 (관리감독자)", dept: "안전기술본부", position: "용역감독원", name: a2?.approverName, signatureData: a2?.signatureData },
+        ]} />
         <Text style={{ fontSize: 9.5, fontWeight: "bold", textAlign: "center", marginTop: 5 }}>한국농어촌공사 안전기술본부장 귀하</Text>
         <Footer documentId={documentId} createdAt={createdAt} />
       </Page>
@@ -553,17 +534,9 @@ export function PowerOutagePDF({ formData: fd, approvalLines, documentId, create
           </Text>
         </View>
         <View style={S.table}>
-          {/* 신청인 - 맨 위, 서명 포함 */}
-          <ConfinedApplicantRow
-            label="○ 신 청 인"
-            applicantCompany={fd.applicantCompany}
-            applicantTitle={fd.applicantTitle}
-            applicantName={fd.applicantName}
-            signatureData={applicantSignature}
-            labelWidth={100}
-          />
+          <ConfinedApplicantRow label="○ 신 청 인" applicantCompany={fd.applicantCompany} applicantTitle={fd.applicantTitle} applicantName={fd.applicantName} signatureData={applicantSignature} labelWidth={100} />
           {[
-            { label: "○ 용 역 명", val: taskName || fd.serviceName || "" },
+            { label: "○ 용 역 명",    val: taskName || fd.serviceName || "" },
             { label: "○ 작업수행시간", val: workPeriodText },
             { label: "○ 작 업 장 소", val: fd.workLocation || "" },
             { label: "○ 작 업 내 용", val: fd.workContent || "" },
@@ -626,10 +599,9 @@ export function PowerOutagePDF({ formData: fd, approvalLines, documentId, create
         <View style={[S.table, { marginBottom: 5 }]}>
           <Text style={[S.td, { borderRight: 0, minHeight: 55 }]}>{fd.specialMeasures||""}</Text>
         </View>
-        {/* 허가자/확인자 서명 표 */}
-        <ApproverSignTable entries={[
-          { roleLabel: "(계획확인) 허가자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a1?.approverName, signatureData: a1?.signatureData },
-          { roleLabel: "(이행확인) 확인자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a2?.approverName, signatureData: a2?.signatureData },
+        <ApproverSection entries={[
+          { roleLabel: "(계획확인) 허가자", dept: "안전기술본부", position: "용역감독원", name: a1?.approverName, signatureData: a1?.signatureData },
+          { roleLabel: "(이행확인) 확인자", dept: "안전기술본부", position: "용역감독원", name: a2?.approverName, signatureData: a2?.signatureData },
         ]} />
         <Footer documentId={documentId} createdAt={createdAt} />
       </Page>

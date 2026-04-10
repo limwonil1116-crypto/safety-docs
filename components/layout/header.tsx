@@ -9,36 +9,47 @@ interface BeforeInstallPromptEvent extends Event {
 
 export default function Header() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isIOS, setIsIOS] = useState(false);
-  const [showInstall, setShowInstall] = useState(false);
   const [showIOSGuide, setShowIOSGuide] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
-    if (window.matchMedia("(display-mode: standalone)").matches) return;
-    if ((window.navigator as any).standalone) return;
-    const ua = navigator.userAgent;
-    const ios = /iPhone|iPad|iPod/.test(ua) && !(window as any).MSStream;
-    setIsIOS(ios);
-    if (ios) {
-      setShowInstall(true);
-    } else {
-      const handler = (e: Event) => {
-        e.preventDefault();
-        setInstallPrompt(e as BeforeInstallPromptEvent);
-        setShowInstall(true);
-      };
-      window.addEventListener("beforeinstallprompt", handler);
-      return () => window.removeEventListener("beforeinstallprompt", handler);
+    // 이미 설치된 경우
+    if (window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone) {
+      setIsStandalone(true);
+      return;
     }
+    // Android Chrome: beforeinstallprompt 이벤트 캐치
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as BeforeInstallPromptEvent);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
 
   const handleInstall = async () => {
-    if (isIOS) { setShowIOSGuide(true); return; }
-    if (!installPrompt) return;
-    await installPrompt.prompt();
-    const { outcome } = await installPrompt.userChoice;
-    if (outcome === "accepted") setShowInstall(false);
-    setInstallPrompt(null);
+    const ua = navigator.userAgent;
+    const isIOS = /iPhone|iPad|iPod/.test(ua) && !(window as any).MSStream;
+    // 카톡/인앱브라우저 감지
+    const isInApp = /KAKAO|kakaotalk|Instagram|NAVER|NaverApp|FB_IAB|FBAN/i.test(ua);
+
+    if (isInApp) {
+      // 인앱브라우저: 외부 브라우저로 열기 안내
+      alert("앱 설치를 위해 Safari 또는 Chrome 브라우저로 열어주세요.\n\n• Safari: 하단 공유 → 홈 화면에 추가\n• Chrome: 주소창 우측 메뉴 → 홈 화면에 추가");
+      return;
+    }
+    if (isIOS) {
+      setShowIOSGuide(true);
+      return;
+    }
+    if (installPrompt) {
+      await installPrompt.prompt();
+      const { outcome } = await installPrompt.userChoice;
+      if (outcome === "accepted") setInstallPrompt(null);
+    } else {
+      // 이미 설치됐거나 지원 안 하는 경우
+      alert("이미 설치되어 있거나, 브라우저 메뉴에서 '홈 화면에 추가'를 이용해주세요.");
+    }
   };
 
   return (
@@ -55,8 +66,8 @@ export default function Header() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* PWA 설치 버튼 - 항상 우측 상단 */}
-          {showInstall && (
+          {/* PWA 설치 버튼 - 설치 완료 전엔 항상 표시 */}
+          {!isStandalone && (
             <button onClick={handleInstall}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold"
               style={{ background: "#2563eb", color: "white" }}>
