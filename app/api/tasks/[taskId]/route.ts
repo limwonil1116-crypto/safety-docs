@@ -61,7 +61,7 @@ export async function GET(
     }
 
     // 臾몄꽌蹂?寃곗옱??議고쉶
-    const docIds = docList.map((d) => d.id);
+    const docIds = docList.map((d: typeof docList[0]) => d.id);
     let approvalLinesMap: Record<string, { approvalOrder: number; approverName: string | null; approverOrg: string | null; stepStatus: string }[]> = {};
 
     if (docIds.length > 0) {
