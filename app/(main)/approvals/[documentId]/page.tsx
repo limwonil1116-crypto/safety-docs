@@ -384,7 +384,7 @@ export default function ApprovalDetailPage() {
               <div className="bg-white rounded-2xl p-4 shadow-sm">
                 <h3 className="text-sm font-bold text-gray-900 mb-3">서명</h3>
                 <div className="space-y-3">
-                  {fd.signatureData && (
+                  {typeof fd.signatureData === "string" && fd.signatureData && (
                     <div>
                       <p className="text-xs text-gray-500 mb-1">신청인 서명</p>
                       <div className="border border-gray-200 rounded-xl overflow-hidden">
