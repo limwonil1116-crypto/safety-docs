@@ -123,7 +123,7 @@ export async function POST(
       }).catch(() => {}); // ?쒕챸 ????ㅽ뙣?대룄 ?쒖텧? 吏꾪뻾
     }
 
-    // 臾몄꽌 ?곹깭 SUBMITTED濡??낅뜲?댄듃
+    // 문서 상태 SUBMITTED로 업데이트
     const updatedFormData = {
       ...(doc.formDataJson as object),
       ...(formDataJson ?? {}),
