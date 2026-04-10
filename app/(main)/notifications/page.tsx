@@ -144,6 +144,7 @@ export default function NotificationsPage() {
     if (notification.targetDocumentId) {
       router.push(`/approvals/${notification.targetDocumentId}`);
     }
+  };
   const filtered = filter === "unread" ? list.filter((n) => !n.isRead) : list;
   const grouped: Record<string, NotificationItem[]> = {};
   filtered.forEach((n) => {
@@ -159,7 +160,6 @@ export default function NotificationsPage() {
     grouped[key].push(n);
   });
   const groupKeys = Object.keys(grouped);
-
 
       {/* 헤더 */}
 
