@@ -92,7 +92,7 @@ export async function POST(
     const buffer = Buffer.from(arrayBuffer);
 
     // Google Drive 업로드 (문서ID 기반 서브폴더)
-    const { fileId, webViewLink, webContentLink } = await uploadToDrive(
+    const { fileId, webViewLink, directUrl } = await uploadToDrive(
       buffer,
       `${Date.now()}_${file.name}`,
       file.type,
@@ -100,10 +100,7 @@ export async function POST(
     );
 
     // 이미지는 직접 보기 URL, 나머지는 webViewLink
-    const isImage = file.type.startsWith("image/");
-    const fileUrl = isImage
-      ? `https://drive.google.com/uc?export=view&id=${fileId}`
-      : webViewLink;
+    const fileUrl = directUrl;
 
     // DB 저장
     const [attachment] = await db
