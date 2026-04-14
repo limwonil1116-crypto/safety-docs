@@ -6,12 +6,14 @@ import { documents, documentAttachments } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  "https://gtvyekhjrrubbcxdnxlw.supabase.co",
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
+const SUPABASE_URL = "https://gtvyekhjrrubbcxdnxlw.supabase.co";
 const BUCKET = "attachments";
+
+function getSupabase() {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
+  return createClient(SUPABASE_URL, key);
+}
 
 // GET - 첨부파일 목록
 export async function GET(
@@ -90,34 +92,23 @@ export async function POST(
         { status: 400 }
       );
 
-    // Supabase Storage 업로드
+    const supabase = getSupabase();
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const filePath = `${documentId}/${Date.now()}_${file.name}`;
 
     const { error: uploadError } = await supabase.storage
       .from(BUCKET)
-      .upload(filePath, buffer, {
-        contentType: file.type,
-        upsert: false,
-      });
+      .upload(filePath, buffer, { contentType: file.type, upsert: false });
 
     if (uploadError) {
       console.error("Supabase 업로드 오류:", uploadError);
-      return NextResponse.json(
-        { error: `업로드 실패: ${uploadError.message}` },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: `업로드 실패: ${uploadError.message}` }, { status: 500 });
     }
 
-    // 공개 URL 가져오기
-    const { data: urlData } = supabase.storage
-      .from(BUCKET)
-      .getPublicUrl(filePath);
-
+    const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(filePath);
     const fileUrl = urlData.publicUrl;
 
-    // DB 저장
     const [attachment] = await db
       .insert(documentAttachments)
       .values({
@@ -169,14 +160,12 @@ export async function DELETE(
       return NextResponse.json({ error: "파일을 찾을 수 없습니다." }, { status: 404 });
 
     // Supabase Storage에서 삭제
-    const { documentId } = await params;
+    const supabase = getSupabase();
     const urlParts = attachment.fileUrl.split(`/${BUCKET}/`);
     if (urlParts.length > 1) {
-      const filePath = urlParts[1];
-      await supabase.storage.from(BUCKET).remove([filePath]);
+      await supabase.storage.from(BUCKET).remove([urlParts[1]]);
     }
 
-    // soft delete
     await db
       .update(documentAttachments)
       .set({ deletedAt: new Date() })
