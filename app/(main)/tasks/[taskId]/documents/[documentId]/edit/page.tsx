@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
-// ===== 타입 =====
 interface UserItem { id: string; name: string; organization?: string; role: string; employeeNo?: string; }
 interface PrevDoc { id: string; formDataJson: Record<string, unknown>; createdAt: string; }
 interface Attachment {
@@ -28,7 +27,10 @@ const textareaClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-s
 const dateInputClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500";
 const timeInputClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500";
 
-// ===== 위험성평가표 직접입력 =====
+// 위험공종 관련작업(장소) 상세 항목
+const HIGH_PLACE_ITEMS = ["저수지 여수로 침수탑", "방조제 배수갑문", "양 배수장 건축물"];
+const WATER_WORK_ITEMS = ["저수지 장류시면 물넘이 감세공", "방조제 제방시면 배수갑문", "양배수장 유입·토출수로"];
+
 const defaultRiskAssessRow: RiskAssessRow = {
   workType: "", riskFactor: "", riskLevel: "중",
   currentMeasure: "", residualRisk: "하", additionalMeasure: "",
@@ -55,26 +57,21 @@ function RiskAssessTable({ rows, onChange }: { rows: RiskAssessRow[]; onChange: 
       </div>
       {rows.map((row, idx) => (
         <div key={idx} className="grid grid-cols-12 gap-1 items-start border border-gray-100 rounded-xl p-2">
-          {([
-            { field: "workType",         cls: "col-span-2", ph: "작업내용", type: "ta" },
-            { field: "riskFactor",       cls: "col-span-2", ph: "위험요인", type: "ta" },
-            { field: "currentMeasure",   cls: "col-span-3", ph: "현재조치", type: "ta" },
-            { field: "additionalMeasure",cls: "col-span-2", ph: "추가조치", type: "ta" },
-          ] as Array<{field: keyof RiskAssessRow; cls: string; ph: string; type: string}>).map(({ field, cls, ph, type }, fi) => (
-            type === "ta"
-              ? <textarea key={field} value={row[field]} onChange={e => update(idx, field, e.target.value)}
-                  rows={2} placeholder={ph}
-                  className={`${cls} px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white text-gray-900 resize-none focus:outline-none focus:ring-1 focus:ring-blue-500`} />
-              : null
-          ))}
-          {/* 위험성 select */}
+          {(["workType","riskFactor","currentMeasure","additionalMeasure"] as (keyof RiskAssessRow)[]).map((field, fi) => {
+            const placeholders: Record<string, string> = { workType: "작업내용", riskFactor: "위험요인", currentMeasure: "현재조치", additionalMeasure: "추가조치" };
+            const colSpans: Record<string, string> = { workType: "col-span-2", riskFactor: "col-span-2", currentMeasure: "col-span-3", additionalMeasure: "col-span-2" };
+            return (
+              <textarea key={field} value={row[field]} onChange={e => update(idx, field, e.target.value)}
+                rows={2} placeholder={placeholders[field]}
+                className={`${colSpans[field]} px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white text-gray-900 resize-none focus:outline-none focus:ring-1 focus:ring-blue-500`} />
+            );
+          })}
           <div className="col-span-1">
             <select value={row.riskLevel} onChange={e => update(idx, "riskLevel", e.target.value)}
               className={`w-full px-1 py-2 border rounded-lg text-xs font-bold text-center focus:outline-none ${levelColors[row.riskLevel] || ""}`}>
               {["상","중","하"].map(l => <option key={l} value={l}>{l}</option>)}
             </select>
           </div>
-          {/* 잔류위험도 select */}
           <div className="col-span-1">
             <select value={row.residualRisk} onChange={e => update(idx, "residualRisk", e.target.value)}
               className={`w-full px-1 py-2 border rounded-lg text-xs font-bold text-center focus:outline-none ${levelColors[row.residualRisk] || ""}`}>
@@ -97,7 +94,6 @@ function RiskAssessTable({ rows, onChange }: { rows: RiskAssessRow[]; onChange: 
   );
 }
 
-// ===== 위험성평가표 섹션 (탭) =====
 function RiskAssessSection({ documentId, riskAssessRows, onChangeRows }: {
   documentId: string; riskAssessRows: RiskAssessRow[]; onChangeRows: (rows: RiskAssessRow[]) => void;
 }) {
@@ -116,9 +112,7 @@ function RiskAssessSection({ documentId, riskAssessRows, onChangeRows }: {
     setUploading(true);
     try {
       const fd = new FormData();
-      fd.append("file", file);
-      fd.append("attachmentType", "DOCUMENT");
-      fd.append("description", "위험성평가표");
+      fd.append("file", file); fd.append("attachmentType", "DOCUMENT"); fd.append("description", "위험성평가표");
       const res = await fetch(`/api/documents/${documentId}/attachments`, { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -137,10 +131,7 @@ function RiskAssessSection({ documentId, riskAssessRows, onChangeRows }: {
   const openFilePicker = (accept: string) => {
     const input = document.createElement("input");
     input.type = "file"; input.accept = accept;
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) handleFileUpload(file);
-    };
+    input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) handleFileUpload(file); };
     input.click();
   };
 
@@ -172,10 +163,7 @@ function RiskAssessSection({ documentId, riskAssessRows, onChangeRows }: {
                 <span className="text-sm">업로드 중...</span>
               </div>
             ) : (
-              <>
-                <p className="text-sm text-gray-600 font-medium">파일을 탭하여 선택</p>
-                <p className="text-xs text-gray-400 mt-1">최대 10MB</p>
-              </>
+              <><p className="text-sm text-gray-600 font-medium">파일을 탭하여 선택</p><p className="text-xs text-gray-400 mt-1">최대 20MB</p></>
             )}
           </div>
           {docFiles.length > 0 && (
@@ -197,7 +185,6 @@ function RiskAssessSection({ documentId, riskAssessRows, onChangeRows }: {
   );
 }
 
-// ===== 사진 첨부 섹션 =====
 function PhotoAttachSection({ documentId, canAdd = true }: { documentId: string; canAdd?: boolean }) {
   const [photos, setPhotos] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -220,9 +207,7 @@ function PhotoAttachSection({ documentId, canAdd = true }: { documentId: string;
     setUploading(true);
     try {
       const fd = new FormData();
-      fd.append("file", file);
-      fd.append("attachmentType", "PHOTO");
-      fd.append("sortOrder", String(photos.length));
+      fd.append("file", file); fd.append("attachmentType", "PHOTO"); fd.append("sortOrder", String(photos.length));
       const res = await fetch(`/api/documents/${documentId}/attachments`, { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -250,12 +235,9 @@ function PhotoAttachSection({ documentId, canAdd = true }: { documentId: string;
         <div className="grid grid-cols-3 gap-2 mb-3">
           {photos.map(photo => (
             <div key={photo.id} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
-              <img src={photo.fileUrl} alt={photo.fileName}
-                className="w-full h-full object-cover cursor-pointer"
-                onClick={() => setPreviewUrl(photo.fileUrl)} />
+              <img src={photo.fileUrl} alt={photo.fileName} className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewUrl(photo.fileUrl)} />
               {canAdd && (
-                <button onClick={() => handleDelete(photo.id)}
-                  className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center text-white">
+                <button onClick={() => handleDelete(photo.id)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 flex items-center justify-center text-white">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               )}
@@ -267,8 +249,7 @@ function PhotoAttachSection({ documentId, canAdd = true }: { documentId: string;
         <div className="flex gap-2">
           <button onClick={() => cameraRef.current?.click()} disabled={uploading}
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 active:bg-gray-100">
-            {uploading
-              ? <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            {uploading ? <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
               : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>}
             카메라
           </button>
@@ -279,9 +260,7 @@ function PhotoAttachSection({ documentId, canAdd = true }: { documentId: string;
           </button>
         </div>
       )}
-      {photos.length === 0 && !canAdd && (
-        <div className="text-center py-6 text-gray-400 text-sm">등록된 사진이 없습니다.</div>
-      )}
+      {photos.length === 0 && !canAdd && <div className="text-center py-6 text-gray-400 text-sm">등록된 사진이 없습니다.</div>}
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.target.value = ""; }} />
       <input ref={galleryRef} type="file" accept="image/*" multiple className="hidden"
@@ -298,7 +277,6 @@ function PhotoAttachSection({ documentId, canAdd = true }: { documentId: string;
   );
 }
 
-// ===== 공통 UI 컴포넌트 =====
 function SectionHeader({ num, title }: { num: number; title: string }) {
   return (
     <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -323,9 +301,7 @@ function LocationField({ workLatitude, workAddress, onOpenLocation, onClearLocat
   return (
     <div>
       <button onClick={onOpenLocation}
-        className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-colors ${
-          workLatitude ? "border-blue-400 bg-blue-50 text-blue-600" : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
-        }`}>
+        className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-colors ${workLatitude ? "border-blue-400 bg-blue-50 text-blue-600" : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"}`}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
         {workLatitude ? "📍 위치 변경" : "📍 지도에서 위치 지정 (GPS 자동감지)"}
       </button>
@@ -346,20 +322,12 @@ function WorkPeriodField({ startDate, endDate, startTime, endTime, onChangeStart
   return (
     <>
       <div className="grid grid-cols-2 gap-3">
-        <FormInput label="작업 시작일" required>
-          <input type="date" value={startDate} onChange={e => onChangeStartDate(e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} />
-        </FormInput>
-        <FormInput label="작업 종료일" required>
-          <input type="date" value={endDate} min={startDate} onChange={e => onChangeEndDate(e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} />
-        </FormInput>
+        <FormInput label="작업 시작일" required><input type="date" value={startDate} onChange={e => onChangeStartDate(e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
+        <FormInput label="작업 종료일" required><input type="date" value={endDate} min={startDate} onChange={e => onChangeEndDate(e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <FormInput label="작업 시작 시간" required>
-          <input type="time" value={startTime} onChange={e => onChangeStartTime(e.target.value)} className={timeInputClass} style={{ colorScheme: "light" }} />
-        </FormInput>
-        <FormInput label="작업 종료 시간" required>
-          <input type="time" value={endTime} onChange={e => onChangeEndTime(e.target.value)} className={timeInputClass} style={{ colorScheme: "light" }} />
-        </FormInput>
+        <FormInput label="작업 시작 시간" required><input type="time" value={startTime} onChange={e => onChangeStartTime(e.target.value)} className={timeInputClass} style={{ colorScheme: "light" }} /></FormInput>
+        <FormInput label="작업 종료 시간" required><input type="time" value={endTime} onChange={e => onChangeEndTime(e.target.value)} className={timeInputClass} style={{ colorScheme: "light" }} /></FormInput>
       </div>
       {startDate && (
         <div className="bg-blue-50 rounded-xl px-3 py-2 text-xs text-blue-700">
@@ -370,7 +338,6 @@ function WorkPeriodField({ startDate, endDate, startTime, endTime, onChangeStart
   );
 }
 
-// ===== SafetyCheckTable =====
 interface SafetyCheckItem { label: string; applicable: string; result: string; }
 function SafetyCheckTable({ items, onChange }: { items: SafetyCheckItem[]; onChange: (updated: SafetyCheckItem[]) => void }) {
   const update = (idx: number, field: keyof SafetyCheckItem, value: string) =>
@@ -412,7 +379,6 @@ function SafetyCheckTable({ items, onChange }: { items: SafetyCheckItem[]; onCha
   );
 }
 
-// ===== PrevDocsModal =====
 function PrevDocsModal({ documentId, onSelect, onClose }: { documentId: string; onSelect: (fd: Record<string, unknown>) => void; onClose: () => void; }) {
   const [list, setList] = useState<PrevDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -443,7 +409,6 @@ function PrevDocsModal({ documentId, onSelect, onClose }: { documentId: string; 
   );
 }
 
-// ===== LocationPickerModal =====
 function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm, onClose }: {
   initialAddress: string; initialLat: number | null; initialLng: number | null;
   onConfirm: (address: string, lat: number, lng: number) => void; onClose: () => void;
@@ -563,7 +528,6 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
   );
 }
 
-// ===== ApprovalSignModal =====
 function ApprovalSignModal({ documentId, documentType, onClose, onSubmitted }: {
   documentId: string; documentType: string; onClose: () => void; onSubmitted: () => void;
 }) {
@@ -598,21 +562,10 @@ function ApprovalSignModal({ documentId, documentType, onClose, onSubmitted }: {
     if ("touches" in e) return { x: (e.touches[0].clientX - rect.left) * (canvas.width / rect.width), y: (e.touches[0].clientY - rect.top) * (canvas.height / rect.height) };
     return { x: (e.clientX - rect.left) * (canvas.width / rect.width), y: (e.clientY - rect.top) * (canvas.height / rect.height) };
   };
-  const startDraw = (e: React.MouseEvent | React.TouchEvent) => {
-    const canvas = canvasRef.current; if (!canvas) return; e.preventDefault();
-    isDrawing.current = true; const ctx = canvas.getContext("2d"); if (!ctx) return;
-    const pos = getPos(e, canvas); ctx.beginPath(); ctx.moveTo(pos.x, pos.y);
-  };
-  const draw = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!isDrawing.current) return; const canvas = canvasRef.current; if (!canvas) return; e.preventDefault();
-    const ctx = canvas.getContext("2d"); if (!ctx) return; const pos = getPos(e, canvas); ctx.lineTo(pos.x, pos.y); ctx.stroke();
-  };
+  const startDraw = (e: React.MouseEvent | React.TouchEvent) => { const canvas = canvasRef.current; if (!canvas) return; e.preventDefault(); isDrawing.current = true; const ctx = canvas.getContext("2d"); if (!ctx) return; const pos = getPos(e, canvas); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); };
+  const draw = (e: React.MouseEvent | React.TouchEvent) => { if (!isDrawing.current) return; const canvas = canvasRef.current; if (!canvas) return; e.preventDefault(); const ctx = canvas.getContext("2d"); if (!ctx) return; const pos = getPos(e, canvas); ctx.lineTo(pos.x, pos.y); ctx.stroke(); };
   const endDraw = () => { isDrawing.current = false; };
-  const clearCanvas = () => {
-    const canvas = canvasRef.current; if (!canvas) return;
-    const ctx = canvas.getContext("2d"); if (!ctx) return;
-    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  };
+  const clearCanvas = () => { const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext("2d"); if (!ctx) return; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); };
   const handleSubmit = async () => {
     const canvas = canvasRef.current; if (!canvas) return;
     const signatureData = canvas.toDataURL("image/png");
@@ -698,27 +651,40 @@ interface Form1 {
   requestDate: string; workStartDate: string; workEndDate: string; workStartTime: string; workEndTime: string;
   projectName: string; applicantCompany: string; applicantTitle: string; applicantName: string;
   workLocation: string; workContent: string; participants: string;
-  riskHighPlace: boolean; riskHighPlaceDetail: string; riskWaterWork: boolean; riskWaterWorkDetail: string;
-  riskConfinedSpace: boolean; riskPowerOutage: boolean; riskFireWork: boolean; riskOther: boolean; riskOtherDetail: string;
+  riskHighPlace: boolean; riskHighPlaceDetail: string; riskHighPlaceItems: string[];
+  riskWaterWork: boolean; riskWaterWorkDetail: string; riskWaterWorkItems: string[];
+  riskConfinedSpace: boolean; riskConfinedSpaceDetail: string;
+  riskPowerOutage: boolean; riskPowerOutageDetail: string;
+  riskFireWork: boolean; riskFireWorkDetail: string;
+  riskOther: boolean; riskOtherDetail: string;
   factorNarrowAccess: boolean; factorSlippery: boolean; factorSteepSlope: boolean; factorWaterHazard: boolean;
   factorRockfall: boolean; factorNoRailing: boolean; factorLadderNoGuard: boolean; factorSuffocation: boolean;
   factorElectricFire: boolean; factorSparkFire: boolean; factorOther: boolean; factorOtherDetail: string;
   riskRows: RiskRow[]; reviewOpinion: string; reviewResult: string;
-  riskAssessRows: RiskAssessRow[]; // 위험성평가표
+  riskAssessRows: RiskAssessRow[];
 }
 const defaultForm1: Form1 = {
   requestDate: new Date().toISOString().split("T")[0],
   workStartDate: "", workEndDate: "", workStartTime: "09:00", workEndTime: "18:00",
   projectName: "", applicantCompany: "", applicantTitle: "", applicantName: "",
   workLocation: "", workContent: "", participants: "",
-  riskHighPlace: false, riskHighPlaceDetail: "", riskWaterWork: false, riskWaterWorkDetail: "",
-  riskConfinedSpace: false, riskPowerOutage: false, riskFireWork: false, riskOther: false, riskOtherDetail: "",
+  riskHighPlace: false, riskHighPlaceDetail: "", riskHighPlaceItems: [],
+  riskWaterWork: false, riskWaterWorkDetail: "", riskWaterWorkItems: [],
+  riskConfinedSpace: false, riskConfinedSpaceDetail: "",
+  riskPowerOutage: false, riskPowerOutageDetail: "",
+  riskFireWork: false, riskFireWorkDetail: "",
+  riskOther: false, riskOtherDetail: "",
   factorNarrowAccess: false, factorSlippery: false, factorSteepSlope: false, factorWaterHazard: false,
   factorRockfall: false, factorNoRailing: false, factorLadderNoGuard: false, factorSuffocation: false,
   factorElectricFire: false, factorSparkFire: false, factorOther: false, factorOtherDetail: "",
   riskRows: [{ riskFactor: "", improvement: "", disasterType: "" }], reviewOpinion: "", reviewResult: "",
   riskAssessRows: [{ ...defaultRiskAssessRow }],
 };
+
+function toggleArrItem(field: string, item: string, currentArr: string[], onChange: (k: string, v: unknown) => void) {
+  const exists = currentArr.includes(item);
+  onChange(field, exists ? currentArr.filter(i => i !== item) : [...currentArr, item]);
+}
 
 function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation, onClearLocation, taskName, documentId }: {
   form: Form1; onChange: (k: string, v: unknown) => void;
@@ -728,14 +694,6 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
   const updateRow = (idx: number, f: keyof RiskRow, v: string) =>
     onChange("riskRows", form.riskRows.map((r, i) => i === idx ? { ...r, [f]: v } : r));
 
-  const riskTypes = [
-    { key: "riskHighPlace", label: "2.0m 이상 고소작업", detailKey: "riskHighPlaceDetail" },
-    { key: "riskWaterWork", label: "수상 또는 수변작업", detailKey: "riskWaterWorkDetail" },
-    { key: "riskConfinedSpace", label: "밀폐공간(복통 포함)작업" },
-    { key: "riskPowerOutage", label: "정전작업" },
-    { key: "riskFireWork", label: "화기작업" },
-    { key: "riskOther", label: "기타(발주자 요청)", detailKey: "riskOtherDetail" },
-  ];
   const factors = [
     { key: "factorNarrowAccess", label: "진출입로 협소" },
     { key: "factorSlippery", label: "미끄러짐(이끼, 습기)" },
@@ -752,6 +710,7 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
 
   return (
     <>
+      {/* 1. 기본정보 */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={1} title="작업허가 신청개요" />
         <div className="space-y-3">
@@ -781,51 +740,125 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         </div>
       </div>
 
-      {/* 위험공종 체크박스 */}
+      {/* 2. 위험공종 확인 - 관련작업(장소) 상세 선택 */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={2} title="위험공종 확인 (해당 항목 체크)" />
-        <div className="space-y-2">
-          {riskTypes.map(item => (
-            <div key={item.key}>
-              <label className="flex items-center gap-2 cursor-pointer py-1">
-                <input type="checkbox" checked={!!(form as any)[item.key]}
-                  onChange={e => onChange(item.key, e.target.checked)}
-                  className="w-4 h-4 rounded text-blue-600 border-gray-300" />
-                <span className="text-sm text-gray-700">{item.label}</span>
-              </label>
-              {item.detailKey && (form as any)[item.key] && (
-                <input type="text" value={(form as any)[item.detailKey] || ""}
-                  onChange={e => onChange(item.detailKey!, e.target.value)}
-                  placeholder="상세 내용 입력"
-                  className={inputClass + " mt-1 ml-6"} />
-              )}
-            </div>
-          ))}
+        <div className="space-y-3">
+
+          {/* 2.0m 이상 고소작업 */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer py-1">
+              <input type="checkbox" checked={!!form.riskHighPlace} onChange={e => onChange("riskHighPlace", e.target.checked)} className="w-4 h-4 rounded text-blue-600 border-gray-300" />
+              <span className="text-sm font-medium text-gray-700">2.0m 이상 고소작업</span>
+            </label>
+            {form.riskHighPlace && (
+              <div className="ml-6 mt-2 bg-blue-50 rounded-xl p-3 space-y-1.5">
+                <p className="text-xs text-blue-600 font-medium mb-1">📍 관련작업(장소) 선택:</p>
+                {HIGH_PLACE_ITEMS.map(item => (
+                  <label key={item} className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={(form.riskHighPlaceItems || []).includes(item)}
+                      onChange={() => toggleArrItem("riskHighPlaceItems", item, form.riskHighPlaceItems || [], onChange)}
+                      className="w-3.5 h-3.5 rounded text-blue-600 border-gray-300" />
+                    <span className="text-xs text-gray-700">{item}</span>
+                  </label>
+                ))}
+                <input type="text" value={form.riskHighPlaceDetail || ""} onChange={e => onChange("riskHighPlaceDetail", e.target.value)}
+                  placeholder="기타 직접 입력..." className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 mt-1" />
+              </div>
+            )}
+          </div>
+
+          {/* 수상 또는 수변작업 */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer py-1">
+              <input type="checkbox" checked={!!form.riskWaterWork} onChange={e => onChange("riskWaterWork", e.target.checked)} className="w-4 h-4 rounded text-blue-600 border-gray-300" />
+              <span className="text-sm font-medium text-gray-700">수상 또는 수변작업</span>
+            </label>
+            {form.riskWaterWork && (
+              <div className="ml-6 mt-2 bg-blue-50 rounded-xl p-3 space-y-1.5">
+                <p className="text-xs text-blue-600 font-medium mb-1">📍 관련작업(장소) 선택:</p>
+                {WATER_WORK_ITEMS.map(item => (
+                  <label key={item} className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={(form.riskWaterWorkItems || []).includes(item)}
+                      onChange={() => toggleArrItem("riskWaterWorkItems", item, form.riskWaterWorkItems || [], onChange)}
+                      className="w-3.5 h-3.5 rounded text-blue-600 border-gray-300" />
+                    <span className="text-xs text-gray-700">{item}</span>
+                  </label>
+                ))}
+                <input type="text" value={form.riskWaterWorkDetail || ""} onChange={e => onChange("riskWaterWorkDetail", e.target.value)}
+                  placeholder="기타 직접 입력..." className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 mt-1" />
+              </div>
+            )}
+          </div>
+
+          {/* 밀폐공간작업 */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer py-1">
+              <input type="checkbox" checked={!!form.riskConfinedSpace} onChange={e => onChange("riskConfinedSpace", e.target.checked)} className="w-4 h-4 rounded text-blue-600 border-gray-300" />
+              <span className="text-sm font-medium text-gray-700">밀폐공간(복통 포함)작업</span>
+            </label>
+            {form.riskConfinedSpace && (
+              <input type="text" value={form.riskConfinedSpaceDetail || ""} onChange={e => onChange("riskConfinedSpaceDetail", e.target.value)}
+                placeholder="관련작업(장소) 입력..." className={"ml-6 mt-1 " + inputClass} />
+            )}
+          </div>
+
+          {/* 정전작업 */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer py-1">
+              <input type="checkbox" checked={!!form.riskPowerOutage} onChange={e => onChange("riskPowerOutage", e.target.checked)} className="w-4 h-4 rounded text-blue-600 border-gray-300" />
+              <span className="text-sm font-medium text-gray-700">정전작업</span>
+            </label>
+            {form.riskPowerOutage && (
+              <input type="text" value={form.riskPowerOutageDetail || ""} onChange={e => onChange("riskPowerOutageDetail", e.target.value)}
+                placeholder="관련작업(장소) 입력..." className={"ml-6 mt-1 " + inputClass} />
+            )}
+          </div>
+
+          {/* 화기작업 */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer py-1">
+              <input type="checkbox" checked={!!form.riskFireWork} onChange={e => onChange("riskFireWork", e.target.checked)} className="w-4 h-4 rounded text-blue-600 border-gray-300" />
+              <span className="text-sm font-medium text-gray-700">화기작업</span>
+            </label>
+            {form.riskFireWork && (
+              <input type="text" value={form.riskFireWorkDetail || ""} onChange={e => onChange("riskFireWorkDetail", e.target.value)}
+                placeholder="관련작업(장소) 입력..." className={"ml-6 mt-1 " + inputClass} />
+            )}
+          </div>
+
+          {/* 기타 */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer py-1">
+              <input type="checkbox" checked={!!form.riskOther} onChange={e => onChange("riskOther", e.target.checked)} className="w-4 h-4 rounded text-blue-600 border-gray-300" />
+              <span className="text-sm font-medium text-gray-700">기타(발주자 요청)</span>
+            </label>
+            {form.riskOther && (
+              <input type="text" value={form.riskOtherDetail || ""} onChange={e => onChange("riskOtherDetail", e.target.value)}
+                placeholder="기타 내용 입력..." className={"ml-6 mt-1 " + inputClass} />
+            )}
+          </div>
         </div>
       </div>
 
-      {/* 예상위험요소 체크박스 */}
+      {/* 3. 예상위험요소 */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={3} title="예상되는 위험요소 (해당 항목 체크)" />
         <div className="grid grid-cols-2 gap-1">
           {factors.map(item => (
             <label key={item.key} className="flex items-center gap-2 cursor-pointer py-1">
-              <input type="checkbox" checked={!!(form as any)[item.key]}
-                onChange={e => onChange(item.key, e.target.checked)}
-                className="w-4 h-4 rounded text-blue-600 border-gray-300" />
+              <input type="checkbox" checked={!!(form as any)[item.key]} onChange={e => onChange(item.key, e.target.checked)} className="w-4 h-4 rounded text-blue-600 border-gray-300" />
               <span className="text-xs text-gray-700">{item.label}</span>
             </label>
           ))}
         </div>
         {form.factorOther && (
-          <input type="text" value={form.factorOtherDetail}
-            onChange={e => onChange("factorOtherDetail", e.target.value)}
-            placeholder="기타 위험요소 입력"
-            className={inputClass + " mt-2"} />
+          <input type="text" value={form.factorOtherDetail} onChange={e => onChange("factorOtherDetail", e.target.value)}
+            placeholder="기타 위험요소 입력" className={inputClass + " mt-2"} />
         )}
       </div>
 
-      {/* 위험요소/개선대책/재해형태 표 */}
+      {/* 4. 위험요소/개선대책/재해형태 */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={4} title="위험요소 · 개선대책 · 재해형태" />
         <div className="grid grid-cols-12 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg mb-2">
@@ -858,7 +891,7 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         </button>
       </div>
 
-      {/* 용역감독 검토내용 */}
+      {/* 5. 용역감독 검토내용 */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={5} title="용역감독 검토내용" />
         <div className="space-y-3">
@@ -867,12 +900,8 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         </div>
       </div>
 
-      {/* 위험성평가표 (붙임1) */}
-      <RiskAssessSection
-        documentId={documentId}
-        riskAssessRows={form.riskAssessRows || [{ ...defaultRiskAssessRow }]}
-        onChangeRows={rows => onChange("riskAssessRows", rows)}
-      />
+      {/* 위험성평가표 */}
+      <RiskAssessSection documentId={documentId} riskAssessRows={form.riskAssessRows || [{ ...defaultRiskAssessRow }]} onChangeRows={rows => onChange("riskAssessRows", rows)} />
 
       {/* 사진 첨부 */}
       <PhotoAttachSection documentId={documentId} canAdd={true} />
@@ -880,7 +909,7 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
   );
 }
 
-// ===== 붙임2/3/4 Forms (기존과 동일 - 사진첨부만 추가) =====
+// ===== 붙임2/3/4 Forms =====
 const CONFINED_CHECKS: SafetyCheckItem[] = [
   { label: "안전담당자 지정 및 감독여부 검토", applicable: "", result: "" },
   { label: "출입금지, 출입허가, 경고표지, 표지판설치, 구급용구", applicable: "", result: "" },
@@ -1203,7 +1232,6 @@ function migrateFormData(fd: Record<string, unknown>): Record<string, unknown> {
   return result;
 }
 
-// ===== 메인 페이지 =====
 export default function DocumentEditPage() {
   const params = useParams();
   const router = useRouter();
@@ -1369,7 +1397,7 @@ export default function DocumentEditPage() {
           onClose={() => setShowApproval(false)}
           onSubmitted={() => {
             setShowApproval(false);
-            alert("제출이 완료되었습니다. 결재자에게 알림이 전송됩니다.");
+            alert("제출이 완료됐습니다. 결재자에게 알림이 전송됩니다.");
             router.push(`/tasks/${taskId}`);
           }} />
       )}
