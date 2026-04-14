@@ -3,10 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { documents, documentAttachments } from "@/db/schema";
-import { eq, isNull } from "drizzle-orm";
-import { put, del } from "@vercel/blob";
+import { eq } from "drizzle-orm";
+import { uploadToDrive, deleteFromDrive } from "@/lib/google-drive";
 
-// GET - 첨부파일 목록 조회
+// GET - 첨부파일 목록
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ documentId: string }> }
@@ -18,22 +18,20 @@ export async function GET(
 
     const { documentId } = await params;
     const { searchParams } = new URL(req.url);
-    const type = searchParams.get("type"); // "PHOTO" | "DOCUMENT" | null(전체)
+    const type = searchParams.get("type");
 
-    let query = db
-      .select()
-      .from(documentAttachments)
-      .where(eq(documentAttachments.documentId, documentId));
-
-    const attachments = await db
+    const all = await db
       .select()
       .from(documentAttachments)
       .where(eq(documentAttachments.documentId, documentId))
       .orderBy(documentAttachments.sortOrder);
 
-    const filtered = type
-      ? attachments.filter((a: { attachmentType: string }) => a.attachmentType === type)
-      : attachments.filter((a: { deletedAt: Date | null }) => !a.deletedAt);
+    // deletedAt 없고, type 필터
+    const filtered = all.filter((a) => {
+      if (a.deletedAt) return false;
+      if (type && a.attachmentType !== type) return false;
+      return true;
+    });
 
     return NextResponse.json({ attachments: filtered });
   } catch (error) {
@@ -42,7 +40,7 @@ export async function GET(
   }
 }
 
-// POST - 파일 업로드
+// POST - 파일 업로드 (Google Drive)
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ documentId: string }> }
@@ -69,38 +67,43 @@ export async function POST(
     const description = (formData.get("description") as string) || "";
     const sortOrder = parseInt((formData.get("sortOrder") as string) || "0", 10);
 
-    if (!file) {
+    if (!file)
       return NextResponse.json({ error: "파일이 없습니다." }, { status: 400 });
-    }
 
-    // 파일 크기 제한 (10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: "파일 크기는 10MB 이하여야 합니다." }, { status: 400 });
-    }
+    // 파일 크기 제한 (20MB - 구글 드라이브니까 여유롭게)
+    if (file.size > 20 * 1024 * 1024)
+      return NextResponse.json({ error: "파일 크기는 20MB 이하여야 합니다." }, { status: 400 });
 
     // 허용 파일 타입
     const allowedTypes = [
-      "image/jpeg", "image/png", "image/gif", "image/webp",
+      "image/jpeg", "image/png", "image/gif", "image/webp", "image/heic",
       "application/pdf",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "application/vnd.ms-excel",
     ];
-    if (!allowedTypes.includes(file.type)) {
+    if (!allowedTypes.includes(file.type))
       return NextResponse.json(
         { error: "지원하지 않는 파일 형식입니다. (JPG, PNG, PDF, Excel만 가능)" },
         { status: 400 }
       );
-    }
 
-    // Vercel Blob 업로드
+    // Buffer 변환
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const blobPath = `attachments/${documentId}/${Date.now()}_${file.name}`;
 
-    const blob = await put(blobPath, buffer, {
-      access: "public",
-      contentType: file.type,
-    });
+    // Google Drive 업로드 (문서ID 기반 서브폴더)
+    const { fileId, webViewLink, webContentLink } = await uploadToDrive(
+      buffer,
+      `${Date.now()}_${file.name}`,
+      file.type,
+      documentId.slice(0, 8) // 서브폴더명
+    );
+
+    // 이미지는 직접 보기 URL, 나머지는 webViewLink
+    const isImage = file.type.startsWith("image/");
+    const fileUrl = isImage
+      ? `https://drive.google.com/uc?export=view&id=${fileId}`
+      : webViewLink;
 
     // DB 저장
     const [attachment] = await db
@@ -109,7 +112,7 @@ export async function POST(
         documentId,
         uploadedBy: session.user.id,
         fileName: file.name,
-        fileUrl: blob.url,
+        fileUrl,
         fileSize: file.size,
         mimeType: file.type,
         attachmentType: attachmentType as "PHOTO" | "DOCUMENT",
@@ -118,7 +121,15 @@ export async function POST(
       })
       .returning();
 
-    return NextResponse.json({ attachment }, { status: 201 });
+    // Drive fileId도 description에 저장 (삭제 시 필요)
+    await db
+      .update(documentAttachments)
+      .set({ description: `${description}||driveId:${fileId}` })
+      .where(eq(documentAttachments.id, attachment.id));
+
+    return NextResponse.json({
+      attachment: { ...attachment, fileUrl },
+    }, { status: 201 });
   } catch (error) {
     console.error("[POST attachments]", error);
     return NextResponse.json(
@@ -138,7 +149,6 @@ export async function DELETE(
     if (!session?.user)
       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
 
-    const { documentId } = await params;
     const { searchParams } = new URL(req.url);
     const attachmentId = searchParams.get("attachmentId");
 
@@ -154,11 +164,11 @@ export async function DELETE(
     if (!attachment)
       return NextResponse.json({ error: "파일을 찾을 수 없습니다." }, { status: 404 });
 
-    // Vercel Blob에서 삭제 시도 (실패해도 DB는 삭제)
-    try {
-      await del(attachment.fileUrl);
-    } catch (e) {
-      console.error("Blob 삭제 실패 (무시):", e);
+    // Google Drive에서 삭제
+    const desc = attachment.description || "";
+    const match = desc.match(/driveId:([^|]+)/);
+    if (match) {
+      await deleteFromDrive(match[1]);
     }
 
     // soft delete
