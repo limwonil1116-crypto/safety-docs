@@ -4,7 +4,14 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { documents, documentAttachments } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { uploadToDrive, deleteFromDrive } from "@/lib/google-drive";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  "https://gtvyekhjrrubbcxdnxlw.supabase.co",
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+const BUCKET = "attachments";
 
 // GET - 첨부파일 목록
 export async function GET(
@@ -26,7 +33,6 @@ export async function GET(
       .where(eq(documentAttachments.documentId, documentId))
       .orderBy(documentAttachments.sortOrder);
 
-    // deletedAt 없고, type 필터
     const filtered = all.filter((a) => {
       if (a.deletedAt) return false;
       if (type && a.attachmentType !== type) return false;
@@ -40,7 +46,7 @@ export async function GET(
   }
 }
 
-// POST - 파일 업로드 (Google Drive)
+// POST - 파일 업로드
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ documentId: string }> }
@@ -52,7 +58,6 @@ export async function POST(
 
     const { documentId } = await params;
 
-    // 문서 존재 확인
     const [doc] = await db
       .select()
       .from(documents)
@@ -70,11 +75,9 @@ export async function POST(
     if (!file)
       return NextResponse.json({ error: "파일이 없습니다." }, { status: 400 });
 
-    // 파일 크기 제한 (20MB - 구글 드라이브니까 여유롭게)
     if (file.size > 20 * 1024 * 1024)
       return NextResponse.json({ error: "파일 크기는 20MB 이하여야 합니다." }, { status: 400 });
 
-    // 허용 파일 타입
     const allowedTypes = [
       "image/jpeg", "image/png", "image/gif", "image/webp", "image/heic",
       "application/pdf",
@@ -87,20 +90,32 @@ export async function POST(
         { status: 400 }
       );
 
-    // Buffer 변환
+    // Supabase Storage 업로드
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    const filePath = `${documentId}/${Date.now()}_${file.name}`;
 
-    // Google Drive 업로드 (문서ID 기반 서브폴더)
-    const { fileId, webViewLink, directUrl } = await uploadToDrive(
-      buffer,
-      `${Date.now()}_${file.name}`,
-      file.type,
-      documentId.slice(0, 8) // 서브폴더명
-    );
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET)
+      .upload(filePath, buffer, {
+        contentType: file.type,
+        upsert: false,
+      });
 
-    // 이미지는 직접 보기 URL, 나머지는 webViewLink
-    const fileUrl = directUrl;
+    if (uploadError) {
+      console.error("Supabase 업로드 오류:", uploadError);
+      return NextResponse.json(
+        { error: `업로드 실패: ${uploadError.message}` },
+        { status: 500 }
+      );
+    }
+
+    // 공개 URL 가져오기
+    const { data: urlData } = supabase.storage
+      .from(BUCKET)
+      .getPublicUrl(filePath);
+
+    const fileUrl = urlData.publicUrl;
 
     // DB 저장
     const [attachment] = await db
@@ -118,15 +133,7 @@ export async function POST(
       })
       .returning();
 
-    // Drive fileId도 description에 저장 (삭제 시 필요)
-    await db
-      .update(documentAttachments)
-      .set({ description: `${description}||driveId:${fileId}` })
-      .where(eq(documentAttachments.id, attachment.id));
-
-    return NextResponse.json({
-      attachment: { ...attachment, fileUrl },
-    }, { status: 201 });
+    return NextResponse.json({ attachment }, { status: 201 });
   } catch (error) {
     console.error("[POST attachments]", error);
     return NextResponse.json(
@@ -161,11 +168,12 @@ export async function DELETE(
     if (!attachment)
       return NextResponse.json({ error: "파일을 찾을 수 없습니다." }, { status: 404 });
 
-    // Google Drive에서 삭제
-    const desc = attachment.description || "";
-    const match = desc.match(/driveId:([^|]+)/);
-    if (match) {
-      await deleteFromDrive(match[1]);
+    // Supabase Storage에서 삭제
+    const { documentId } = await params;
+    const urlParts = attachment.fileUrl.split(`/${BUCKET}/`);
+    if (urlParts.length > 1) {
+      const filePath = urlParts[1];
+      await supabase.storage.from(BUCKET).remove([filePath]);
     }
 
     // soft delete
