@@ -891,15 +891,6 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         </button>
       </div>
 
-      {/* 5. 용역감독 검토내용 */}
-      <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={5} title="용역감독 검토내용" />
-        <div className="space-y-3">
-          <FormInput label="검토의견"><textarea value={form.reviewOpinion} onChange={e => onChange("reviewOpinion", e.target.value)} rows={2} className={textareaClass} /></FormInput>
-          <FormInput label="조치결과"><textarea value={form.reviewResult} onChange={e => onChange("reviewResult", e.target.value)} rows={2} className={textareaClass} /></FormInput>
-        </div>
-      </div>
-
       {/* 위험성평가표 */}
       <RiskAssessSection documentId={documentId} riskAssessRows={form.riskAssessRows || [{ ...defaultRiskAssessRow }]} onChangeRows={rows => onChange("riskAssessRows", rows)} />
 
@@ -1088,14 +1079,7 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={5} title="용역감독원 검토내용" />
-        <div className="space-y-3">
-          <FormInput label="검토의견"><textarea value={form.reviewOpinion} onChange={e => onChange("reviewOpinion", e.target.value)} rows={2} className={textareaClass} /></FormInput>
-          <FormInput label="조치결과"><textarea value={form.reviewResult} onChange={e => onChange("reviewResult", e.target.value)} rows={2} className={textareaClass} /></FormInput>
-        </div>
-      </div>
-      <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={6} title="신청자 정보" />
+        <SectionHeader num={5} title="신청자 정보" />
         <div className="grid grid-cols-2 gap-3">
           <FormInput label="신청자 성명" required><input type="text" value={form.applicantName} onChange={e => onChange("applicantName", e.target.value)} className={inputClass} /></FormInput>
           <FormInput label="소속"><input type="text" value={form.applicantOrg} onChange={e => onChange("applicantOrg", e.target.value)} className={inputClass} /></FormInput>
@@ -1308,11 +1292,11 @@ export default function DocumentEditPage() {
   const handleLocationConfirm = (addr: string, lat: number, lng: number) => {
     setWorkAddress(addr); setWorkLatitude(lat); setWorkLongitude(lng);
     setShowLocationPicker(false);
-    // #위치연동: 작업장소 input에 주소 자동 반영
-    if (documentType === "SAFETY_WORK_PERMIT") setForm1(p => ({ ...p, workLocation: p.workLocation || addr }));
-    else if (documentType === "CONFINED_SPACE") setForm2(p => ({ ...p, workLocation: p.workLocation || addr }));
-    else if (documentType === "HOLIDAY_WORK")   setForm3(p => ({ ...p, facilityLocation: p.facilityLocation || addr }));
-    else if (documentType === "POWER_OUTAGE")   setForm4(p => ({ ...p, workLocation: p.workLocation || addr }));
+    // 위치 선택 시 작업장소 input에 주소 자동 채우기
+    if (documentType === "SAFETY_WORK_PERMIT") setForm1(p => ({ ...p, workLocation: addr }));
+    else if (documentType === "CONFINED_SPACE") setForm2(p => ({ ...p, workLocation: addr }));
+    else if (documentType === "HOLIDAY_WORK")   setForm3(p => ({ ...p, facilityLocation: addr }));
+    else if (documentType === "POWER_OUTAGE")   setForm4(p => ({ ...p, workLocation: addr }));
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
       const formDataJson = buildFormData(documentType, form1, form2, form3, form4);
