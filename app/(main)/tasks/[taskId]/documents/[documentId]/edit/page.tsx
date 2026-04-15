@@ -591,7 +591,7 @@ function ApprovalSignModal({ documentId, documentType, onClose, onSubmitted }: {
           <button onClick={onClose} className="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         {step === "approver" ? (
-          <div className="p-5 pb-10">
+          <div className="p-5 pb-24">
             <div className="bg-blue-50 rounded-xl p-3 mb-4 text-xs text-blue-700">{`${info.approverLabel}에게 결재 요청이 전송됩니다.`}</div>
             <div className={`p-3 rounded-xl border-2 mb-4 ${reviewer ? "border-blue-400 bg-blue-50" : "border-dashed border-gray-300"}`}>
               <div className="text-xs text-gray-500 mb-1">{info.approverLabel} <span className="text-red-500">*</span></div>
@@ -622,7 +622,7 @@ function ApprovalSignModal({ documentId, documentType, onClose, onSubmitted }: {
             </button>
           </div>
         ) : (
-          <div className="p-5 pb-10">
+          <div className="p-5 pb-24">
             <p className="text-sm text-gray-600 mb-4">아래에 서명해주세요.</p>
             <div className="border-2 border-gray-200 rounded-2xl overflow-hidden mb-3 bg-white">
               <canvas ref={canvasRef} width={600} height={200} className="w-full touch-none" style={{ cursor: "crosshair", touchAction: "none" }}
