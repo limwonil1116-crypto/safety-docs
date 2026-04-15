@@ -1308,6 +1308,11 @@ export default function DocumentEditPage() {
   const handleLocationConfirm = (addr: string, lat: number, lng: number) => {
     setWorkAddress(addr); setWorkLatitude(lat); setWorkLongitude(lng);
     setShowLocationPicker(false);
+    // #위치연동: 작업장소 input에 주소 자동 반영
+    if (documentType === "SAFETY_WORK_PERMIT") setForm1(p => ({ ...p, workLocation: p.workLocation || addr }));
+    else if (documentType === "CONFINED_SPACE") setForm2(p => ({ ...p, workLocation: p.workLocation || addr }));
+    else if (documentType === "HOLIDAY_WORK")   setForm3(p => ({ ...p, facilityLocation: p.facilityLocation || addr }));
+    else if (documentType === "POWER_OUTAGE")   setForm4(p => ({ ...p, workLocation: p.workLocation || addr }));
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
       const formDataJson = buildFormData(documentType, form1, form2, form3, form4);

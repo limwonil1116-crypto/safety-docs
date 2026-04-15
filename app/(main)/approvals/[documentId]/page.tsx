@@ -46,12 +46,27 @@ function getStatusKey(doc: DocumentDetail): string {
   if (doc.status === "IN_REVIEW" && doc.currentApprovalOrder === 2) return "IN_REVIEW_FINAL";
   return doc.status;
 }
+
+// ===== 필드 표시 (값 없으면 null) =====
 function Field({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
   return (
     <div className="flex gap-3">
       <span className="text-gray-400 w-24 flex-shrink-0 text-sm">{label}</span>
       <span className="text-gray-900 text-sm">{value}</span>
+    </div>
+  );
+}
+
+// ===== 체크박스 필드 =====
+function CheckField({ label, checked }: { label: string; checked: boolean }) {
+  if (!checked) return null;
+  return (
+    <div className="flex items-center gap-2">
+      <div className="w-4 h-4 rounded bg-blue-600 flex items-center justify-center shrink-0">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <span className="text-sm text-gray-800">{label}</span>
     </div>
   );
 }
@@ -82,8 +97,7 @@ function AttachmentViewer({ documentId, canAdd = false }: { documentId: string; 
     setUploading(true);
     try {
       const fd = new FormData();
-      fd.append("file", file); fd.append("attachmentType", "PHOTO");
-      fd.append("sortOrder", String(photos.length));
+      fd.append("file", file); fd.append("attachmentType", "PHOTO"); fd.append("sortOrder", String(photos.length));
       const res = await fetch(`/api/documents/${documentId}/attachments`, { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -105,65 +119,25 @@ function AttachmentViewer({ documentId, canAdd = false }: { documentId: string; 
     <div className="bg-white rounded-2xl p-4 shadow-sm">
       <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
-          <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
-          <polyline points="21 15 16 10 5 21"/>
+          <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
         </svg>
-        첨부파일
-        {(photos.length + docFiles.length) > 0 && (
-          <span className="text-xs text-gray-400 font-normal">({photos.length + docFiles.length}개)</span>
-        )}
+        첨부파일 {(photos.length + docFiles.length) > 0 && <span className="text-xs text-gray-400 font-normal">({photos.length + docFiles.length}개)</span>}
       </h3>
-
-      {/* 사진 그리드 */}
       {photos.length > 0 && (
         <div className="mb-4">
-          <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
-            </svg>
-            사진 {photos.length}장
-          </p>
+          <p className="text-xs text-gray-400 mb-2">📷 사진 {photos.length}장</p>
           <div className="grid grid-cols-3 gap-2">
             {photos.map(photo => (
-              <div key={photo.id}
-                className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-50 cursor-pointer active:opacity-80"
-                onClick={() => setPreviewUrl(photo.fileUrl)}>
-                <img src={photo.fileUrl} alt={photo.fileName}
-                  className="w-full h-full object-cover"
-                  onError={e => {
-                    const el = e.target as HTMLImageElement;
-                    el.style.display = "none";
-                    const parent = el.parentElement;
-                    if (parent) {
-                      const div = document.createElement("div");
-                      div.className = "w-full h-full flex items-center justify-center text-xs text-gray-400 p-2 text-center absolute inset-0";
-                      div.textContent = photo.fileName;
-                      parent.appendChild(div);
-                    }
-                  }}
-                />
-                {/* 클릭 힌트 */}
-                <div className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/20 transition-colors">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" className="opacity-0 hover:opacity-100 drop-shadow">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                  </svg>
-                </div>
+              <div key={photo.id} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-50 cursor-pointer active:opacity-80" onClick={() => setPreviewUrl(photo.fileUrl)}>
+                <img src={photo.fileUrl} alt={photo.fileName} className="w-full h-full object-cover" />
               </div>
             ))}
           </div>
         </div>
       )}
-
-      {/* 문서 파일 */}
       {docFiles.length > 0 && (
         <div className="mb-3">
-          <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-            </svg>
-            문서 {docFiles.length}개
-          </p>
+          <p className="text-xs text-gray-400 mb-2">📄 문서 {docFiles.length}개</p>
           <div className="space-y-2">
             {docFiles.map(doc => {
               const isPdf = doc.mimeType === "application/pdf";
@@ -171,71 +145,43 @@ function AttachmentViewer({ documentId, canAdd = false }: { documentId: string; 
               return (
                 <a key={doc.id} href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200 hover:bg-blue-50 hover:border-blue-200 transition-colors">
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 ${
-                    isPdf ? "bg-red-500" : isExcel ? "bg-green-600" : "bg-blue-500"
-                  }`}>
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 ${isPdf ? "bg-red-500" : isExcel ? "bg-green-600" : "bg-blue-500"}`}>
                     {isPdf ? "PDF" : isExcel ? "XLS" : "DOC"}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-800 font-medium truncate">{doc.fileName}</p>
-                    {doc.description && doc.description !== doc.fileName && (
-                      <p className="text-xs text-gray-400">{doc.description.split("||")[0]}</p>
-                    )}
                     <p className="text-xs text-gray-400">{formatSize(doc.fileSize)}</p>
                   </div>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                    <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-                  </svg>
                 </a>
               );
             })}
           </div>
         </div>
       )}
-
-      {/* 승인 후 사진 추가 */}
       {canAdd && (
         <div className="flex gap-2 mt-2 pt-3 border-t border-gray-100">
           <button onClick={() => cameraRef.current?.click()} disabled={uploading}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 active:bg-gray-100">
-            {uploading
-              ? <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             카메라
           </button>
           <button onClick={() => galleryRef.current?.click()} disabled={uploading}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 active:bg-gray-100">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-            </svg>
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             갤러리
           </button>
         </div>
       )}
-
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.target.value = ""; }} />
       <input ref={galleryRef} type="file" accept="image/*" multiple className="hidden"
         onChange={e => { Array.from(e.target.files ?? []).forEach(f => uploadPhoto(f)); e.target.value = ""; }} />
-
-      {/* 전체화면 미리보기 */}
       {previewUrl && (
-        <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center"
-          onClick={() => setPreviewUrl(null)}>
+        <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center" onClick={() => setPreviewUrl(null)}>
           <button className="absolute top-4 right-4 text-white p-2 z-10">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
-          <img src={previewUrl} alt="미리보기"
-            className="max-w-full max-h-[85vh] object-contain"
-            onClick={e => e.stopPropagation()} />
-          <a href={previewUrl} target="_blank" rel="noopener noreferrer"
-            className="absolute bottom-8 px-6 py-3 bg-white/20 rounded-full text-white text-sm backdrop-blur-sm"
-            onClick={e => e.stopPropagation()}>
-            원본 크기로 보기 ↗
-          </a>
+          <img src={previewUrl} alt="미리보기" className="max-w-full max-h-[85vh] object-contain" onClick={e => e.stopPropagation()} />
         </div>
       )}
     </div>
@@ -244,10 +190,7 @@ function AttachmentViewer({ documentId, canAdd = false }: { documentId: string; 
 
 // ===== 결재 단계 아이콘 =====
 function StepIcon({ type, status }: { type: "submit" | "review" | "approve"; status: "done" | "active" | "pending" | "rejected" }) {
-  const colors = {
-    done: { bg: "#2563eb", stroke: "white" }, active: { bg: "#f59e0b", stroke: "white" },
-    rejected: { bg: "#dc2626", stroke: "white" }, pending: { bg: "#e5e7eb", stroke: "#9ca3af" },
-  };
+  const colors = { done: { bg: "#2563eb", stroke: "white" }, active: { bg: "#f59e0b", stroke: "white" }, rejected: { bg: "#dc2626", stroke: "white" }, pending: { bg: "#e5e7eb", stroke: "#9ca3af" } };
   const c = colors[status];
   const icons = {
     submit: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.stroke} strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
@@ -256,8 +199,7 @@ function StepIcon({ type, status }: { type: "submit" | "review" | "approve"; sta
   };
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <div className="w-12 h-12 rounded-full flex items-center justify-center shadow-sm"
-        style={{ backgroundColor: c.bg, boxShadow: status === "active" ? `0 0 0 3px ${c.bg}33` : undefined }}>
+      <div className="w-12 h-12 rounded-full flex items-center justify-center shadow-sm" style={{ backgroundColor: c.bg, boxShadow: status === "active" ? `0 0 0 3px ${c.bg}33` : undefined }}>
         {icons[type]}
       </div>
       {status === "active" && <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />}
@@ -265,7 +207,7 @@ function StepIcon({ type, status }: { type: "submit" | "review" | "approve"; sta
   );
 }
 
-function ApprovalFlow({ doc, approvalLines, writerName }: { doc: DocumentDetail; approvalLines: ApprovalLine[]; writerName: string; }) {
+function ApprovalFlow({ doc, approvalLines, writerName }: { doc: DocumentDetail; approvalLines: ApprovalLine[]; writerName: string }) {
   const isSubmitted = doc.status !== "DRAFT";
   const line1 = approvalLines.find(l => l.approvalOrder === 1);
   const line2 = approvalLines.find(l => l.approvalOrder === 2);
@@ -299,18 +241,14 @@ function ApprovalFlow({ doc, approvalLines, writerName }: { doc: DocumentDetail;
       </div>
       <div className="space-y-2 mt-3 border-t border-gray-100 pt-3">
         {steps.map((step, i) => (
-          <div key={i} className={`flex items-start gap-3 p-2.5 rounded-xl ${
-            step.status === "done" ? "bg-green-50" : step.status === "active" ? "bg-amber-50" : step.status === "rejected" ? "bg-red-50" : "bg-gray-50"
-          }`}>
-            <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-              step.status === "done" ? "bg-green-500" : step.status === "active" ? "bg-amber-400 animate-pulse" : step.status === "rejected" ? "bg-red-500" : "bg-gray-300"
-            }`} />
+          <div key={i} className={`flex items-start gap-3 p-2.5 rounded-xl ${step.status === "done" ? "bg-green-50" : step.status === "active" ? "bg-amber-50" : step.status === "rejected" ? "bg-red-50" : "bg-gray-50"}`}>
+            <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${step.status === "done" ? "bg-green-500" : step.status === "active" ? "bg-amber-400 animate-pulse" : step.status === "rejected" ? "bg-red-500" : "bg-gray-300"}`} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-semibold text-gray-700">{step.label}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                  step.status === "done" ? "bg-green-100 text-green-600" : step.status === "active" ? "bg-amber-100 text-amber-600" : step.status === "rejected" ? "bg-red-100 text-red-600" : "bg-gray-100 text-gray-400"
-                }`}>{step.status === "done" ? "완료" : step.status === "active" ? "진행중" : step.status === "rejected" ? "반려" : "대기"}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${step.status === "done" ? "bg-green-100 text-green-600" : step.status === "active" ? "bg-amber-100 text-amber-600" : step.status === "rejected" ? "bg-red-100 text-red-600" : "bg-gray-100 text-gray-400"}`}>
+                  {step.status === "done" ? "완료" : step.status === "active" ? "진행중" : step.status === "rejected" ? "반려" : "대기"}
+                </span>
               </div>
               <span className="text-xs text-gray-600">{step.name}</span>
               {step.comment && <div className="mt-1 text-xs text-gray-500 bg-white/70 rounded-lg px-2 py-1">💬 {step.comment}</div>}
@@ -323,7 +261,7 @@ function ApprovalFlow({ doc, approvalLines, writerName }: { doc: DocumentDetail;
   );
 }
 
-function FinalApproverModal({ documentId, documentType, onClose, onAssigned }: { documentId: string; documentType: string; onClose: () => void; onAssigned: () => void; }) {
+function FinalApproverModal({ documentId, documentType, onClose, onAssigned }: { documentId: string; documentType: string; onClose: () => void; onAssigned: () => void }) {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [keyword, setKeyword] = useState("");
   const [selected, setSelected] = useState<UserItem | null>(null);
@@ -349,8 +287,9 @@ function FinalApproverModal({ documentId, documentType, onClose, onAssigned }: {
     finally { setLoading(false); }
   };
   return (
+    // #5 fix: pb-24로 네비게이션 위로 충분히 올림
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-      <div className="bg-white w-full rounded-t-3xl p-6 pb-10 max-h-[80vh] overflow-y-auto">
+      <div className="bg-white w-full rounded-t-3xl p-6 pb-24 max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold text-gray-900">{finalRoleLabel} 지정</h2>
           <button onClick={onClose} className="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
@@ -367,9 +306,9 @@ function FinalApproverModal({ documentId, documentType, onClose, onAssigned }: {
         </div>
         <div className="relative mb-2">
           <input value={keyword} onChange={e => setKeyword(e.target.value)} placeholder="이름으로 검색"
-            className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="w-full pl-3 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
-        <div className="space-y-1.5 max-h-48 overflow-y-auto mb-4">
+        <div className="space-y-1.5 max-h-52 overflow-y-auto mb-4">
           {users.filter(u => u.id !== selected?.id).map(u => (
             <button key={u.id} onClick={() => setSelected(u)}
               className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-green-400 hover:bg-green-50 text-left">
@@ -433,6 +372,180 @@ function PdfButtons({ documentId }: { documentId: string }) {
   );
 }
 
+// ===== 내용 탭: 문서 전체 내용 표시 =====
+function DocumentContent({ doc, fd }: { doc: DocumentDetail; fd: Record<string, unknown> }) {
+  const workPeriod = fd.workStartDate && fd.workEndDate ? `${fd.workStartDate} ~ ${fd.workEndDate}` : (fd.workDate as string) || "";
+
+  // 위험공종 관련작업(장소) 항목들
+  const highPlaceItems: string[] = Array.isArray(fd.riskHighPlaceItems) ? fd.riskHighPlaceItems as string[] : [];
+  const waterWorkItems: string[] = Array.isArray(fd.riskWaterWorkItems) ? fd.riskWaterWorkItems as string[] : [];
+
+  const riskTypesSummary = [
+    fd.riskHighPlace && `고소작업${highPlaceItems.length ? ": " + highPlaceItems.join(", ") : ""}${fd.riskHighPlaceDetail ? (highPlaceItems.length ? ", " : ": ") + fd.riskHighPlaceDetail : ""}`,
+    fd.riskWaterWork && `수변작업${waterWorkItems.length ? ": " + waterWorkItems.join(", ") : ""}${fd.riskWaterWorkDetail ? (waterWorkItems.length ? ", " : ": ") + fd.riskWaterWorkDetail : ""}`,
+    fd.riskConfinedSpace && `밀폐공간${fd.riskConfinedSpaceDetail ? ": " + fd.riskConfinedSpaceDetail : ""}`,
+    fd.riskPowerOutage && `정전작업${fd.riskPowerOutageDetail ? ": " + fd.riskPowerOutageDetail : ""}`,
+    fd.riskFireWork && `화기작업${fd.riskFireWorkDetail ? ": " + fd.riskFireWorkDetail : ""}`,
+    fd.riskOther && `기타${fd.riskOtherDetail ? ": " + fd.riskOtherDetail : ""}`,
+  ].filter(Boolean) as string[];
+
+  const factorLabels: Record<string, string> = {
+    factorNarrowAccess: "진출입로 협소", factorSlippery: "미끄러짐",
+    factorSteepSlope: "급경사", factorWaterHazard: "파랑·유수·수심",
+    factorRockfall: "낙석·토사붕괴", factorNoRailing: "난간 미설치",
+    factorLadderNoGuard: "사다리·방호울 미설치", factorSuffocation: "질식·화재·폭발",
+    factorElectricFire: "감전·전기불꽃 화재", factorSparkFire: "스파크·화염에 의한 화재",
+    factorOther: `기타${fd.factorOtherDetail ? "(" + fd.factorOtherDetail + ")" : ""}`,
+  };
+  const checkedFactors = Object.entries(factorLabels).filter(([key]) => !!(fd as any)[key]).map(([, label]) => label);
+
+  const isForm1 = doc.documentType === "SAFETY_WORK_PERMIT";
+  const isForm2 = doc.documentType === "CONFINED_SPACE";
+  const isForm3 = doc.documentType === "HOLIDAY_WORK";
+  const isForm4 = doc.documentType === "POWER_OUTAGE";
+
+  return (
+    <div className="space-y-4">
+      {/* 기본정보 - 모든 양식 공통 */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <h3 className="text-sm font-bold text-gray-900 mb-3">기본정보</h3>
+        <div className="space-y-2">
+          <Field label="신청일" value={(fd.requestDate as string) || (fd.reportDate as string)} />
+          <Field label="작업기간" value={workPeriod} />
+          <Field label="작업시간" value={fd.workStartTime && fd.workEndTime ? `${fd.workStartTime} ~ ${fd.workEndTime}` : null} />
+          <Field label="용역명" value={(fd.projectName ?? fd.serviceName) as string} />
+          <Field label="업체명" value={fd.applicantCompany as string} />
+          <Field label="직책" value={fd.applicantTitle as string} />
+          <Field label="신청자" value={(fd.applicantName as string) || (fd.applicantName as string)} />
+        </div>
+      </div>
+
+      {/* 작업정보 */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <h3 className="text-sm font-bold text-gray-900 mb-3">작업정보</h3>
+        <div className="space-y-2">
+          <Field label="작업장소" value={(fd.workLocation ?? fd.facilityLocation) as string} />
+          <Field label="작업내용" value={(fd.workContent ?? fd.workContents) as string} />
+          <Field label="작업원 명단" value={(fd.participants as string)} />
+          <Field label="출입자 명단" value={fd.entryList as string} />
+        </div>
+      </div>
+
+      {/* 붙임1 전용: 위험공종 확인내용 */}
+      {isForm1 && riskTypesSummary.length > 0 && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-bold text-gray-900 mb-3">위험공종 확인내용</h3>
+          <div className="space-y-2">
+            <div>
+              <p className="text-xs text-gray-500 mb-1.5">작업허가제 대상공종</p>
+              <div className="space-y-1.5">
+                {riskTypesSummary.map((item, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <div className="w-4 h-4 rounded bg-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <span className="text-sm text-gray-800">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 붙임1 전용: 예상위험요소 */}
+      {isForm1 && checkedFactors.length > 0 && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-bold text-gray-900 mb-3">예상되는 위험요소</h3>
+          <div className="flex flex-wrap gap-2">
+            {checkedFactors.map((f, i) => (
+              <span key={i} className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">{f}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 붙임1 전용: 위험요소/개선대책 */}
+      {isForm1 && Array.isArray(fd.riskRows) && (fd.riskRows as any[]).some(r => r.riskFactor || r.improvement) && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-bold text-gray-900 mb-3">위험요소 · 개선대책</h3>
+          <div className="space-y-2">
+            {(fd.riskRows as any[]).filter(r => r.riskFactor || r.improvement).map((row, i) => (
+              <div key={i} className="bg-gray-50 rounded-xl p-3 text-xs space-y-1">
+                {row.riskFactor && <div><span className="text-gray-500">위험요소:</span> <span className="text-gray-800">{row.riskFactor}</span></div>}
+                {row.improvement && <div><span className="text-gray-500">개선대책:</span> <span className="text-gray-800">{row.improvement}</span></div>}
+                {row.disasterType && <div><span className="text-gray-500">재해형태:</span> <span className="text-gray-800">{row.disasterType}</span></div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 붙임2/4: 안전조치 체크리스트 */}
+      {(isForm2 || isForm4) && Array.isArray(fd.safetyChecks) && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-bold text-gray-900 mb-3">안전조치 요구사항</h3>
+          <div className="space-y-1.5">
+            {(fd.safetyChecks as any[]).filter(c => c.applicable === "해당").map((item, i) => (
+              <div key={i} className="flex items-start gap-2 text-xs">
+                <div className="w-4 h-4 rounded bg-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <span className="text-gray-800">{item.label}</span>
+                {item.result && <span className="text-gray-500 ml-1">({item.result})</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 붙임3: 휴일작업 참여자 */}
+      {isForm3 && Array.isArray(fd.participants) && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-bold text-gray-900 mb-3">작업 참여자</h3>
+          <div className="space-y-1.5">
+            {(fd.participants as any[]).map((p, i) => (
+              <div key={i} className="flex gap-3 text-sm">
+                <span className="text-gray-400 w-24 shrink-0">{p.role}</span>
+                <span className="text-gray-900">{p.name} {p.phone ? `(${p.phone})` : ""}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 붙임2: 특별조치 필요사항 */}
+      {(isForm2 || isForm4) && fd.specialMeasures && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-bold text-gray-900 mb-2">특별조치 필요사항</h3>
+          <p className="text-sm text-gray-800">{fd.specialMeasures as string}</p>
+        </div>
+      )}
+
+      {/* #4 fix: 신청자는 용역감독 검토내용 숨김 (승인완료 후에는 표시) */}
+      {(fd.reviewOpinion || fd.reviewResult) && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-bold text-gray-900 mb-3">용역감독 검토내용</h3>
+          <div className="space-y-2">
+            {fd.reviewOpinion && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">검토의견</p>
+                <p className="text-sm text-gray-800 bg-gray-50 rounded-xl px-3 py-2">{fd.reviewOpinion as string}</p>
+              </div>
+            )}
+            {fd.reviewResult && (
+              <div>
+                <p className="text-xs text-gray-500 mb-1">조치결과</p>
+                <p className="text-sm text-gray-800 bg-gray-50 rounded-xl px-3 py-2">{fd.reviewResult as string}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ApprovalDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -447,7 +560,9 @@ export default function ApprovalDetailPage() {
   const [myUserId, setMyUserId] = useState("");
   const [myRole, setMyRole] = useState("");
   const [activeTab, setActiveTab] = useState("내용");
-  const [comment, setComment] = useState("");
+  // #6 fix: 2단계용 - 검토의견 + 조치결과 모두 입력
+  const [reviewOpinion, setReviewOpinion] = useState("");
+  const [reviewResult, setReviewResult] = useState("");
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -472,6 +587,12 @@ export default function ApprovalDetailPage() {
       const docObj = docData.document;
       setDoc(docObj);
       setApprovalLines(linesData.approvalLines ?? []);
+
+      // #6 fix: 3단계 사용자는 2단계에서 저장된 검토의견/조치결과 미리 로드
+      const fd = docObj.formDataJson ?? {};
+      if (fd.reviewOpinion) setReviewOpinion(fd.reviewOpinion as string);
+      if (fd.reviewResult) setReviewResult(fd.reviewResult as string);
+
       const taskRes = await fetch(`/api/tasks/${docObj.taskId}`);
       const taskData = await taskRes.json();
       if (taskRes.ok) setTaskName(taskData.task?.name ?? "");
@@ -534,7 +655,7 @@ export default function ApprovalDetailPage() {
   const clearCanvas = () => { const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext("2d"); if (!ctx) return; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); };
 
   const handleAction = async (action: "APPROVE" | "REJECT") => {
-    if (action === "REJECT" && !comment.trim()) { alert("반려 사유를 입력해주세요."); return; }
+    if (action === "REJECT" && !reviewOpinion.trim()) { alert("반려 사유를 검토의견에 입력해주세요."); return; }
     setPendingAction(action); setShowRejectConfirm(false); setShowApproveConfirm(false);
     setShowSign(true); initCanvas();
   };
@@ -545,9 +666,15 @@ export default function ApprovalDetailPage() {
     try {
       const canvas = canvasRef.current;
       const signatureData = canvas ? canvas.toDataURL("image/png") : null;
+      // #6 fix: comment에 reviewOpinion 전달, reviewResult도 함께 전달
       const res = await fetch(`/api/documents/${documentId}/approve`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: pendingAction, comment: comment.trim() || null, signatureData }),
+        body: JSON.stringify({
+          action: pendingAction,
+          comment: reviewOpinion.trim() || null,
+          reviewResult: reviewResult.trim() || null,
+          signatureData,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "오류 발생");
@@ -569,9 +696,11 @@ export default function ApprovalDetailPage() {
   const statusStyle = STATUS_STYLE[statusKey] ?? STATUS_STYLE.SUBMITTED;
   const isOwner = myUserId && doc.createdBy && String(doc.createdBy).toLowerCase() === String(myUserId).toLowerCase();
   const isStaff = ["REVIEWER", "FINAL_APPROVER", "ADMIN"].includes(myRole);
+  // #1 fix: canCancel - 취소 버튼 조건 (결재현황 탭에서도 표시)
   const canCancel = doc.status !== "DRAFT" && doc.status !== "APPROVED" && (isOwner || isStaff);
   const isApproved = doc.status === "APPROVED";
-  const workPeriod = fd.workStartDate && fd.workEndDate ? `${fd.workStartDate} ~ ${fd.workEndDate}` : (fd.workDate as string) || "";
+  // 내 차례가 2단계인지 (3단계에서 검토의견 수정 가능)
+  const isStep2 = isMyTurn && doc.currentApprovalOrder === 2;
 
   return (
     <div className="pb-40">
@@ -602,36 +731,23 @@ export default function ApprovalDetailPage() {
       <div className="p-4 space-y-4">
         {activeTab === "내용" && (
           <>
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <h3 className="text-sm font-bold text-gray-900 mb-3">기본정보</h3>
-              <div className="space-y-2">
-                <Field label="신청일" value={fd.requestDate as string} />
-                <Field label="작업기간" value={workPeriod} />
-                <Field label="작업시간" value={`${fd.workStartTime ?? ""} ~ ${fd.workEndTime ?? ""}`} />
-                <Field label="용역명" value={(fd.projectName ?? fd.serviceName) as string} />
-                <Field label="업체명" value={fd.applicantCompany as string} />
-                <Field label="신청자" value={fd.applicantName as string} />
-              </div>
-            </div>
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <h3 className="text-sm font-bold text-gray-900 mb-3">작업정보</h3>
-              <div className="space-y-2">
-                <Field label="작업장소" value={fd.workLocation as string} />
-                <Field label="작업내용" value={fd.workContent as string} />
-                <Field label="작업원 명단" value={fd.participants as string} />
-              </div>
-            </div>
+            {/* #2 fix: DocumentContent 컴포넌트로 모든 내용 표시 */}
+            <DocumentContent doc={doc} fd={fd} />
 
-            {/* 서명 표시 */}
+            {/* 서명 표시 - #7 fix: 칸+이미지 나란히 */}
             {(fd.signatureData || approvalLines.some(l => l.signatureData && l.stepStatus === "APPROVED")) && (
               <div className="bg-white rounded-2xl p-4 shadow-sm">
                 <h3 className="text-sm font-bold text-gray-900 mb-3">서명</h3>
                 <div className="space-y-3">
                   {typeof fd.signatureData === "string" && fd.signatureData && (
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">신청인 서명</p>
-                      <div className="border border-gray-200 rounded-xl overflow-hidden">
-                        <img src={fd.signatureData as string} alt="신청인 서명" className="w-full max-h-24 object-contain bg-white" />
+                    <div className="border border-gray-200 rounded-xl overflow-hidden">
+                      <div className="flex items-center border-b border-gray-100 px-3 py-2 bg-gray-50">
+                        <span className="text-xs font-medium text-gray-600 w-20">신청인</span>
+                        <span className="text-xs text-gray-500">{fd.applicantName as string || ""}</span>
+                      </div>
+                      <div className="flex items-center px-3 py-2">
+                        <span className="text-xs text-gray-400 w-20">(서명)</span>
+                        <img src={fd.signatureData as string} alt="신청인 서명" className="h-12 object-contain" />
                       </div>
                     </div>
                   )}
@@ -640,10 +756,14 @@ export default function ApprovalDetailPage() {
                       ? (FINAL_ROLE_LABELS[doc.documentType] ?? "최종허가자")
                       : (ROLE_LABELS[doc.documentType]?.[line.approvalOrder] ?? `${line.approvalOrder}단계`);
                     return (
-                      <div key={line.id}>
-                        <p className="text-xs text-gray-500 mb-1">{roleLabel} ({line.approverName}) 서명</p>
-                        <div className="border border-gray-200 rounded-xl overflow-hidden">
-                          <img src={line.signatureData!} alt={`${roleLabel} 서명`} className="w-full max-h-24 object-contain bg-white" />
+                      <div key={line.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                        <div className="flex items-center border-b border-gray-100 px-3 py-2 bg-gray-50">
+                          <span className="text-xs font-medium text-gray-600 w-20">{roleLabel}</span>
+                          <span className="text-xs text-gray-500">{line.approverName}</span>
+                        </div>
+                        <div className="flex items-center px-3 py-2">
+                          <span className="text-xs text-gray-400 w-20">(서명)</span>
+                          <img src={line.signatureData!} alt={`${roleLabel} 서명`} className="h-12 object-contain" />
                         </div>
                       </div>
                     );
@@ -652,10 +772,8 @@ export default function ApprovalDetailPage() {
               </div>
             )}
 
-            {/* 첨부파일 뷰어 - 항상 표시, 승인완료시 추가 가능 */}
             <AttachmentViewer documentId={documentId} canAdd={isApproved} />
 
-            {/* PDF 버튼 */}
             {isApproved && (
               <div className="bg-white rounded-2xl p-4 shadow-sm">
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -666,17 +784,36 @@ export default function ApprovalDetailPage() {
               </div>
             )}
 
-            {/* 검토 의견 입력 */}
+            {/* #6 fix: 결재자 검토 입력 영역 - 2단계: 검토의견+조치결과 모두 입력, 3단계: 2단계 내용 불러와서 수정 가능 */}
             {isMyTurn && (
               <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
-                  검토 의견 입력
+                  {doc.currentApprovalOrder === 1 ? "검토 의견 입력" : "검토내용 확인 및 수정"}
                 </h3>
-                <textarea value={comment} onChange={e => setComment(e.target.value)}
-                  placeholder="검토 의견을 입력해주세요 (반려 시 필수)"
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
+                {doc.currentApprovalOrder === 2 && (
+                  <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-3">
+                    💡 1단계 검토자가 작성한 내용입니다. 수정하여 최종 반영할 수 있습니다.
+                  </p>
+                )}
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                      검토의견 {doc.currentApprovalOrder === 1 && <span className="text-red-500 text-xs">(반려 시 필수)</span>}
+                    </label>
+                    <textarea value={reviewOpinion} onChange={e => setReviewOpinion(e.target.value)}
+                      placeholder="검토 의견을 입력해주세요 (반려 시 필수)"
+                      rows={3}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1.5">조치결과</label>
+                    <textarea value={reviewResult} onChange={e => setReviewResult(e.target.value)}
+                      placeholder="조치결과를 입력해주세요"
+                      rows={2}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
+                  </div>
+                </div>
               </div>
             )}
           </>
@@ -695,11 +832,32 @@ export default function ApprovalDetailPage() {
                 <PdfButtons documentId={documentId} />
               </div>
             )}
+            {/* #6: 결재현황 탭에서도 검토 입력 */}
+            {isMyTurn && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
+                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
+                  {doc.currentApprovalOrder === 1 ? "검토 의견 입력" : "검토내용 확인 및 수정"}
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1.5">검토의견</label>
+                    <textarea value={reviewOpinion} onChange={e => setReviewOpinion(e.target.value)} placeholder="검토 의견" rows={2}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1.5">조치결과</label>
+                    <textarea value={reviewResult} onChange={e => setReviewResult(e.target.value)} placeholder="조치결과" rows={2}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
 
-      {/* 하단 버튼 */}
+      {/* #1 fix: 하단 버튼 - 결재현황 탭에서도 취소버튼 항상 표시 */}
       <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-3 pb-4 space-y-2">
         {canCancel && (
           <button onClick={handleCancelApproval} disabled={cancelling}
@@ -722,10 +880,10 @@ export default function ApprovalDetailPage() {
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
             <h3 className="text-base font-bold text-gray-900 mb-2">반려하시겠습니까?</h3>
             <p className="text-sm text-gray-500 mb-4">반려 처리 후 작성자에게 알림이 전송됩니다.</p>
-            {!comment.trim() && <p className="text-xs text-red-500 mb-3">반려 사유(검토의견란)를 먼저 입력해주세요.</p>}
+            {!reviewOpinion.trim() && <p className="text-xs text-red-500 mb-3">반려 사유(검토의견)를 먼저 입력해주세요.</p>}
             <div className="flex gap-3">
               <button onClick={() => setShowRejectConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">취소</button>
-              <button onClick={() => handleAction("REJECT")} disabled={!comment.trim()}
+              <button onClick={() => handleAction("REJECT")} disabled={!reviewOpinion.trim()}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-40" style={{ background: "#dc2626" }}>반려</button>
             </div>
           </div>

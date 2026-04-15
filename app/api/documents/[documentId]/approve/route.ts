@@ -17,7 +17,8 @@ export async function POST(
     }
     const { documentId } = await params;
     const body = await req.json();
-    const { action, comment, signatureData } = body;
+    // #6 fix: reviewResult도 함께 받음
+    const { action, comment, reviewResult, signatureData } = body;
 
     if (!["APPROVE", "REJECT"].includes(action)) {
       return NextResponse.json({ error: "올바른 액션이 아닙니다." }, { status: 400 });
@@ -59,18 +60,15 @@ export async function POST(
       }).where(eq(documents.id, documentId));
 
       await db.insert(notifications).values({
-        userId: doc.createdBy,
-        type: "REJECTED",
+        userId: doc.createdBy, type: "REJECTED",
         title: "결재가 반려되었습니다.",
         body: `반려 사유: ${comment}`,
-        targetDocumentId: documentId,
-        isRead: false,
+        targetDocumentId: documentId, isRead: false,
       });
 
       return NextResponse.json({ success: true, action: "REJECTED" });
 
     } else {
-      // 승인 처리
       await db.update(documentApprovalLines).set({
         stepStatus: "APPROVED", actedAt: new Date(), comment: comment || null, updatedAt: new Date(),
       }).where(eq(documentApprovalLines.id, currentLine.id));
@@ -85,56 +83,40 @@ export async function POST(
       }
 
       if (currentLine.approvalOrder === 1) {
-        // ===== 7번: 1단계 검토의견을 formDataJson.reviewOpinion에 저장 =====
-        // 3단계(최종허가자)가 볼 수 있도록 formDataJson에도 반영
-        if (comment?.trim()) {
-          const currentFd = (doc.formDataJson as Record<string, unknown>) ?? {};
-          const updatedFd = {
-            ...currentFd,
-            reviewOpinion: comment.trim(), // 1단계 검토자 의견을 reviewOpinion에 저장
-          };
-          await db.update(documents).set({
-            status: "IN_REVIEW",
-            currentApproverUserId: null,
-            formDataJson: updatedFd,
-            updatedAt: new Date(),
-          }).where(eq(documents.id, documentId));
-        } else {
-          await db.update(documents).set({
-            status: "IN_REVIEW", currentApproverUserId: null, updatedAt: new Date(),
-          }).where(eq(documents.id, documentId));
-        }
+        // 1단계: 검토의견 + 조치결과 모두 formDataJson에 저장
+        const currentFd = (doc.formDataJson as Record<string, unknown>) ?? {};
+        const updatedFd: Record<string, unknown> = { ...currentFd };
+        if (comment?.trim()) updatedFd.reviewOpinion = comment.trim();
+        if (reviewResult?.trim()) updatedFd.reviewResult = reviewResult.trim();
+
+        await db.update(documents).set({
+          status: "IN_REVIEW",
+          currentApproverUserId: null,
+          formDataJson: updatedFd,
+          updatedAt: new Date(),
+        }).where(eq(documents.id, documentId));
 
         return NextResponse.json({ success: true, action: "NEED_FINAL_APPROVER" });
 
       } else {
-        // 최종 승인
-        // ===== 7번: 2단계 최종허가자 의견도 formDataJson.reviewResult에 저장 =====
-        if (comment?.trim()) {
-          const currentFd = (doc.formDataJson as Record<string, unknown>) ?? {};
-          const updatedFd = {
-            ...currentFd,
-            reviewResult: comment.trim(), // 2단계 최종허가자 조치결과에 저장
-          };
-          await db.update(documents).set({
-            status: "APPROVED", approvedAt: new Date(),
-            currentApproverUserId: null,
-            formDataJson: updatedFd,
-            updatedAt: new Date(),
-          }).where(eq(documents.id, documentId));
-        } else {
-          await db.update(documents).set({
-            status: "APPROVED", approvedAt: new Date(), currentApproverUserId: null, updatedAt: new Date(),
-          }).where(eq(documents.id, documentId));
-        }
+        // 2단계: 검토의견 + 조치결과 최종 저장 (수정 반영)
+        const currentFd = (doc.formDataJson as Record<string, unknown>) ?? {};
+        const updatedFd: Record<string, unknown> = { ...currentFd };
+        if (comment?.trim()) updatedFd.reviewOpinion = comment.trim();
+        if (reviewResult?.trim()) updatedFd.reviewResult = reviewResult.trim();
+
+        await db.update(documents).set({
+          status: "APPROVED", approvedAt: new Date(),
+          currentApproverUserId: null,
+          formDataJson: updatedFd,
+          updatedAt: new Date(),
+        }).where(eq(documents.id, documentId));
 
         await db.insert(notifications).values({
-          userId: doc.createdBy,
-          type: "APPROVED",
+          userId: doc.createdBy, type: "APPROVED",
           title: "결재가 최종 승인되었습니다.",
           body: "결재가 최종 승인되었습니다. PDF를 다운로드할 수 있습니다.",
-          targetDocumentId: documentId,
-          isRead: false,
+          targetDocumentId: documentId, isRead: false,
         });
 
         generatePDFBackground(documentId, doc).catch((err) => {
@@ -155,7 +137,6 @@ async function generatePDFBackground(
   doc: { documentType: string; formDataJson: unknown; createdAt: Date }
 ) {
   try {
-    // 최신 formDataJson 가져오기 (검토의견 반영된 버전)
     const [latestDoc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
     const fd = (latestDoc?.formDataJson as Record<string, unknown>) ?? {};
 
@@ -185,7 +166,6 @@ async function generatePDFBackground(
       signatureData: signatures.find((s: { approvalLineId: string; signatureData: string }) => s.approvalLineId === line.id)?.signatureData ?? undefined,
     }));
 
-    // 신청인 서명 - documentSignatures에서 먼저 찾기
     let applicantSignature = typeof fd.signatureData === "string" ? fd.signatureData : undefined;
     if (!applicantSignature) {
       const applicantSig = signatures.find((s: any) => s.signerUserId === latestDoc?.createdBy && s.signatureData);
@@ -193,12 +173,9 @@ async function generatePDFBackground(
     }
 
     const { url, filename, size } = await generateAndUploadPDF({
-      documentId,
-      documentType: doc.documentType,
-      formData: fd,
-      approvalLines: approvalLinesWithSig,
-      createdAt: doc.createdAt.toISOString(),
-      applicantSignature,
+      documentId, documentType: doc.documentType,
+      formData: fd, approvalLines: approvalLinesWithSig,
+      createdAt: doc.createdAt.toISOString(), applicantSignature,
     });
 
     await db.insert(documentOutputs).values({
