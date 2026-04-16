@@ -94,7 +94,7 @@ function HeaderShell({ showInstallBtn, onInstall }: { showInstallBtn: boolean; o
         </div>
         <div className="flex flex-col leading-tight">
           <span className="text-white font-bold text-sm leading-tight">안전기술본부</span>
-          <span className="text-blue-200 text-xs leading-tight">현장안전 허가작업 시스템/span>
+          <span className="text-blue-200 text-xs leading-tight">현장안전 허가작업 시스템</span>
         </div>
       </div>
       <div className="flex items-center gap-2">
