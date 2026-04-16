@@ -19,7 +19,7 @@ const DOC_TYPE_INFO: Record<string, { title: string; short: string; approverLabe
   SAFETY_WORK_PERMIT: { title: "?덉쟾?묒뾽?덇???,    short: "遺숈엫1", approverLabel: "理쒖쥌寃?좎옄", confirmerLabel: "理쒖쥌?덇??? },
   CONFINED_SPACE:     { title: "諛?먭났媛꾩옉?낇뿀媛??, short: "遺숈엫2", approverLabel: "?덇???,    confirmerLabel: "?뺤씤?? },
   HOLIDAY_WORK:       { title: "?댁씪?묒뾽?좎껌??,     short: "遺숈엫3", approverLabel: "寃?좎옄",    confirmerLabel: "?뱀씤?? },
-  POWER_OUTAGE:       { title: "?뺤쟾?묒뾽?덇???,     short: "遺숈엫4", approverLabel: "?덇???,    confirmerLabel: "?뺤씤?? },
+  POWER_OUTAGE:       { title: "정전작업허가서",     short: "붙임4", approverLabel: "허가자",    confirmerLabel: "확인자" },
 };
 
 const inputClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none";
