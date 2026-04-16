@@ -9,6 +9,10 @@ interface DocumentDetail {
   id: string; taskId: string; documentType: DocumentType; status: string;
   formDataJson: Record<string, unknown>; submittedAt?: string;
   createdBy: string; currentApproverUserId?: string; currentApprovalOrder?: number;
+  // 위치 정보
+  workLatitude?: number | null;
+  workLongitude?: number | null;
+  workAddress?: string | null;
 }
 interface ApprovalLine {
   id: string; approvalOrder: number; approvalRole: string; stepStatus: string;
@@ -30,13 +34,13 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> 
   DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중" },
 };
 const ROLE_LABELS: Record<string, Record<number, string>> = {
-  SAFETY_WORK_PERMIT: { 1: "최종검토자", 2: "최종허가자" },
+  SAFETY_WORK_PERMIT: { 1: "최종 검토자", 2: "최종 허가자" },
   CONFINED_SPACE:     { 1: "허가자",     2: "확인자" },
   HOLIDAY_WORK:       { 1: "검토자",     2: "승인자" },
   POWER_OUTAGE:       { 1: "허가자",     2: "확인자" },
 };
 const FINAL_ROLE_LABELS: Record<string, string> = {
-  SAFETY_WORK_PERMIT: "최종허가자",
+  SAFETY_WORK_PERMIT: "최종 허가자",
   CONFINED_SPACE:     "확인자",
   HOLIDAY_WORK:       "승인자",
   POWER_OUTAGE:       "확인자",
@@ -53,6 +57,40 @@ function Field({ label, value }: { label: string; value?: string | null }) {
     <div className="flex gap-3">
       <span className="text-gray-400 w-24 flex-shrink-0 text-sm">{label}</span>
       <span className="text-gray-900 text-sm">{value}</span>
+    </div>
+  );
+}
+
+// ── 카카오맵 미리보기 (iframe roughmap) ─────────────────
+function LocationMapPreview({ lat, lng, address }: { lat: number; lng: number; address?: string | null }) {
+  const mapUrl = `https://map.kakao.com/link/map/${encodeURIComponent(address || "작업장소")},${lat},${lng}`;
+  const iframeSrc = `https://map.kakao.com/?urlX=${Math.round(lng * 10000000 / 100)}&urlY=${Math.round(lat * 10000000 / 100)}&urlLevel=4&urlMode=2&urlSkipAutoplay=n&urlInMapControl=true&from=roughmap`;
+
+  return (
+    <div className="mt-2 rounded-xl overflow-hidden border border-gray-200">
+      <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-xs text-gray-600">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+          </svg>
+          <span className="truncate max-w-[200px]">{address || `${lat.toFixed(5)}, ${lng.toFixed(5)}`}</span>
+        </div>
+        <a href={mapUrl} target="_blank" rel="noopener noreferrer"
+          className="text-xs text-blue-500 shrink-0 ml-2">지도열기</a>
+      </div>
+      <div style={{ width: "100%", height: "180px", position: "relative" }}>
+        <img
+          src={`https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=15&size=600x180&markers=color:red%7C${lat},${lng}&key=`}
+          alt=""
+          style={{ display: "none" }}
+        />
+        <iframe
+          src={iframeSrc}
+          style={{ width: "100%", height: "100%", border: "none" }}
+          title="작업장소 지도"
+          scrolling="no"
+        />
+      </div>
     </div>
   );
 }
@@ -106,7 +144,7 @@ function AttachmentViewer({ documentId, canAdd = false }: { documentId: string; 
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
           <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
         </svg>
-        첨부파일 {(photos.length + docFiles.length) > 0 && <span className="text-xs text-gray-400 font-normal">({photos.length + docFiles.length}개)</span>}
+        첨부 파일 {(photos.length + docFiles.length) > 0 && <span className="text-xs text-gray-400 font-normal">({photos.length + docFiles.length}개)</span>}
       </h3>
       {photos.length > 0 && (
         <div className="mb-4">
@@ -147,11 +185,13 @@ function AttachmentViewer({ documentId, canAdd = false }: { documentId: string; 
         <div className="flex gap-2 mt-2 pt-3 border-t border-gray-100">
           <button onClick={() => cameraRef.current?.click()} disabled={uploading}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>카메라
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            카메라
           </button>
           <button onClick={() => galleryRef.current?.click()} disabled={uploading}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>갤러리
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            갤러리
           </button>
         </div>
       )}
@@ -201,7 +241,7 @@ function ApprovalFlow({ doc, approvalLines, writerName }: { doc: DocumentDetail;
     return "pending";
   };
   const roleLabels = ROLE_LABELS[doc.documentType] ?? {};
-  const finalLabel = FINAL_ROLE_LABELS[doc.documentType] ?? "최종허가자";
+  const finalLabel = FINAL_ROLE_LABELS[doc.documentType] ?? "최종 허가자";
   const steps = [
     { icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />, label: "신청자", name: writerName, status: isSubmitted ? "done" : "active" },
     ...(line1 ? [{ icon: <StepIcon type="review" status={getStepStatus(line1)} />, label: roleLabels[1] ?? "검토자", name: line1.approverName ?? "", comment: line1.comment, actedAt: line1.actedAt, status: getStepStatus(line1) }] : []),
@@ -249,7 +289,7 @@ function FinalApproverModal({ documentId, documentType, onClose, onAssigned }: {
   const [selected, setSelected] = useState<UserItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const finalRoleLabel = FINAL_ROLE_LABELS[documentType] ?? "최종허가자";
+  const finalRoleLabel = FINAL_ROLE_LABELS[documentType] ?? "최종 허가자";
   useEffect(() => {
     const q = keyword ? `&keyword=${encodeURIComponent(keyword)}` : "";
     fetch(`/api/users?krcOnly=true${q}`).then(r => r.json()).then(d => setUsers(d.users ?? []));
@@ -270,7 +310,6 @@ function FinalApproverModal({ documentId, documentType, onClose, onAssigned }: {
   };
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-      {/* #5 fix: pb-24로 네비게이션 위로 충분히 올림 */}
       <div className="bg-white w-full rounded-t-3xl p-6 pb-24 max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold text-gray-900">{finalRoleLabel} 지정</h2>
@@ -359,9 +398,12 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
   const highPlaceItems: string[] = Array.isArray(fd.riskHighPlaceItems) ? fd.riskHighPlaceItems as string[] : [];
   const waterWorkItems: string[] = Array.isArray(fd.riskWaterWorkItems) ? fd.riskWaterWorkItems as string[] : [];
 
+  // 작업장소: formData의 workLocation 또는 facilityLocation
+  const workLocation = (fd.workLocation ?? fd.facilityLocation) as string | undefined;
+
   const riskTypesSummary = [
     fd.riskHighPlace && `고소작업${highPlaceItems.length ? ": " + highPlaceItems.join(", ") : ""}${fd.riskHighPlaceDetail ? (highPlaceItems.length ? ", " : ": ") + fd.riskHighPlaceDetail : ""}`,
-    fd.riskWaterWork && `수변작업${waterWorkItems.length ? ": " + waterWorkItems.join(", ") : ""}${fd.riskWaterWorkDetail ? (waterWorkItems.length ? ", " : ": ") + fd.riskWaterWorkDetail : ""}`,
+    fd.riskWaterWork && `수중작업${waterWorkItems.length ? ": " + waterWorkItems.join(", ") : ""}${fd.riskWaterWorkDetail ? (waterWorkItems.length ? ", " : ": ") + fd.riskWaterWorkDetail : ""}`,
     fd.riskConfinedSpace && `밀폐공간${fd.riskConfinedSpaceDetail ? ": " + fd.riskConfinedSpaceDetail : ""}`,
     fd.riskPowerOutage && `정전작업${fd.riskPowerOutageDetail ? ": " + fd.riskPowerOutageDetail : ""}`,
     fd.riskFireWork && `화기작업${fd.riskFireWorkDetail ? ": " + fd.riskFireWorkDetail : ""}`,
@@ -369,11 +411,11 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
   ].filter(Boolean) as string[];
 
   const factorLabels: Record<string, string> = {
-    factorNarrowAccess: "진출입로 협소", factorSlippery: "미끄러짐",
-    factorSteepSlope: "급경사", factorWaterHazard: "파랑·유수·수심",
-    factorRockfall: "낙석·토사붕괴", factorNoRailing: "난간 미설치",
-    factorLadderNoGuard: "사다리·방호울 미설치", factorSuffocation: "질식·화재·폭발",
-    factorElectricFire: "감전·전기불꽃 화재", factorSparkFire: "스파크·화염에 의한 화재",
+    factorNarrowAccess: "접근통로 협소", factorSlippery: "미끄러움",
+    factorSteepSlope: "급경사", factorWaterHazard: "익수·유수",
+    factorRockfall: "낙석·굴러떨어짐", factorNoRailing: "안전 난간재",
+    factorLadderNoGuard: "사다리 안전잠금장치", factorSuffocation: "질식·산소결핍·유해가스",
+    factorElectricFire: "감전·전기화재요인", factorSparkFire: "불꽃·불티에 의한 화재",
     factorOther: `기타${fd.factorOtherDetail ? "(" + fd.factorOtherDetail + ")" : ""}`,
   };
   const checkedFactors = Object.entries(factorLabels).filter(([key]) => !!(fd as any)[key]).map(([, label]) => label);
@@ -401,10 +443,19 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <h3 className="text-sm font-bold text-gray-900 mb-3">작업정보</h3>
         <div className="space-y-2">
-          <Field label="작업장소" value={(fd.workLocation ?? fd.facilityLocation) as string} />
+          {/* 작업장소 텍스트 */}
+          <Field label="작업장소" value={workLocation} />
+          {/* 지도 프레임 - 위도/경도가 있을 때만 표시 */}
+          {doc.workLatitude && doc.workLongitude && (
+            <LocationMapPreview
+              lat={doc.workLatitude}
+              lng={doc.workLongitude}
+              address={doc.workAddress || workLocation}
+            />
+          )}
           <Field label="작업내용" value={(fd.workContent ?? fd.workContents) as string} />
           <Field label="작업원 명단" value={fd.participants as string} />
-          <Field label="출입자 명단" value={fd.entryList as string} />
+          <Field label="입장자 명단" value={fd.entryList as string} />
         </div>
       </div>
 
@@ -426,7 +477,7 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
 
       {isForm1 && checkedFactors.length > 0 && (
         <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 mb-3">예상되는 위험요소</h3>
+          <h3 className="text-sm font-bold text-gray-900 mb-3">발생하는 위험요소</h3>
           <div className="flex flex-wrap gap-2">
             {checkedFactors.map((f, i) => (
               <span key={i} className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">{f}</span>
@@ -452,7 +503,7 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
 
       {(isForm2 || isForm4) && Array.isArray(fd.safetyChecks) && (
         <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 mb-3">안전조치 요구사항</h3>
+          <h3 className="text-sm font-bold text-gray-900 mb-3">안전조치 이행사항</h3>
           <div className="space-y-1.5">
             {(fd.safetyChecks as any[]).filter(c => c.applicable === "해당").map((item, i) => (
               <div key={i} className="flex items-start gap-2 text-xs">
@@ -488,10 +539,9 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
         </div>
       )}
 
-      {/* 검토내용 - 승인완료 or 검토의견 있을 때만 */}
       {(fd.reviewOpinion || fd.reviewResult) && (
         <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 mb-3">용역감독 검토내용</h3>
+          <h3 className="text-sm font-bold text-gray-900 mb-3">안전감독 검토의견</h3>
           <div className="space-y-2">
             {fd.reviewOpinion && (
               <div>
@@ -509,7 +559,6 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
         </div>
       )}
 
-      {/* #서명 fix: 역할|성명 헤더 + (서명)|이미지 한 줄 */}
       {(fd.signatureData || approvalLines.some(l => l.signatureData && l.stepStatus === "APPROVED")) && (
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3">서명</h3>
@@ -517,20 +566,20 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
             {typeof fd.signatureData === "string" && fd.signatureData && (
               <div className="border border-gray-200 rounded-xl overflow-hidden">
                 <div className="flex border-b border-gray-100 bg-gray-50">
-                  <span className="text-xs font-medium text-gray-600 px-3 py-2 w-24 border-r border-gray-200">신청인</span>
+                  <span className="text-xs font-medium text-gray-600 px-3 py-2 w-24 border-r border-gray-200">신청자</span>
                   <span className="text-xs text-gray-500 px-3 py-2">{fd.applicantName as string || ""}</span>
                 </div>
                 <div className="flex items-center">
                   <span className="text-xs text-gray-400 px-3 py-2 w-24 border-r border-gray-200 shrink-0">(서명)</span>
                   <div className="px-3 py-2">
-                    <img src={fd.signatureData as string} alt="신청인 서명" className="h-12 object-contain" />
+                    <img src={fd.signatureData as string} alt="신청자 서명" className="h-12 object-contain" />
                   </div>
                 </div>
               </div>
             )}
             {approvalLines.filter(l => l.stepStatus === "APPROVED" && l.signatureData).map(line => {
               const roleLabel = line.approvalRole === "FINAL_APPROVER"
-                ? (FINAL_ROLE_LABELS[doc.documentType] ?? "최종허가자")
+                ? (FINAL_ROLE_LABELS[doc.documentType] ?? "최종 허가자")
                 : (ROLE_LABELS[doc.documentType]?.[line.approvalOrder] ?? `${line.approvalOrder}단계`);
               return (
                 <div key={line.id} className="border border-gray-200 rounded-xl overflow-hidden">
@@ -570,7 +619,6 @@ export default function ApprovalDetailPage() {
   const [activeTab, setActiveTab] = useState("내용");
   const [reviewOpinion, setReviewOpinion] = useState("");
   const [reviewResult, setReviewResult] = useState("");
-  // #3 fix: 1단계 검토자 이름 저장
   const [step1ApproverName, setStep1ApproverName] = useState("");
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
@@ -598,11 +646,9 @@ export default function ApprovalDetailPage() {
       const lines = linesData.approvalLines ?? [];
       setApprovalLines(lines);
 
-      // #3 fix: 1단계 검토자 이름 추출
       const line1 = lines.find((l: ApprovalLine) => l.approvalOrder === 1);
       if (line1?.approverName) setStep1ApproverName(line1.approverName);
 
-      // 3단계 사용자는 2단계에서 저장된 검토의견/조치결과 미리 로드
       const fd = docObj.formDataJson ?? {};
       if (fd.reviewOpinion) setReviewOpinion(fd.reviewOpinion as string);
       if (fd.reviewResult) setReviewResult(fd.reviewResult as string);
@@ -643,7 +689,7 @@ export default function ApprovalDetailPage() {
       const res = await fetch(`/api/documents/${documentId}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "오류 발생");
-      alert("결재가 취소됐습니다. 과업 페이지에서 다시 작성하실 수 있습니다.");
+      alert("결재가 취소됐습니다. 과업 페이지에서 다시 작성할 수 있습니다.");
       router.back();
     } catch (e: unknown) { alert(e instanceof Error ? e.message : "취소에 실패했습니다."); }
     finally { setCancelling(false); }
@@ -712,16 +758,15 @@ export default function ApprovalDetailPage() {
   const canCancel = doc.status !== "DRAFT" && doc.status !== "APPROVED" && (isOwner || isStaff);
   const isApproved = doc.status === "APPROVED";
 
-  // #3 fix: 안내문구 - 2단계인 경우 1단계 검토자 이름 표시
   const reviewGuideText = doc.currentApprovalOrder === 2
-    ? `💡 ${step1ApproverName || "1단계 검토자"}(검토자)가 작성한 내용입니다. 수정하여 최종 반영할 수 있습니다.`
+    ? `💡 ${step1ApproverName || "1단계 검토자"}(검토자)가 작성한 내용입니다. 확인하여 최종 결재하시면 됩니다.`
     : null;
 
   const ReviewInputSection = () => (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
       <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
-        {doc.currentApprovalOrder === 1 ? "검토 의견 입력" : "검토내용 확인 및 수정"}
+        {doc.currentApprovalOrder === 1 ? "검토 의견 입력" : "검토의견 확인 및 수정"}
       </h3>
       {reviewGuideText && (
         <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-3">{reviewGuideText}</p>
@@ -746,6 +791,14 @@ export default function ApprovalDetailPage() {
       </div>
     </div>
   );
+
+  // ── 결재취소 버튼 (공통 컴포넌트) ──
+  const CancelButton = () => canCancel ? (
+    <button onClick={handleCancelApproval} disabled={cancelling}
+      className="w-full py-2.5 rounded-xl text-sm font-medium border-2 border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50">
+      {cancelling ? "취소 중..." : "결재 취소 (작성중으로)"}
+    </button>
+  ) : null;
 
   return (
     <div className="pb-40">
@@ -782,12 +835,14 @@ export default function ApprovalDetailPage() {
               <div className="bg-white rounded-2xl p-4 shadow-sm">
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  법정서류 PDF
+                  허가서 PDF
                 </h3>
                 <PdfButtons documentId={documentId} />
               </div>
             )}
             {isMyTurn && <ReviewInputSection />}
+            {/* 내용 탭에서도 결재취소 버튼 표시 */}
+            <CancelButton />
           </>
         )}
 
@@ -799,33 +854,29 @@ export default function ApprovalDetailPage() {
               <div className="bg-white rounded-2xl p-4 shadow-sm">
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  법정서류 PDF
+                  허가서 PDF
                 </h3>
                 <PdfButtons documentId={documentId} />
               </div>
             )}
             {isMyTurn && <ReviewInputSection />}
+            {/* 결재현황 탭에서도 결재취소 버튼 표시 */}
+            <CancelButton />
           </>
         )}
       </div>
 
-      {/* 하단 버튼 */}
-      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-3 pb-4 space-y-2">
-        {canCancel && (
-          <button onClick={handleCancelApproval} disabled={cancelling}
-            className="w-full py-2.5 rounded-xl text-sm font-medium border-2 border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50">
-            {cancelling ? "취소 중..." : "결재 취소 (작성중으로)"}
-          </button>
-        )}
-        {isMyTurn && (
+      {/* 하단 고정 버튼 - 결재 액션만 (결재취소는 각 탭 내용에 포함) */}
+      {isMyTurn && (
+        <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-3 pb-4">
           <div className="flex gap-3">
             <button onClick={() => setShowRejectConfirm(true)} className="flex-1 py-3 rounded-xl border-2 border-red-200 text-sm font-medium text-red-600">반려</button>
             <button onClick={() => setShowApproveConfirm(true)} className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#16a34a" }}>
               {doc.currentApprovalOrder === 1 ? "검토완료" : "최종 승인"}
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {showRejectConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
@@ -859,7 +910,6 @@ export default function ApprovalDetailPage() {
         </div>
       )}
 
-      {/* #2,4 fix: 서명 모달 - pb-24로 버튼 네비 위로 */}
       {showSign && (
         <div ref={signModalRef} className="fixed inset-0 bg-black/50 z-50 flex items-end" style={{ touchAction: "none" }} onTouchMove={e => e.preventDefault()}>
           <div className="bg-white w-full rounded-t-3xl" style={{ paddingBottom: "env(safe-area-inset-bottom, 20px)", maxHeight: "80vh", overflowY: "auto" }}>
@@ -876,7 +926,6 @@ export default function ApprovalDetailPage() {
                   onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
               </div>
             </div>
-            {/* #2,4 fix: pb-24로 승인완료 버튼 네비게이션과 겹치지 않게 */}
             <div className="px-6 pb-24 space-y-2">
               <div className="flex gap-2">
                 <button onClick={clearCanvas} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium">서명 지우기</button>
@@ -895,7 +944,7 @@ export default function ApprovalDetailPage() {
       {showFinalApprover && doc && (
         <FinalApproverModal documentId={documentId} documentType={doc.documentType}
           onClose={() => setShowFinalApprover(false)}
-          onAssigned={() => { setShowFinalApprover(false); alert("최종허가자가 지정됐습니다! 알림이 전송됩니다."); router.push("/approvals"); }} />
+          onAssigned={() => { setShowFinalApprover(false); alert("최종허가자가 지정됐습니다. 알림이 전송됩니다."); router.push("/approvals"); }} />
       )}
     </div>
   );
