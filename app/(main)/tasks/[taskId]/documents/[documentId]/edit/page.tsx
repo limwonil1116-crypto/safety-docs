@@ -16,9 +16,9 @@ interface RiskAssessRow {
 declare global { interface Window { kakao: any; daum: any; } }
 
 const DOC_TYPE_INFO: Record<string, { title: string; short: string; approverLabel: string; confirmerLabel: string }> = {
-  SAFETY_WORK_PERMIT: { title: "?덉쟾?묒뾽?덇???,    short: "遺숈엫1", approverLabel: "理쒖쥌寃?좎옄", confirmerLabel: "理쒖쥌?덇??? },
-  CONFINED_SPACE:     { title: "諛?먭났媛꾩옉?낇뿀媛??, short: "遺숈엫2", approverLabel: "?덇???,    confirmerLabel: "?뺤씤?? },
-  HOLIDAY_WORK:       { title: "?댁씪?묒뾽?좎껌??,     short: "遺숈엫3", approverLabel: "寃?좎옄",    confirmerLabel: "?뱀씤?? },
+  SAFETY_WORK_PERMIT: { title: "안전작업허가서",    short: "붙임1", approverLabel: "최종검토자", confirmerLabel: "최종허가자" },
+  CONFINED_SPACE:     { title: "밀폐공간작업허가서", short: "붙임2", approverLabel: "허가자",    confirmerLabel: "확인자" },
+  HOLIDAY_WORK:       { title: "휴일작업신청서",     short: "붙임3", approverLabel: "검토자",    confirmerLabel: "승인자" },
   POWER_OUTAGE:       { title: "정전작업허가서",     short: "붙임4", approverLabel: "허가자",    confirmerLabel: "확인자" },
 };
 
