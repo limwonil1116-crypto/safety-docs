@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 
@@ -16,38 +16,24 @@ export default function Header() {
 
   useEffect(() => {
     const ua = navigator.userAgent;
-
-    if (
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone
-    ) {
-      setInstallState("installed");
-      return;
+    if (window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone) {
+      setInstallState("installed"); return;
     }
-
     const isIOS = /iPhone|iPad|iPod/.test(ua) && !(window as any).MSStream;
     const isKakao = /KAKAOTALK|kakaotalk/i.test(ua);
     const isOtherInApp = /Instagram|NAVER|NaverApp|FB_IAB|FBAN|Line/i.test(ua);
-
     if (isKakao)      { setInstallState("inapp_kakao"); return; }
     if (isOtherInApp) { setInstallState("inapp_other"); return; }
     if (isIOS)        { setInstallState("ios"); return; }
-
-    // Android Chrome: beforeinstallprompt ?대깽??罹먯튂
     const handler = (e: Event) => {
       e.preventDefault();
       promptRef.current = e as BeforeInstallPromptEvent;
       setInstallState("ready");
     };
     window.addEventListener("beforeinstallprompt", handler);
-
     const installedHandler = () => setInstallState("installed");
     window.addEventListener("appinstalled", installedHandler);
-
-    // Android硫??대깽???ㅺ린 ?꾩뿉??踰꾪듉 ?쒖떆 (idle ?좎?)
-    const isAndroid = /Android/i.test(ua);
-    if (isAndroid) setInstallState("idle");
-
+    if (/Android/i.test(ua)) setInstallState("idle");
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
       window.removeEventListener("appinstalled", installedHandler);
@@ -55,28 +41,18 @@ export default function Header() {
   }, []);
 
   const handleInstall = async () => {
-    // ??promptRef ?덉쑝硫?臾댁“嫄?諛붾줈 PWA ?ㅼ튂 ?꾨＼?꾪듃 ?ㅽ뻾
     if (promptRef.current) {
       try {
         await promptRef.current.prompt();
         const { outcome } = await promptRef.current.userChoice;
-        if (outcome === "accepted") {
-          setInstallState("installed");
-          promptRef.current = null;
-        }
+        if (outcome === "accepted") { setInstallState("installed"); promptRef.current = null; }
         return;
-      } catch {
-        // ?ㅽ뙣 ??紐⑤떖濡??대갚
-      }
+      } catch {}
     }
-    // iOS / ?몄빋 / promptRef ?녿뒗 寃쎌슦 ???덈궡 紐⑤떖
     setShowModal(true);
   };
 
-  if (installState === "installed") return (
-    <HeaderShell showInstallBtn={false} onInstall={handleInstall} />
-  );
-
+  if (installState === "installed") return <HeaderShell showInstallBtn={false} onInstall={handleInstall} />;
   return (
     <>
       <HeaderShell showInstallBtn={true} onInstall={handleInstall} />
@@ -90,7 +66,7 @@ function HeaderShell({ showInstallBtn, onInstall }: { showInstallBtn: boolean; o
     <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-14" style={{ background: "#1e3a5f" }}>
       <div className="flex items-center gap-2.5">
         <div className="w-8 h-8 rounded-lg overflow-hidden bg-white flex items-center justify-center shrink-0">
-          <Image src="/logo.png" alt="濡쒓퀬" width={32} height={32} className="object-contain" />
+          <Image src="/logo.png" alt="로고" width={32} height={32} className="object-contain" />
         </div>
         <div className="flex flex-col leading-tight">
           <span className="text-white font-bold text-sm leading-tight">안전기술본부</span>
@@ -105,7 +81,8 @@ function HeaderShell({ showInstallBtn, onInstall }: { showInstallBtn: boolean; o
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            ?깆꽕移?          </button>
+            앱설치
+          </button>
         )}
         <button className="text-white opacity-80 p-1">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -122,20 +99,19 @@ function HeaderShell({ showInstallBtn, onInstall }: { showInstallBtn: boolean; o
 
 function InstallModal({ installState, onClose }: { installState: InstallState; onClose: () => void }) {
   const currentUrl = typeof window !== "undefined" ? window.location.href : "https://safety-docs.vercel.app";
-
   if (installState === "inapp_kakao") {
     return (
       <ModalWrapper onClose={onClose}>
-        <h2 className="text-base font-bold text-gray-900 mb-4">???ㅼ튂 ?덈궡</h2>
+        <h2 className="text-base font-bold text-gray-900 mb-4">앱 설치 안내</h2>
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
-          <p className="text-sm font-semibold text-yellow-800 mb-1">?뱦 移댁뭅?ㅽ넚 ?몄빋 釉뚮씪?곗? 媛먯?</p>
-          <p className="text-xs text-yellow-700">移댁뭅?ㅽ넚 ?댁뿉?쒕뒗 ???ㅼ튂媛 遺덇??⑸땲??<br />?꾨옒 諛⑸쾿?쇰줈 ?몃? 釉뚮씪?곗??먯꽌 ?댁뼱二쇱꽭??</p>
+          <p className="text-sm font-semibold text-yellow-800 mb-1">카카오톡 인앱 브라우저 감지</p>
+          <p className="text-xs text-yellow-700">카카오톡 내에서는 앱 설치가 불가합니다. 아래 방법으로 외부 브라우저에서 열어주세요.</p>
         </div>
         <div className="space-y-3">
           {[
-            { step: 1, title: "?ㅻⅨ履??곷떒 ??(?붾낫湲? 踰꾪듉 ??, desc: "移댁뭅?ㅽ넚 釉뚮씪?곗? ?곗륫 ?곷떒 ??3媛?踰꾪듉" },
-            { step: 2, title: "\"?ㅻⅨ 釉뚮씪?곗?濡??닿린\" ?좏깮", desc: "Chrome ?먮뒗 Safari濡??닿린瑜??좏깮?섏꽭?? },
-            { step: 3, title: "?대┛ 釉뚮씪?곗??먯꽌 ?깆꽕移?踰꾪듉 ??, desc: "?숈씪???붾㈃?먯꽌 ?깆꽕移?踰꾪듉???꾨Ⅴ硫??ㅼ튂?⑸땲?? },
+            { step: 1, title: "오른쪽 상단 더보기 버튼 탭", desc: "카카오톡 브라우저 우측 상단 점 3개 버튼" },
+            { step: 2, title: "다른 브라우저로 열기 선택", desc: "Chrome 또는 Safari로 열기를 선택하세요" },
+            { step: 3, title: "앱설치 버튼 탭", desc: "동일한 화면에서 앱설치 버튼을 누르면 설치됩니다" },
           ].map(({ step, title, desc }) => (
             <div key={step} className="flex items-start gap-3">
               <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0">{step}</div>
@@ -144,21 +120,20 @@ function InstallModal({ installState, onClose }: { installState: InstallState; o
           ))}
         </div>
         <button onClick={() => { navigator.clipboard?.writeText(currentUrl); onClose(); }} className="w-full mt-5 py-3 rounded-xl text-white font-medium text-sm" style={{ background: "#2563eb" }}>
-          二쇱냼 蹂듭궗 ???リ린
+          주소 복사 후 닫기
         </button>
       </ModalWrapper>
     );
   }
-
   if (installState === "ios") {
     return (
       <ModalWrapper onClose={onClose}>
-        <h2 className="text-base font-bold text-gray-900 mb-4">???붾㈃????異붽?</h2>
+        <h2 className="text-base font-bold text-gray-900 mb-4">홈 화면에 앱 추가</h2>
         <div className="space-y-4">
           {[
-            { step: 1, title: "?섎떒 怨듭쑀 踰꾪듉 ??, desc: "Safari ?섎떒??怨듭쑀(?△넁) ?꾩씠肄섏쓣 ??빀?덈떎" },
-            { step: 2, title: "\"???붾㈃??異붽?\" ?좏깮", desc: "?ㅽ겕濡ㅽ븯??\"???붾㈃??異붽?\" ??ぉ????빀?덈떎" },
-            { step: 3, title: "\"異붽?\" ??, desc: "?ㅻⅨ履??곷떒 \"異붽?\" 踰꾪듉????븯硫??꾨즺!" },
+            { step: 1, title: "하단 공유 버튼 탭", desc: "Safari 하단의 공유 아이콘을 탭합니다" },
+            { step: 2, title: "홈 화면에 추가 선택", desc: "스크롤하여 홈 화면에 추가 항목을 탭합니다" },
+            { step: 3, title: "추가 탭", desc: "오른쪽 상단 추가 버튼을 탭하면 완료!" },
           ].map(({ step, title, desc }) => (
             <div key={step} className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold shrink-0">{step}</div>
@@ -166,32 +141,29 @@ function InstallModal({ installState, onClose }: { installState: InstallState; o
             </div>
           ))}
         </div>
-        <button onClick={onClose} className="w-full mt-5 py-3 rounded-xl text-white font-medium text-sm" style={{ background: "#2563eb" }}>?뺤씤</button>
+        <button onClick={onClose} className="w-full mt-5 py-3 rounded-xl text-white font-medium text-sm" style={{ background: "#2563eb" }}>확인</button>
       </ModalWrapper>
     );
   }
-
   if (installState === "inapp_other") {
     return (
       <ModalWrapper onClose={onClose}>
-        <h2 className="text-base font-bold text-gray-900 mb-3">???ㅼ튂 ?덈궡</h2>
-        <p className="text-sm text-gray-600 mb-4">?몄빋 釉뚮씪?곗??먯꽌???ㅼ튂媛 ?쒗븳?⑸땲??<br /><b>Chrome ?먮뒗 Safari</b>濡??묒냽 ???ㅼ튂??二쇱꽭??</p>
+        <h2 className="text-base font-bold text-gray-900 mb-3">앱 설치 안내</h2>
+        <p className="text-sm text-gray-600 mb-4">인앱 브라우저에서는 설치가 제한됩니다. Chrome 또는 Safari로 접속 후 설치해 주세요.</p>
         <div className="bg-gray-50 rounded-xl p-3 mb-4">
-          <p className="text-xs text-gray-500 mb-1">?묒냽 二쇱냼</p>
+          <p className="text-xs text-gray-500 mb-1">접속 주소</p>
           <p className="text-sm font-mono text-blue-600 break-all">{currentUrl}</p>
         </div>
-        <button onClick={() => { navigator.clipboard?.writeText(currentUrl); onClose(); }} className="w-full py-3 rounded-xl text-white font-medium text-sm" style={{ background: "#2563eb" }}>二쇱냼 蹂듭궗</button>
+        <button onClick={() => { navigator.clipboard?.writeText(currentUrl); onClose(); }} className="w-full py-3 rounded-xl text-white font-medium text-sm" style={{ background: "#2563eb" }}>주소 복사</button>
       </ModalWrapper>
     );
   }
-
-  // Android idle - beforeinstallprompt ?꾩쭅 ????寃쎌슦
   return (
     <ModalWrapper onClose={onClose}>
-      <h2 className="text-base font-bold text-gray-900 mb-3">???ㅼ튂 ?덈궡</h2>
-      <p className="text-sm text-gray-600 mb-4">Chrome 釉뚮씪?곗? 二쇱냼李??곗륫??<b>?ㅼ튂</b> ?꾩씠肄섏쓣 ??븯嫄곕굹, 硫붾돱(???먯꽌 <b>"???ㅼ튂"</b>瑜??좏깮?섏꽭??</p>
-      <div className="bg-blue-50 rounded-xl p-3 mb-4 text-xs text-blue-700">?뮕 ?대? 諛⑸Ц???ъ씠?몃뒗 Chrome???먮룞?쇰줈 ?ㅼ튂 踰꾪듉???쒓났?⑸땲??</div>
-      <button onClick={onClose} className="w-full py-3 rounded-xl text-white font-medium text-sm" style={{ background: "#2563eb" }}>?뺤씤</button>
+      <h2 className="text-base font-bold text-gray-900 mb-3">앱 설치 안내</h2>
+      <p className="text-sm text-gray-600 mb-4">Chrome 브라우저 주소창 우측의 설치 아이콘을 탭하거나, 메뉴에서 앱 설치를 선택하세요.</p>
+      <div className="bg-blue-50 rounded-xl p-3 mb-4 text-xs text-blue-700">이미 방문한 사이트는 Chrome이 자동으로 설치 버튼을 제공합니다.</div>
+      <button onClick={onClose} className="w-full py-3 rounded-xl text-white font-medium text-sm" style={{ background: "#2563eb" }}>확인</button>
     </ModalWrapper>
   );
 }
