@@ -137,10 +137,7 @@ async function generatePDFBackground(
     const [latestDoc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
     const fd = (latestDoc?.formDataJson as Record<string, unknown>) ?? {};
 
-    // 이미 DRAFT면 취소 불필요
-    if (existing.status === "DRAFT") {
-      return NextResponse.json({ error: "이미 작성중 상태입니다." }, { status: 400 });
-    }
+    // ★ workAddress(별도 컬럼)를 formData에 병합 → PDF workLocation 정상 출력
     const mergedFd: Record<string, unknown> = { ...fd };
     if (latestDoc?.workAddress && !mergedFd.workLocation) {
       mergedFd.workLocation = latestDoc.workAddress;
