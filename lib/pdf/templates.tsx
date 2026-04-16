@@ -92,12 +92,12 @@ function ApplicantRow({ applicantCompany, applicantTitle, applicantName, signatu
       <View style={{ flex: 1, borderRight: "0.5px solid " + C.border, padding: "3 5", justifyContent: "center" }}>
         <Text style={{ fontSize: 8.5 }}>{`(성명) ${applicantName || ""}`}</Text>
       </View>
-      {/* 서명 칸 */}
-      <View style={{ width: 72, padding: "2 4", alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ fontSize: 7.5, color: "#888", marginBottom: 2 }}>(서명)</Text>
+      {/* 서명 칸 - (서명) 텍스트 + 이미지 가로 1줄 */}
+      <View style={{ width: 90, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "3 4", gap: 4 }}>
+        <Text style={{ fontSize: 7.5, color: "#888" }}>(서명)</Text>
         {signatureData
-          ? <Image src={signatureData} style={{ width: 62, height: 20, objectFit: "contain" }} />
-          : <View style={{ width: 62, height: 18, border: "0.5px dashed #ccc" }} />}
+          ? <Image src={signatureData} style={{ width: 58, height: 20, objectFit: "contain" }} />
+          : <View style={{ width: 58, height: 18, border: "0.5px dashed #ccc" }} />}
       </View>
     </View>
   );
@@ -125,12 +125,12 @@ function ApproverRow({ roleLabel, deptLabel, name, signatureData, borderBottom =
       <View style={{ width: 80, padding: "3 5", borderRight: "0.5px solid " + C.border, justifyContent: "center" }}>
         <Text style={{ fontSize: 8.5 }}>{`(성명) ${name || ""}`}</Text>
       </View>
-      {/* 서명 칸 */}
-      <View style={{ width: 80, padding: "2 4", alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ fontSize: 7.5, color: "#888", marginBottom: 2 }}>(서명)</Text>
+      {/* 서명 칸 - (서명) 텍스트 + 이미지 가로 1줄 */}
+      <View style={{ width: 100, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "3 4", gap: 4 }}>
+        <Text style={{ fontSize: 7.5, color: "#888" }}>(서명)</Text>
         {signatureData
-          ? <Image src={signatureData} style={{ width: 70, height: 20, objectFit: "contain" }} />
-          : <View style={{ width: 70, height: 18, border: "0.5px dashed #ccc" }} />}
+          ? <Image src={signatureData} style={{ width: 72, height: 20, objectFit: "contain" }} />
+          : <View style={{ width: 72, height: 18, border: "0.5px dashed #ccc" }} />}
       </View>
     </View>
   );
@@ -313,11 +313,11 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
             <View style={{ width: 80, padding: "3 5", borderRight: "0.5px solid " + C.border, justifyContent: "center" }}>
               <Text style={{ fontSize: 8.5 }}>{`(성명) ${a1?.approverName || ""}`}</Text>
             </View>
-            <View style={{ width: 80, padding: "2 4", alignItems: "center", justifyContent: "center", borderRight: 0 }}>
-              <Text style={{ fontSize: 7.5, color: "#888", marginBottom: 2 }}>(서명)</Text>
+            <View style={{ width: 100, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "3 4", gap: 4, borderRight: 0 }}>
+              <Text style={{ fontSize: 7.5, color: "#888" }}>(서명)</Text>
               {a1?.signatureData
-                ? <Image src={a1.signatureData} style={{ width: 70, height: 20, objectFit: "contain" }} />
-                : <View style={{ width: 70, height: 18, border: "0.5px dashed #ccc" }} />}
+                ? <Image src={a1.signatureData} style={{ width: 72, height: 20, objectFit: "contain" }} />
+                : <View style={{ width: 72, height: 18, border: "0.5px dashed #ccc" }} />}
             </View>
           </View>
           {/* 최종 허가자 행 */}
@@ -329,11 +329,11 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
             <View style={{ width: 80, padding: "3 5", borderRight: "0.5px solid " + C.border, justifyContent: "center" }}>
               <Text style={{ fontSize: 8.5 }}>{`(성명) ${a2?.approverName || ""}`}</Text>
             </View>
-            <View style={{ width: 80, padding: "2 4", alignItems: "center", justifyContent: "center", borderRight: 0 }}>
-              <Text style={{ fontSize: 7.5, color: "#888", marginBottom: 2 }}>(서명)</Text>
+            <View style={{ width: 100, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "3 4", gap: 4, borderRight: 0 }}>
+              <Text style={{ fontSize: 7.5, color: "#888" }}>(서명)</Text>
               {a2?.signatureData
-                ? <Image src={a2.signatureData} style={{ width: 70, height: 20, objectFit: "contain" }} />
-                : <View style={{ width: 70, height: 18, border: "0.5px dashed #ccc" }} />}
+                ? <Image src={a2.signatureData} style={{ width: 72, height: 20, objectFit: "contain" }} />
+                : <View style={{ width: 72, height: 18, border: "0.5px dashed #ccc" }} />}
             </View>
           </View>
         </View>
