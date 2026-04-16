@@ -114,7 +114,7 @@ function HeaderShell({ showInstallBtn, onInstall }: { showInstallBtn: boolean; o
             <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
           </svg>
         </button>
-        <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: "#2563eb", color: "white" }}>??/div>
+        <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: "#2563eb", color: "white" }}>나</div>
       </div>
     </header>
   );
