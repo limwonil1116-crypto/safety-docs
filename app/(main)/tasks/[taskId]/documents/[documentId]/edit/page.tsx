@@ -305,12 +305,6 @@ function LocationField({ workLatitude, workAddress, onOpenLocation, onClearLocat
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
         {workLatitude ? "📍 위치 변경" : "📍 지도에서 위치 지정 (GPS 자동감지)"}
       </button>
-      {workLatitude && workAddress && (
-        <div className="mt-1.5 flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 rounded-lg px-2.5 py-1.5">
-          <span className="truncate flex-1">{workAddress}</span>
-          <button onClick={onClearLocation} className="shrink-0 text-gray-400 hover:text-red-500 ml-1">✕</button>
-        </div>
-      )}
     </div>
   );
 }
