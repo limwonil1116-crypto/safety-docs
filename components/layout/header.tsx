@@ -93,8 +93,8 @@ function HeaderShell({ showInstallBtn, onInstall }: { showInstallBtn: boolean; o
           <Image src="/logo.png" alt="濡쒓퀬" width={32} height={32} className="object-contain" />
         </div>
         <div className="flex flex-col leading-tight">
-          <span className="text-white font-bold text-sm leading-tight">?덉쟾湲곗닠蹂몃?</span>
-          <span className="text-blue-200 text-xs leading-tight">?꾩옣?덉쟾 ?덇??묒뾽 ?쒖뒪??/span>
+          <span className="text-white font-bold text-sm leading-tight">안전기술본부</span>
+          <span className="text-blue-200 text-xs leading-tight">현장안전 허가작업 시스템/span>
         </div>
       </div>
       <div className="flex items-center gap-2">
