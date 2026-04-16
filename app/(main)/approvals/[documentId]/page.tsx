@@ -61,27 +61,44 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-// ── 카카오맵 미리보기 - 정적 이미지 + 지도열기 링크 ─────────────────
+// ── 카카오맵 SDK 마커 지도 미리보기 ─────────────────
 function LocationMapPreview({ lat, lng, address }: { lat: number; lng: number; address?: string | null }) {
+  const mapRef = useRef<HTMLDivElement>(null);
   const mapUrl = `https://map.kakao.com/link/map/${encodeURIComponent(address || "작업장소")},${lat},${lng}`;
-  // 카카오 WCONGNAMUL 좌표계 변환 (WGS84 → WCONGNAMUL)
-  const toWCONG = (wgsLng: number, wgsLat: number) => {
-    const RE = 6371.00877; const GRID = 5.0; const SLAT1 = 30.0; const SLAT2 = 60.0;
-    const OLON = 126.0; const OLAT = 38.0; const XO = 43; const YO = 136;
-    const DEGRAD = Math.PI / 180.0;
-    const re = RE / GRID; const slat1 = SLAT1 * DEGRAD; const slat2 = SLAT2 * DEGRAD;
-    const olon = OLON * DEGRAD; const olat = OLAT * DEGRAD;
-    let sn = Math.tan(Math.PI * 0.25 + slat2 * 0.5) / Math.tan(Math.PI * 0.25 + slat1 * 0.5);
-    sn = Math.log(Math.cos(slat1) / Math.cos(slat2)) / Math.log(sn);
-    let sf = Math.tan(Math.PI * 0.25 + slat1 * 0.5); sf = Math.pow(sf, sn) * Math.cos(slat1) / sn;
-    let ro = Math.tan(Math.PI * 0.25 + olat * 0.5); ro = re * sf / Math.pow(ro, sn);
-    let ra = Math.tan(Math.PI * 0.25 + wgsLat * DEGRAD * 0.5); ra = re * sf / Math.pow(ra, sn);
-    let theta = wgsLng * DEGRAD - olon; if (theta > Math.PI) theta -= 2.0 * Math.PI; if (theta < -Math.PI) theta += 2.0 * Math.PI;
-    theta *= sn;
-    return { x: Math.floor(ra * Math.sin(theta) + XO + 0.5), y: Math.floor(ro - ra * Math.cos(theta) + YO + 0.5) };
-  };
-  const wc = toWCONG(lng, lat);
-  const staticUrl = `https://map.kakao.com/staticmap/image?crs=WCONGNAMUL&center=${wc.x},${wc.y}&level=4&w=600&h=200&markers=1,${wc.x},${wc.y}&mode=normal`;
+
+  useEffect(() => {
+    const initMap = () => {
+      if (!mapRef.current || !window.kakao?.maps) return;
+      window.kakao.maps.load(() => {
+        if (!mapRef.current) return;
+        const center = new window.kakao.maps.LatLng(lat, lng);
+        const map = new window.kakao.maps.Map(mapRef.current, { center, level: 4, draggable: false, scrollwheel: false, disableDoubleClick: true });
+        const marker = new window.kakao.maps.Marker({ position: center, map });
+        if (address) {
+          const infowindow = new window.kakao.maps.InfoWindow({
+            content: `<div style="padding:5px 8px;font-size:11px;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis">${address}</div>`,
+            removable: false,
+          });
+          infowindow.open(map, marker);
+        }
+      });
+    };
+
+    if (window.kakao?.maps) {
+      initMap();
+    } else {
+      const existing = document.getElementById("kakao-map-script");
+      if (existing) {
+        const check = setInterval(() => { if (window.kakao?.maps) { clearInterval(check); initMap(); } }, 200);
+        return () => clearInterval(check);
+      }
+      const script = document.createElement("script");
+      script.id = "kakao-map-script";
+      script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false`;
+      script.onload = () => window.kakao.maps.load(initMap);
+      document.head.appendChild(script);
+    }
+  }, [lat, lng, address]);
 
   return (
     <div className="mt-2 rounded-xl overflow-hidden border border-gray-200">
@@ -95,19 +112,11 @@ function LocationMapPreview({ lat, lng, address }: { lat: number; lng: number; a
         <a href={mapUrl} target="_blank" rel="noopener noreferrer"
           className="text-xs text-blue-500 shrink-0 ml-2 font-medium">지도열기 →</a>
       </div>
-      <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="block relative bg-gray-100" style={{ height: "200px" }}>
-        <img
-          src={staticUrl}
-          alt="작업장소 지도"
-          className="w-full h-full object-cover"
-          onError={e => {
-            const t = e.target as HTMLImageElement;
-            t.style.display = "none";
-            const p = t.parentElement;
-            if (p) p.innerHTML = `<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f3f4f6;gap:8px;cursor:pointer"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span style="font-size:12px;color:#6b7280">${address || `${lat.toFixed(5)}, ${lng.toFixed(5)}`}</span><span style="font-size:11px;color:#2563eb;font-weight:600">탭하여 카카오맵에서 보기</span></div>`;
-          }}
-        />
-      </a>
+      <div ref={mapRef} style={{ width: "100%", height: "200px" }}>
+        <div className="w-full h-full flex items-center justify-center bg-gray-50">
+          <p className="text-xs text-gray-400">지도 로딩 중...</p>
+        </div>
+      </div>
     </div>
   );
 }
