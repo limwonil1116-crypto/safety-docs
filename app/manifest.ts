@@ -1,10 +1,9 @@
 import { MetadataRoute } from "next";
-
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "안전기술본부 스마트 안전관리 시스템",
     short_name: "안전관리",
-    description: "한국농어촌공사 안전작업허가 전자결재 시스템",
+    description: "한국농어촌공사 안전작업허가 결재자관리 시스템",
     start_url: "/",
     display: "standalone",
     background_color: "#f0f4f8",
