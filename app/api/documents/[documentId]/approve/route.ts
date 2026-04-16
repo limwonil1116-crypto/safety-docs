@@ -17,11 +17,10 @@ export async function POST(
     }
     const { documentId } = await params;
     const body = await req.json();
-    // #6 fix: reviewResult도 함께 받음
     const { action, comment, reviewResult, signatureData } = body;
 
     if (!["APPROVE", "REJECT"].includes(action)) {
-      return NextResponse.json({ error: "올바른 액션이 아닙니다." }, { status: 400 });
+      return NextResponse.json({ error: "올바르지 않은 액션입니다." }, { status: 400 });
     }
     if (action === "REJECT" && !comment?.trim()) {
       return NextResponse.json({ error: "반려 사유를 입력해주세요." }, { status: 400 });
@@ -61,7 +60,7 @@ export async function POST(
 
       await db.insert(notifications).values({
         userId: doc.createdBy, type: "REJECTED",
-        title: "결재가 반려되었습니다.",
+        title: "결재가 반려됐습니다.",
         body: `반려 사유: ${comment}`,
         targetDocumentId: documentId, isRead: false,
       });
@@ -83,7 +82,6 @@ export async function POST(
       }
 
       if (currentLine.approvalOrder === 1) {
-        // 1단계: 검토의견 + 조치결과 모두 formDataJson에 저장
         const currentFd = (doc.formDataJson as Record<string, unknown>) ?? {};
         const updatedFd: Record<string, unknown> = { ...currentFd };
         if (comment?.trim()) updatedFd.reviewOpinion = comment.trim();
@@ -99,7 +97,6 @@ export async function POST(
         return NextResponse.json({ success: true, action: "NEED_FINAL_APPROVER" });
 
       } else {
-        // 2단계: 검토의견 + 조치결과 최종 저장 (수정 반영)
         const currentFd = (doc.formDataJson as Record<string, unknown>) ?? {};
         const updatedFd: Record<string, unknown> = { ...currentFd };
         if (comment?.trim()) updatedFd.reviewOpinion = comment.trim();
@@ -114,8 +111,8 @@ export async function POST(
 
         await db.insert(notifications).values({
           userId: doc.createdBy, type: "APPROVED",
-          title: "결재가 최종 승인되었습니다.",
-          body: "결재가 최종 승인되었습니다. PDF를 다운로드할 수 있습니다.",
+          title: "결재가 최종 승인됐습니다.",
+          body: "결재가 최종 승인됐습니다. PDF를 다운로드할 수 있습니다.",
           targetDocumentId: documentId, isRead: false,
         });
 
@@ -139,6 +136,15 @@ async function generatePDFBackground(
   try {
     const [latestDoc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
     const fd = (latestDoc?.formDataJson as Record<string, unknown>) ?? {};
+
+    // ★ workAddress(별도 컬럼)를 formData에 병합 → PDF workLocation 정상 출력
+    const mergedFd: Record<string, unknown> = { ...fd };
+    if (latestDoc?.workAddress && !mergedFd.workLocation) {
+      mergedFd.workLocation = latestDoc.workAddress;
+    }
+    if (latestDoc?.workAddress && !mergedFd.facilityLocation) {
+      mergedFd.facilityLocation = latestDoc.workAddress;
+    }
 
     const lines = await db
       .select({
@@ -174,7 +180,8 @@ async function generatePDFBackground(
 
     const { url, filename, size } = await generateAndUploadPDF({
       documentId, documentType: doc.documentType,
-      formData: fd, approvalLines: approvalLinesWithSig,
+      formData: mergedFd,  // ★ workAddress 병합된 데이터 사용
+      approvalLines: approvalLinesWithSig,
       createdAt: doc.createdAt.toISOString(), applicantSignature,
     });
 
