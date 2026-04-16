@@ -17,7 +17,6 @@ export default function Header() {
   useEffect(() => {
     const ua = navigator.userAgent;
 
-    // 이미 설치된 경우 (standalone 모드)
     if (
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as any).standalone
@@ -26,27 +25,15 @@ export default function Header() {
       return;
     }
 
-    // iOS Safari
     const isIOS = /iPhone|iPad|iPod/.test(ua) && !(window as any).MSStream;
-    // 카카오톡 인앱
     const isKakao = /KAKAOTALK|kakaotalk/i.test(ua);
-    // 기타 인앱 (인스타, 네이버 등)
     const isOtherInApp = /Instagram|NAVER|NaverApp|FB_IAB|FBAN|Line/i.test(ua);
 
-    if (isKakao) {
-      setInstallState("inapp_kakao");
-      return;
-    }
-    if (isOtherInApp) {
-      setInstallState("inapp_other");
-      return;
-    }
-    if (isIOS) {
-      setInstallState("ios");
-      return;
-    }
+    if (isKakao)      { setInstallState("inapp_kakao"); return; }
+    if (isOtherInApp) { setInstallState("inapp_other"); return; }
+    if (isIOS)        { setInstallState("ios"); return; }
 
-    // Android Chrome: beforeinstallprompt 대기
+    // Android Chrome: beforeinstallprompt 이벤트 캐치
     const handler = (e: Event) => {
       e.preventDefault();
       promptRef.current = e as BeforeInstallPromptEvent;
@@ -54,9 +41,12 @@ export default function Header() {
     };
     window.addEventListener("beforeinstallprompt", handler);
 
-    // appinstalled 이벤트
     const installedHandler = () => setInstallState("installed");
     window.addEventListener("appinstalled", installedHandler);
+
+    // Android면 이벤트 오기 전에도 버튼 표시 (idle 유지)
+    const isAndroid = /Android/i.test(ua);
+    if (isAndroid) setInstallState("idle");
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
@@ -65,8 +55,8 @@ export default function Header() {
   }, []);
 
   const handleInstall = async () => {
-    if (installState === "ready" && promptRef.current) {
-      // Android Chrome: 바로 설치 프롬프트 실행
+    // ★ promptRef 있으면 무조건 바로 PWA 설치 프롬프트 실행
+    if (promptRef.current) {
       try {
         await promptRef.current.prompt();
         const { outcome } = await promptRef.current.userChoice;
@@ -74,51 +64,30 @@ export default function Header() {
           setInstallState("installed");
           promptRef.current = null;
         }
+        return;
       } catch {
-        setShowModal(true);
+        // 실패 시 모달로 폴백
       }
-    } else {
-      // iOS / 인앱 / 기타: 안내 모달
-      setShowModal(true);
     }
+    // iOS / 인앱 / promptRef 없는 경우 → 안내 모달
+    setShowModal(true);
   };
 
-  // 설치 완료면 버튼 숨김
   if (installState === "installed") return (
     <HeaderShell showInstallBtn={false} onInstall={handleInstall} />
   );
 
   return (
     <>
-      <HeaderShell
-        showInstallBtn={installState !== "idle"}
-        onInstall={handleInstall}
-      />
-
-      {/* 설치 안내 모달 */}
-      {showModal && (
-        <InstallModal
-          installState={installState}
-          onClose={() => setShowModal(false)}
-        />
-      )}
+      <HeaderShell showInstallBtn={installState !== "installed"} onInstall={handleInstall} />
+      {showModal && <InstallModal installState={installState} onClose={() => setShowModal(false)} />}
     </>
   );
 }
 
-// ── 헤더 UI ──────────────────────────────────────
-function HeaderShell({
-  showInstallBtn,
-  onInstall,
-}: {
-  showInstallBtn: boolean;
-  onInstall: () => void;
-}) {
+function HeaderShell({ showInstallBtn, onInstall }: { showInstallBtn: boolean; onInstall: () => void }) {
   return (
-    <header
-      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-14"
-      style={{ background: "#1e3a5f" }}
-    >
+    <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-14" style={{ background: "#1e3a5f" }}>
       <div className="flex items-center gap-2.5">
         <div className="w-8 h-8 rounded-lg overflow-hidden bg-white flex items-center justify-center shrink-0">
           <Image src="/logo.png" alt="로고" width={32} height={32} className="object-contain" />
@@ -130,11 +99,7 @@ function HeaderShell({
       </div>
       <div className="flex items-center gap-2">
         {showInstallBtn && (
-          <button
-            onClick={onInstall}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold"
-            style={{ background: "#2563eb", color: "white" }}
-          >
+          <button onClick={onInstall} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold" style={{ background: "#2563eb", color: "white" }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
@@ -150,28 +115,15 @@ function HeaderShell({
             <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
           </svg>
         </button>
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-          style={{ background: "#2563eb", color: "white" }}
-        >
-          나
-        </div>
+        <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: "#2563eb", color: "white" }}>나</div>
       </div>
     </header>
   );
 }
 
-// ── 설치 안내 모달 ────────────────────────────────
-function InstallModal({
-  installState,
-  onClose,
-}: {
-  installState: InstallState;
-  onClose: () => void;
-}) {
+function InstallModal({ installState, onClose }: { installState: InstallState; onClose: () => void }) {
   const currentUrl = typeof window !== "undefined" ? window.location.href : "https://safety-docs.vercel.app";
 
-  // 카카오 인앱: 외부브라우저로 열기
   if (installState === "inapp_kakao") {
     return (
       <ModalWrapper onClose={onClose}>
@@ -188,25 +140,17 @@ function InstallModal({
           ].map(({ step, title, desc }) => (
             <div key={step} className="flex items-start gap-3">
               <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0">{step}</div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">{title}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
-              </div>
+              <div><p className="text-sm font-medium text-gray-900">{title}</p><p className="text-xs text-gray-500 mt-0.5">{desc}</p></div>
             </div>
           ))}
         </div>
-        <button
-          onClick={() => { navigator.clipboard?.writeText(currentUrl); onClose(); }}
-          className="w-full mt-5 py-3 rounded-xl text-white font-medium text-sm"
-          style={{ background: "#2563eb" }}
-        >
+        <button onClick={() => { navigator.clipboard?.writeText(currentUrl); onClose(); }} className="w-full mt-5 py-3 rounded-xl text-white font-medium text-sm" style={{ background: "#2563eb" }}>
           주소 복사 후 닫기
         </button>
       </ModalWrapper>
     );
   }
 
-  // iOS Safari
   if (installState === "ios") {
     return (
       <ModalWrapper onClose={onClose}>
@@ -219,21 +163,15 @@ function InstallModal({
           ].map(({ step, title, desc }) => (
             <div key={step} className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold shrink-0">{step}</div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">{title}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
-              </div>
+              <div><p className="text-sm font-medium text-gray-900">{title}</p><p className="text-xs text-gray-500 mt-0.5">{desc}</p></div>
             </div>
           ))}
         </div>
-        <button onClick={onClose} className="w-full mt-5 py-3 rounded-xl text-white font-medium text-sm" style={{ background: "#2563eb" }}>
-          확인
-        </button>
+        <button onClick={onClose} className="w-full mt-5 py-3 rounded-xl text-white font-medium text-sm" style={{ background: "#2563eb" }}>확인</button>
       </ModalWrapper>
     );
   }
 
-  // 기타 인앱 (인스타 등)
   if (installState === "inapp_other") {
     return (
       <ModalWrapper onClose={onClose}>
@@ -243,25 +181,18 @@ function InstallModal({
           <p className="text-xs text-gray-500 mb-1">접속 주소</p>
           <p className="text-sm font-mono text-blue-600 break-all">{currentUrl}</p>
         </div>
-        <button
-          onClick={() => { navigator.clipboard?.writeText(currentUrl); onClose(); }}
-          className="w-full py-3 rounded-xl text-white font-medium text-sm"
-          style={{ background: "#2563eb" }}
-        >
-          주소 복사
-        </button>
+        <button onClick={() => { navigator.clipboard?.writeText(currentUrl); onClose(); }} className="w-full py-3 rounded-xl text-white font-medium text-sm" style={{ background: "#2563eb" }}>주소 복사</button>
       </ModalWrapper>
     );
   }
 
-  // Android - beforeinstallprompt 없는 경우 (이미 설치됐거나 지원 안 되는 브라우저)
+  // Android idle - beforeinstallprompt 아직 안 온 경우
   return (
     <ModalWrapper onClose={onClose}>
       <h2 className="text-base font-bold text-gray-900 mb-3">앱 설치 안내</h2>
-      <p className="text-sm text-gray-600 mb-4">Chrome 브라우저 주소창 우측의 <b>설치</b> 아이콘을 탭하거나, 메뉴(⋮)에서 <b>\"앱 설치\"</b>를 선택하세요.</p>
-      <button onClick={onClose} className="w-full py-3 rounded-xl text-white font-medium text-sm" style={{ background: "#2563eb" }}>
-        확인
-      </button>
+      <p className="text-sm text-gray-600 mb-4">Chrome 브라우저 주소창 우측의 <b>설치</b> 아이콘을 탭하거나, 메뉴(⋮)에서 <b>"앱 설치"</b>를 선택하세요.</p>
+      <div className="bg-blue-50 rounded-xl p-3 mb-4 text-xs text-blue-700">💡 이미 방문한 사이트는 Chrome이 자동으로 설치 버튼을 제공합니다.</div>
+      <button onClick={onClose} className="w-full py-3 rounded-xl text-white font-medium text-sm" style={{ background: "#2563eb" }}>확인</button>
     </ModalWrapper>
   );
 }
