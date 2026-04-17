@@ -16,11 +16,11 @@ interface RiskAssessRow {
 declare global { interface Window { kakao: any; daum: any; } }
 
 const DOC_TYPE_INFO: Record<string, { title: string; short: string; approverLabel: string; confirmerLabel: string }> = {
-const DOC_TYPE_INFO: Record<string, { title: string; short: string; approverLabel: string; confirmerLabel: string }> = {
   SAFETY_WORK_PERMIT: { title: "안전작업허가서",    short: "붙임1", approverLabel: "최종검토자", confirmerLabel: "최종허가자" },
   CONFINED_SPACE:     { title: "밀폐공간작업허가서", short: "붙임2", approverLabel: "허가자",    confirmerLabel: "확인자" },
   HOLIDAY_WORK:       { title: "휴일작업신청서",     short: "붙임3", approverLabel: "검토자",    confirmerLabel: "승인자" },
   POWER_OUTAGE:       { title: "정전작업허가서",     short: "붙임4", approverLabel: "허가자",    confirmerLabel: "확인자" },
+};
 
 const inputClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none";
 const textareaClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none";
@@ -32,13 +32,13 @@ const timeInputClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-
 const HIGH_PLACE_ITEMS = ["저수지 여수로 침수탑", "방조제 제방시면 배수갑문", "제방 비탈면 제체"];
 const WATER_WORK_ITEMS = ["저수지 여수로 침수탑", "방조제 제방시면 배수갑문", "배수개선 양수장·배수장"];
 const defaultRiskAssessRow: RiskAssessRow = {
-  workType: "", riskFactor: "", riskLevel: "以?,
-  currentMeasure: "", residualRisk: "??, additionalMeasure: "",
+  workType: "", riskFactor: "", riskLevel: "중",
+  currentMeasure: "", residualRisk: "하", additionalMeasure: "",
 };
 const levelColors: Record<string, string> = {
-  "??: "bg-red-100 text-red-700 border-red-200",
-  "以?: "bg-amber-100 text-amber-700 border-amber-200",
-  "??: "bg-green-100 text-green-700 border-green-200",
+  "상": "bg-red-100 text-red-700 border-red-200",
+  "중": "bg-amber-100 text-amber-700 border-amber-200",
+  "하": "bg-green-100 text-green-700 border-green-200",
 };
 
 function RiskAssessTable({ rows, onChange }: { rows: RiskAssessRow[]; onChange: (rows: RiskAssessRow[]) => void }) {
@@ -47,18 +47,18 @@ function RiskAssessTable({ rows, onChange }: { rows: RiskAssessRow[]; onChange: 
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-12 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg text-[10px] font-medium text-gray-600">
-        <div className="col-span-2">?묒뾽?댁슜</div>
-        <div className="col-span-2">?좏빐?꾪뿕?붿씤</div>
-        <div className="col-span-1 text-center">?꾪뿕??/div>
-        <div className="col-span-3">?꾩옱 ?덉쟾議곗튂</div>
-        <div className="col-span-1 text-center">?붾쪟</div>
-        <div className="col-span-2">異붽? 議곗튂</div>
+        <div className="col-span-2">작업내용</div>
+        <div className="col-span-2">잠재위험인자</div>
+        <div className="col-span-1 text-center">위험도</div>
+        <div className="col-span-3">현재 안전조치</div>
+        <div className="col-span-1 text-center">잔여도</div>
+        <div className="col-span-2">추가 조치</div>
         <div className="col-span-1"></div>
       </div>
       {rows.map((row, idx) => (
         <div key={idx} className="grid grid-cols-12 gap-1 items-start border border-gray-100 rounded-xl p-2">
           {(["workType","riskFactor","currentMeasure","additionalMeasure"] as (keyof RiskAssessRow)[]).map((field, fi) => {
-            const placeholders: Record<string, string> = { workType: "?묒뾽?댁슜", riskFactor: "?꾪뿕?붿씤", currentMeasure: "?꾩옱議곗튂", additionalMeasure: "異붽?議곗튂" };
+            const placeholders: Record<string, string> = { workType: "작업내용", riskFactor: "위험인자", currentMeasure: "현재조치", additionalMeasure: "추가조치" };
             const colSpans: Record<string, string> = { workType: "col-span-2", riskFactor: "col-span-2", currentMeasure: "col-span-3", additionalMeasure: "col-span-2" };
             return (
               <textarea key={field} value={row[field]} onChange={e => update(idx, field, e.target.value)}
@@ -69,13 +69,13 @@ function RiskAssessTable({ rows, onChange }: { rows: RiskAssessRow[]; onChange: 
           <div className="col-span-1">
             <select value={row.riskLevel} onChange={e => update(idx, "riskLevel", e.target.value)}
               className={`w-full px-1 py-2 border rounded-lg text-xs font-bold text-center focus:outline-none ${levelColors[row.riskLevel] || ""}`}>
-              {["??,"以?,"??].map(l => <option key={l} value={l}>{l}</option>)}
+              {["상","중","하"].map(l => <option key={l} value={l}>{l}</option>)}
             </select>
           </div>
           <div className="col-span-1">
             <select value={row.residualRisk} onChange={e => update(idx, "residualRisk", e.target.value)}
               className={`w-full px-1 py-2 border rounded-lg text-xs font-bold text-center focus:outline-none ${levelColors[row.residualRisk] || ""}`}>
-              {["??,"以?,"??].map(l => <option key={l} value={l}>{l}</option>)}
+              {["상","중","하"].map(l => <option key={l} value={l}>{l}</option>)}
             </select>
           </div>
           <button onClick={() => { if (rows.length > 1) onChange(rows.filter((_, i) => i !== idx)); }}
@@ -88,7 +88,7 @@ function RiskAssessTable({ rows, onChange }: { rows: RiskAssessRow[]; onChange: 
       <button onClick={() => onChange([...rows, { ...defaultRiskAssessRow }])}
         className="w-full py-2 rounded-xl border border-dashed border-gray-300 text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 flex items-center justify-center gap-1">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        ??異붽?
+        행 추가
       </button>
     </div>
   );
@@ -117,13 +117,13 @@ function RiskAssessSection({ documentId, riskAssessRows, onChangeRows }: {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setDocFiles(prev => [...prev, data.attachment]);
-      alert("?뚯씪???낅줈?쒕릺?덉뒿?덈떎!");
-    } catch (e) { alert(`?낅줈???ㅽ뙣: ${e instanceof Error ? e.message : "?ㅻ쪟"}`); }
+      alert("파일이 업로드됐습니다!");
+    } catch (e) { alert(`업로드 실패: ${e instanceof Error ? e.message : "오류"}`); }
     finally { setUploading(false); }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("?뚯씪????젣?섏떆寃좎뒿?덇퉴?")) return;
+    if (!confirm("파일을 삭제하시겠습니까?")) return;
     await fetch(`/api/documents/${documentId}/attachments?attachmentId=${id}`, { method: "DELETE" });
     setDocFiles(prev => prev.filter(f => f.id !== id));
   };
@@ -153,14 +153,14 @@ function RiskAssessSection({ documentId, riskAssessRows, onChangeRows }: {
       {(activeTab === "excel" || activeTab === "file") && (
         <div className="space-y-3">
           <div className={`text-xs p-3 rounded-xl ${activeTab === "excel" ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700"}`}>
-            {activeTab === "excel" ? "?뱤 Excel ?뚯씪(.xlsx, .xls)???낅줈?쒗븯?몄슂." : "?뱞 PDF ?먮뒗 ?대?吏 ?뚯씪???낅줈?쒗븯?몄슂."}
+            {activeTab === "excel" ? "📗 Excel 파일(.xlsx, .xls)을 업로드하세요." : "?뱞 PDF ?먮뒗 ?대?吏 ?뚯씪???낅줈?쒗븯?몄슂."}
           </div>
           <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50"
             onClick={() => openFilePicker(activeTab === "excel" ? ".xlsx,.xls" : ".pdf,image/*")}>
             {uploading ? (
               <div className="flex items-center justify-center gap-2 text-blue-600">
                 <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                <span className="text-sm">?낅줈??以?..</span>
+                <span className="text-sm">업로드 중...</span>
               </div>
             ) : (
               <><p className="text-sm text-gray-600 font-medium">?뚯씪????븯???좏깮</p><p className="text-xs text-gray-400 mt-1">理쒕? 20MB</p></>
@@ -171,7 +171,7 @@ function RiskAssessSection({ documentId, riskAssessRows, onChangeRows }: {
               {docFiles.map(f => (
                 <div key={f.id} className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl border border-gray-200">
                   <span className="text-xs text-gray-700 flex-1 truncate">{f.fileName}</span>
-                  <a href={f.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs">蹂닿린</a>
+                  <a href={f.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs">보기</a>
                   <button onClick={() => handleDelete(f.id)} className="text-gray-400 hover:text-red-500">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
@@ -212,12 +212,12 @@ function PhotoAttachSection({ documentId, canAdd = true }: { documentId: string;
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setPhotos(prev => [...prev, data.attachment]);
-    } catch (e) { alert(`?낅줈???ㅽ뙣: ${e instanceof Error ? e.message : "?ㅻ쪟"}`); }
+    } catch (e) { alert(`업로드 실패: ${e instanceof Error ? e.message : "오류"}`); }
     finally { setUploading(false); }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("?ъ쭊????젣?섏떆寃좎뒿?덇퉴?")) return;
+    if (!confirm("사진을 삭제하시겠습니까?")) return;
     await fetch(`/api/documents/${documentId}/attachments?attachmentId=${id}`, { method: "DELETE" });
     setPhotos(prev => prev.filter(p => p.id !== id));
   };
@@ -229,7 +229,7 @@ function PhotoAttachSection({ documentId, canAdd = true }: { documentId: string;
           <span className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-xs text-white">?벜</span>
           媛쒖꽑?梨??뺤씤?먮즺 (?ъ쭊)
         </h3>
-        <span className="text-xs text-gray-400">{photos.length}??/span>
+        <span className="text-xs text-gray-400">{photos.length}장</span>
       </div>
       {photos.length > 0 && (
         <div className="grid grid-cols-3 gap-2 mb-3">
@@ -251,21 +251,23 @@ function PhotoAttachSection({ documentId, canAdd = true }: { documentId: string;
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 active:bg-gray-100">
             {uploading ? <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
               : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>}
-            移대찓??          </button>
+            카메라
+          </button>
           <button onClick={() => galleryRef.current?.click()} disabled={uploading}
             className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 active:bg-gray-100">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            媛ㅻ윭由?          </button>
+            갤러리
+          </button>
         </div>
       )}
-      {photos.length === 0 && !canAdd && <div className="text-center py-6 text-gray-400 text-sm">?깅줉???ъ쭊???놁뒿?덈떎.</div>}
+      {photos.length === 0 && !canAdd && <div className="text-center py-6 text-gray-400 text-sm">등록된 사진이 없습니다.</div>}
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhoto(f); e.target.value = ""; }} />
       <input ref={galleryRef} type="file" accept="image/*" multiple className="hidden"
         onChange={e => { Array.from(e.target.files ?? []).forEach(f => uploadPhoto(f)); e.target.value = ""; }} />
       {previewUrl && (
         <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center" onClick={() => setPreviewUrl(null)}>
-          <img src={previewUrl} alt="誘몃━蹂닿린" className="max-w-full max-h-full object-contain" />
+          <img src={previewUrl} alt="미리보기" className="max-w-full max-h-full object-contain" />
           <button className="absolute top-4 right-4 text-white" onClick={() => setPreviewUrl(null)}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
@@ -314,16 +316,16 @@ function WorkPeriodField({ startDate, endDate, startTime, endTime, onChangeStart
   return (
     <>
       <div className="grid grid-cols-2 gap-3">
-        <FormInput label="?묒뾽 ?쒖옉?? required><input type="date" value={startDate} onChange={e => onChangeStartDate(e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
-        <FormInput label="?묒뾽 醫낅즺?? required><input type="date" value={endDate} min={startDate} onChange={e => onChangeEndDate(e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
+        <FormInput label="작업 시작일" required><input type="date" value={startDate} onChange={e => onChangeStartDate(e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
+        <FormInput label="작업 종료일" required><input type="date" value={endDate} min={startDate} onChange={e => onChangeEndDate(e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <FormInput label="?묒뾽 ?쒖옉 ?쒓컙" required><input type="time" value={startTime} onChange={e => onChangeStartTime(e.target.value)} className={timeInputClass} style={{ colorScheme: "light" }} /></FormInput>
-        <FormInput label="?묒뾽 醫낅즺 ?쒓컙" required><input type="time" value={endTime} onChange={e => onChangeEndTime(e.target.value)} className={timeInputClass} style={{ colorScheme: "light" }} /></FormInput>
+        <FormInput label="작업 시작 시간" required><input type="time" value={startTime} onChange={e => onChangeStartTime(e.target.value)} className={timeInputClass} style={{ colorScheme: "light" }} /></FormInput>
+        <FormInput label="작업 종료 시간" required><input type="time" value={endTime} onChange={e => onChangeEndTime(e.target.value)} className={timeInputClass} style={{ colorScheme: "light" }} /></FormInput>
       </div>
       {startDate && (
         <div className="bg-blue-50 rounded-xl px-3 py-2 text-xs text-blue-700">
-          ?뱟 ?묒뾽?섑뻾湲곌컙: {startDate} {startTime} ~ {endDate || startDate} {endTime}
+          📅 작업수행기간: {startDate} {startTime} ~ {endDate || startDate} {endTime}
         </div>
       )}
     </>
@@ -334,19 +336,19 @@ interface SafetyCheckItem { label: string; applicable: string; result: string; }
 function SafetyCheckTable({ items, onChange }: { items: SafetyCheckItem[]; onChange: (updated: SafetyCheckItem[]) => void }) {
   const update = (idx: number, field: keyof SafetyCheckItem, value: string) =>
     onChange(items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
-  const OPTS = ["?댁긽?놁쓬", "議곗튂?꾨즺", "?대떦?놁쓬"];
+  const OPTS = ["점검않음", "조치완료", "해당없음"];
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-12 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg">
-        <div className="col-span-5 text-xs font-medium text-gray-600">?뺤씤??ぉ</div>
-        <div className="col-span-3 text-xs font-medium text-gray-600 text-center">?대떦?щ?</div>
-        <div className="col-span-4 text-xs font-medium text-gray-600 text-center">?뺤씤寃곌낵</div>
+        <div className="col-span-5 text-xs font-medium text-gray-600">확인항목</div>
+        <div className="col-span-3 text-xs font-medium text-gray-600 text-center">해당여부</div>
+        <div className="col-span-4 text-xs font-medium text-gray-600 text-center">확인결과</div>
       </div>
       {items.map((item, idx) => (
         <div key={idx} className="grid grid-cols-12 gap-1 items-center border border-gray-100 rounded-xl p-2">
           <div className="col-span-5 text-xs text-gray-700 leading-tight">{item.label}</div>
           <div className="col-span-3 flex flex-col gap-1 items-start pl-1">
-            {["?대떦", "?대떦?놁쓬"].map(opt => (
+            {["해당", "해당없음"].map(opt => (
               <label key={opt} className="flex items-center gap-1 cursor-pointer">
                 <input type="radio" name={`applicable_${idx}`} value={opt} checked={item.applicable === opt}
                   onChange={() => update(idx, "applicable", opt)} className="w-3 h-3 text-blue-600" />
@@ -359,7 +361,7 @@ function SafetyCheckTable({ items, onChange }: { items: SafetyCheckItem[]; onCha
               <select value={OPTS.includes(item.result) ? item.result : (item.result ? "吏곸젒?낅젰" : "")}
                 onChange={e => { if (e.target.value !== "吏곸젒?낅젰") update(idx, "result", e.target.value); else update(idx, "result", ""); }}
                 className="w-full px-2 py-1 border border-gray-200 rounded-lg text-xs text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
-                <option value="">?좏깮</option>
+                <option value="">선택</option>
                 {OPTS.map(o => <option key={o} value={o}>{o}</option>)}
                 <option value="吏곸젒?낅젰">吏곸젒?낅젰</option>
               </select>
@@ -381,17 +383,17 @@ function PrevDocsModal({ documentId, onSelect, onClose }: { documentId: string; 
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
       <div className="bg-white w-full rounded-t-3xl p-6 pb-10 max-h-[70vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-bold text-gray-900">?댁쟾 臾몄꽌 遺덈윭?ㅺ린</h2>
+          <h2 className="text-base font-bold text-gray-900">이전 문서 불러오기</h2>
           <button onClick={onClose} className="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
-        {loading ? <div className="text-center py-8 text-gray-400 text-sm">遺덈윭?ㅻ뒗 以?..</div>
+        {loading ? <div className="text-center py-8 text-gray-400 text-sm">불러오는 중...</div>
           : list.length === 0 ? <div className="text-center py-8 text-gray-400 text-sm">?댁쟾 臾몄꽌媛 ?놁뒿?덈떎.</div>
           : <div className="space-y-2">{list.map(doc => {
               const fd = doc.formDataJson as Record<string, unknown>;
               return (
                 <button key={doc.id} onClick={() => { onSelect(fd); onClose(); }}
                   className="w-full text-left p-3 rounded-xl border border-gray-200 hover:border-blue-400 hover:bg-blue-50">
-                  <div className="text-sm font-medium text-gray-900">{(fd.projectName as string) || (fd.serviceName as string) || "?쒕ぉ ?놁쓬"}</div>
+                  <div className="text-sm font-medium text-gray-900">{(fd.projectName as string) || (fd.serviceName as string) || "제목 없음"}</div>
                   <div className="text-xs text-gray-500 mt-0.5">{(fd.workLocation as string) || ""} 쨌 {new Date(doc.createdAt).toLocaleDateString("ko-KR")}</div>
                 </button>
               );
@@ -507,7 +509,7 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
           {lat && lng && (
             <div className="bg-blue-50 rounded-xl px-3 py-2 text-xs text-blue-700 flex items-center gap-2">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              {address || "?꾩튂 ?좏깮??} ({lat.toFixed(5)}, {lng.toFixed(5)})
+              {address || "위치 선택됨"} ({lat.toFixed(5)}, {lng.toFixed(5)})
             </div>
           )}
           <button onClick={() => { if (lat && lng) onConfirm(address, lat, lng); }} disabled={!lat || !lng}
@@ -561,7 +563,7 @@ function ApprovalSignModal({ documentId, documentType, onClose, onSubmitted }: {
   const handleSubmit = async () => {
     const canvas = canvasRef.current; if (!canvas) return;
     const signatureData = canvas.toDataURL("image/png");
-    if (!reviewer) { setError(info.approverLabel + "瑜??좏깮?댁＜?몄슂."); return; }
+    if (!reviewer) { setError(info.approverLabel + "를 선택해주세요."); return; }
     setSubmitting(true); setError("");
     try {
       const res = await fetch(`/api/documents/${documentId}/approval-lines`, {
@@ -569,9 +571,9 @@ function ApprovalSignModal({ documentId, documentType, onClose, onSubmitted }: {
         body: JSON.stringify({ reviewerUserId: reviewer.id, signatureData }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "?ㅻ쪟 諛쒖깮");
+      if (!res.ok) throw new Error(data.error || "오류 발생");
       onSubmitted();
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : "?쒖텧???ㅽ뙣?덉뒿?덈떎."); }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : "제출에 실패했습니다."); }
     finally { setSubmitting(false); }
   };
 
@@ -579,12 +581,12 @@ function ApprovalSignModal({ documentId, documentType, onClose, onSubmitted }: {
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
       <div className="bg-white w-full rounded-t-3xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h2 className="text-base font-bold text-gray-900">{step === "approver" ? `寃곗옱??吏??(${info.approverLabel})` : "?쒕챸"}</h2>
+          <h2 className="text-base font-bold text-gray-900">{step === "approver" ? `寃곗옱??吏??(${info.approverLabel})` : "서명"}</h2>
           <button onClick={onClose} className="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         {step === "approver" ? (
           <div className="p-5 pb-24">
-            <div className="bg-blue-50 rounded-xl p-3 mb-4 text-xs text-blue-700">{`${info.approverLabel}?먭쾶 寃곗옱 ?붿껌???꾩넚?⑸땲??`}</div>
+            <div className="bg-blue-50 rounded-xl p-3 mb-4 text-xs text-blue-700">{`${info.approverLabel}에게 결재 요청이 전송됩니다.`}</div>
             <div className={`p-3 rounded-xl border-2 mb-4 ${reviewer ? "border-blue-400 bg-blue-50" : "border-dashed border-gray-300"}`}>
               <div className="text-xs text-gray-500 mb-1">{info.approverLabel} <span className="text-red-500">*</span></div>
               {reviewer ? (
@@ -608,14 +610,14 @@ function ApprovalSignModal({ documentId, documentType, onClose, onSubmitted }: {
               ))}
             </div>
             {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
-            <button onClick={() => { if (!reviewer) { setError(info.approverLabel + "瑜??좏깮?댁＜?몄슂."); return; } setError(""); setStep("sign"); }}
+            <button onClick={() => { if (!reviewer) { setError(info.approverLabel + "를 선택해주세요."); return; } setError(""); setStep("sign"); }}
               disabled={!reviewer} className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50" style={{ background: "#2563eb" }}>
               ?ㅼ쓬 - ?쒕챸?섍린
             </button>
           </div>
         ) : (
           <div className="p-5 pb-24">
-            <p className="text-sm text-gray-600 mb-4">?꾨옒???쒕챸?댁＜?몄슂.</p>
+            <p className="text-sm text-gray-600 mb-4">아래에 서명해주세요.</p>
             <div className="border-2 border-gray-200 rounded-2xl overflow-hidden mb-3 bg-white">
               <canvas ref={canvasRef} width={600} height={200} className="w-full touch-none" style={{ cursor: "crosshair", touchAction: "none" }}
                 onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
@@ -623,12 +625,12 @@ function ApprovalSignModal({ documentId, documentType, onClose, onSubmitted }: {
             </div>
             <div className="flex gap-2 mb-4">
               <button onClick={clearCanvas} className="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">?쒕챸 吏?곌린</button>
-              <button onClick={() => setStep("approver")} className="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">?댁쟾?쇰줈</button>
+              <button onClick={() => setStep("approver")} className="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">이전으로</button>
             </div>
             {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
             <button onClick={handleSubmit} disabled={submitting}
               className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50" style={{ background: "#2563eb" }}>
-              {submitting ? "?쒖텧 以?.." : "?쒕챸 ?꾨즺 諛??쒖텧"}
+              {submitting ? "제출 중..." : "서명 완료 및 제출"}
             </button>
           </div>
         )}
@@ -688,25 +690,25 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
 
   const factors = [
     { key: "factorNarrowAccess", label: "吏꾩텧?낅줈 ?묒냼" },
-    { key: "factorSlippery", label: "誘몃걚?ъ쭚(?대겮, ?듦린)" },
-    { key: "factorSteepSlope", label: "湲됯꼍?? },
-    { key: "factorWaterHazard", label: "?뚮옉쨌?좎닔쨌?섏떖" },
-    { key: "factorRockfall", label: "?숈꽍쨌?좎궗遺뺢눼" },
-    { key: "factorNoRailing", label: "?쒓컙 誘몄꽕移? },
-    { key: "factorLadderNoGuard", label: "?щ떎由?룸갑?몄슱 誘몄꽕移? },
+    { key: "factorSlippery", label: "미끄러움(빙판, 물기)" },
+    { key: "factorSteepSlope", label: "급경사" },
+    { key: "factorWaterHazard", label: "익수·유수·유수" },
+    { key: "factorRockfall", label: "낙석·굴러떨어짐" },
+    { key: "factorNoRailing", label: "안전 난간재" },
+    { key: "factorLadderNoGuard", label: "사다리 안전잠금장치" },
     { key: "factorSuffocation", label: "吏덉떇쨌?붿옱쨌??컻" },
-    { key: "factorElectricFire", label: "媛먯쟾쨌?꾧린遺덇퐙 ?붿옱" },
-    { key: "factorSparkFire", label: "?ㅽ뙆??룻솕?쇱뿉 ?섑븳 ?붿옱" },
-    { key: "factorOther", label: "湲고?" },
+    { key: "factorElectricFire", label: "감전·전기화재요인" },
+    { key: "factorSparkFire", label: "불꽃·불티에 의한 화재" },
+    { key: "factorOther", label: "기타" },
   ];
 
   return (
     <>
-      {/* 1. 湲곕낯?뺣낫 */}
+      {/* 1. 기본정보 */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={1} title="?묒뾽?덇? ?좎껌媛쒖슂" />
+        <SectionHeader num={1} title="작업허가 신청개요" />
         <div className="space-y-3">
-          <FormInput label="?좎껌?? required>
+          <FormInput label="신청일" required>
             <input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} />
           </FormInput>
           <WorkPeriodField
@@ -721,14 +723,14 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
           <div className="grid grid-cols-3 gap-2">
             <FormInput label="?낆껜紐?><input type="text" value={form.applicantCompany} onChange={e => onChange("applicantCompany", e.target.value)} className={inputClass} /></FormInput>
             <FormInput label="吏곸콉"><input type="text" value={form.applicantTitle} onChange={e => onChange("applicantTitle", e.target.value)} className={inputClass} /></FormInput>
-            <FormInput label="?깅챸" required><input type="text" value={form.applicantName} onChange={e => onChange("applicantName", e.target.value)} className={inputClass} /></FormInput>
+            <FormInput label="성명" required><input type="text" value={form.applicantName} onChange={e => onChange("applicantName", e.target.value)} className={inputClass} /></FormInput>
           </div>
-          <FormInput label="?묒뾽?μ냼" required>
+          <FormInput label="작업장소" required>
             <input type="text" value={form.workLocation} onChange={e => onChange("workLocation", e.target.value)} className={inputClass + " mb-1.5"} />
             <LocationField workLatitude={workLatitude} workAddress={workAddress} onOpenLocation={onOpenLocation} onClearLocation={onClearLocation} />
           </FormInput>
-          <FormInput label="?묒뾽 ?댁슜" required><textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} /></FormInput>
-          <FormInput label="?묒뾽?먮챸??><textarea value={form.participants} onChange={e => onChange("participants", e.target.value)} rows={2} className={textareaClass} /></FormInput>
+          <FormInput label="작업 내용" required><textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} /></FormInput>
+          <FormInput label="작업참여자"><textarea value={form.participants} onChange={e => onChange("participants", e.target.value)} rows={2} className={textareaClass} /></FormInput>
         </div>
       </div>
 
@@ -737,11 +739,11 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         <SectionHeader num={2} title="?꾪뿕怨듭쥌 ?뺤씤 (?대떦 ??ぉ 泥댄겕)" />
         <div className="space-y-3">
 
-          {/* 2.0m ?댁긽 怨좎냼?묒뾽 */}
+          {/* 2.0m 이상 고소작업 */}
           <div>
             <label className="flex items-center gap-2 cursor-pointer py-1">
               <input type="checkbox" checked={!!form.riskHighPlace} onChange={e => onChange("riskHighPlace", e.target.checked)} className="w-4 h-4 rounded text-blue-600 border-gray-300" />
-              <span className="text-sm font-medium text-gray-700">2.0m ?댁긽 怨좎냼?묒뾽</span>
+              <span className="text-sm font-medium text-gray-700">2.0m 이상 고소작업</span>
             </label>
             {form.riskHighPlace && (
               <div className="ml-6 mt-2 bg-blue-50 rounded-xl p-3 space-y-1.5">
@@ -760,11 +762,11 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             )}
           </div>
 
-          {/* ?섏긽 ?먮뒗 ?섎??묒뾽 */}
+          {/* 수상 또는 수중작업 */}
           <div>
             <label className="flex items-center gap-2 cursor-pointer py-1">
               <input type="checkbox" checked={!!form.riskWaterWork} onChange={e => onChange("riskWaterWork", e.target.checked)} className="w-4 h-4 rounded text-blue-600 border-gray-300" />
-              <span className="text-sm font-medium text-gray-700">?섏긽 ?먮뒗 ?섎??묒뾽</span>
+              <span className="text-sm font-medium text-gray-700">수상 또는 수중작업</span>
             </label>
             {form.riskWaterWork && (
               <div className="ml-6 mt-2 bg-blue-50 rounded-xl p-3 space-y-1.5">
@@ -795,11 +797,11 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             )}
           </div>
 
-          {/* ?뺤쟾?묒뾽 */}
+          {/* 정전작업 */}
           <div>
             <label className="flex items-center gap-2 cursor-pointer py-1">
               <input type="checkbox" checked={!!form.riskPowerOutage} onChange={e => onChange("riskPowerOutage", e.target.checked)} className="w-4 h-4 rounded text-blue-600 border-gray-300" />
-              <span className="text-sm font-medium text-gray-700">?뺤쟾?묒뾽</span>
+              <span className="text-sm font-medium text-gray-700">정전작업</span>
             </label>
             {form.riskPowerOutage && (
               <input type="text" value={form.riskPowerOutageDetail || ""} onChange={e => onChange("riskPowerOutageDetail", e.target.value)}
@@ -807,11 +809,11 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             )}
           </div>
 
-          {/* ?붽린?묒뾽 */}
+          {/* 화기작업 */}
           <div>
             <label className="flex items-center gap-2 cursor-pointer py-1">
               <input type="checkbox" checked={!!form.riskFireWork} onChange={e => onChange("riskFireWork", e.target.checked)} className="w-4 h-4 rounded text-blue-600 border-gray-300" />
-              <span className="text-sm font-medium text-gray-700">?붽린?묒뾽</span>
+              <span className="text-sm font-medium text-gray-700">화기작업</span>
             </label>
             {form.riskFireWork && (
               <input type="text" value={form.riskFireWorkDetail || ""} onChange={e => onChange("riskFireWorkDetail", e.target.value)}
@@ -819,21 +821,21 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             )}
           </div>
 
-          {/* 湲고? */}
+          {/* 기타 */}
           <div>
             <label className="flex items-center gap-2 cursor-pointer py-1">
               <input type="checkbox" checked={!!form.riskOther} onChange={e => onChange("riskOther", e.target.checked)} className="w-4 h-4 rounded text-blue-600 border-gray-300" />
-              <span className="text-sm font-medium text-gray-700">湲고?(諛쒖＜???붿껌)</span>
+              <span className="text-sm font-medium text-gray-700">기타(별지에 별기재)</span>
             </label>
             {form.riskOther && (
               <input type="text" value={form.riskOtherDetail || ""} onChange={e => onChange("riskOtherDetail", e.target.value)}
-                placeholder="湲고? ?댁슜 ?낅젰..." className={"ml-6 mt-1 " + inputClass} />
+                placeholder="기타 내용 입력..." className={"ml-6 mt-1 " + inputClass} />
             )}
           </div>
         </div>
       </div>
 
-      {/* 3. ?덉긽?꾪뿕?붿냼 */}
+      {/* 3. 발생하는 위험요소 */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={3} title="?덉긽?섎뒗 ?꾪뿕?붿냼 (?대떦 ??ぉ 泥댄겕)" />
         <div className="grid grid-cols-2 gap-1">
@@ -846,7 +848,7 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         </div>
         {form.factorOther && (
           <input type="text" value={form.factorOtherDetail} onChange={e => onChange("factorOtherDetail", e.target.value)}
-            placeholder="湲고? ?꾪뿕?붿냼 ?낅젰" className={inputClass + " mt-2"} />
+            placeholder="기타 위험요소 입력" className={inputClass + " mt-2"} />
         )}
       </div>
 
@@ -854,9 +856,9 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={4} title="?꾪뿕?붿냼 쨌 媛쒖꽑?梨?쨌 ?ы빐?뺥깭" />
         <div className="grid grid-cols-12 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg mb-2">
-          <div className="col-span-5 text-xs font-medium text-gray-600">?꾪뿕?붿냼</div>
+          <div className="col-span-5 text-xs font-medium text-gray-600">위험요소</div>
           <div className="col-span-4 text-xs font-medium text-gray-600">媛쒖꽑?梨?/div>
-          <div className="col-span-2 text-xs font-medium text-gray-600">?ы빐?뺥깭</div>
+          <div className="col-span-2 text-xs font-medium text-gray-600">재해형태</div>
           <div className="col-span-1"></div>
         </div>
         <div className="space-y-2 mb-3">
@@ -892,7 +894,7 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
   );
 }
 
-// ===== 遺숈엫2/3/4 Forms =====
+// ===== 붙임2/3/4 Forms =====
 const CONFINED_CHECKS: SafetyCheckItem[] = [
   { label: "?덉쟾?대떦??吏??諛?媛먮룆?щ? 寃??, applicable: "", result: "" },
   { label: "異쒖엯湲덉?, 異쒖엯?덇?, 寃쎄퀬?쒖?, ?쒖??먯꽕移? 援ш툒?⑷뎄", applicable: "", result: "" },
@@ -927,9 +929,9 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
   return (
     <>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={1} title="湲곕낯?뺣낫" />
+        <SectionHeader num={1} title="기본정보" />
         <div className="space-y-3">
-          <FormInput label="?좎껌?? required><input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
+          <FormInput label="신청일" required><input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
           <WorkPeriodField startDate={form.workStartDate} endDate={form.workEndDate} startTime={form.workStartTime} endTime={form.workEndTime}
             onChangeStartDate={v => onChange("workStartDate", v)} onChangeEndDate={v => onChange("workEndDate", v)}
             onChangeStartTime={v => onChange("workStartTime", v)} onChangeEndTime={v => onChange("workEndTime", v)} />
@@ -937,22 +939,22 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
           <div className="grid grid-cols-3 gap-2">
             <FormInput label="?낆껜紐?><input type="text" value={form.applicantCompany} onChange={e => onChange("applicantCompany", e.target.value)} className={inputClass} /></FormInput>
             <FormInput label="吏곸콉"><input type="text" value={form.applicantTitle} onChange={e => onChange("applicantTitle", e.target.value)} className={inputClass} /></FormInput>
-            <FormInput label="?깅챸" required><input type="text" value={form.applicantName} onChange={e => onChange("applicantName", e.target.value)} className={inputClass} /></FormInput>
+            <FormInput label="성명" required><input type="text" value={form.applicantName} onChange={e => onChange("applicantName", e.target.value)} className={inputClass} /></FormInput>
           </div>
-          <FormInput label="?묒뾽 ?μ냼" required>
+          <FormInput label="작업 장소" required>
             <input type="text" value={form.workLocation} onChange={e => onChange("workLocation", e.target.value)} className={inputClass + " mb-1.5"} />
             <LocationField workLatitude={workLatitude} workAddress={workAddress} onOpenLocation={onOpenLocation} onClearLocation={onClearLocation} />
           </FormInput>
-          <FormInput label="?묒뾽 ?댁슜" required><textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} /></FormInput>
+          <FormInput label="작업 내용" required><textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} /></FormInput>
           <FormInput label="異쒖엯??紐낅떒"><textarea value={form.entryList} onChange={e => onChange("entryList", e.target.value)} rows={2} className={textareaClass} /></FormInput>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={2} title="?덇? 議곌굔" />
+        <SectionHeader num={2} title="허가 조건" />
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-2">?붽린?묒뾽 ?덇? ?꾩슂?щ?</label>
-            <div className="flex gap-4">{["?꾩슂", "遺덊븘??].map(opt => (
+            <label className="block text-xs font-medium text-gray-600 mb-2">화기작업 허가 필요여부</label>
+            <div className="flex gap-4">{["필요", "불필요"].map(opt => (
               <label key={opt} className="flex items-center gap-2 cursor-pointer">
                 <input type="radio" name="needFireWork2" value={opt} checked={form.needFireWork === opt} onChange={() => onChange("needFireWork", opt)} className="w-4 h-4 text-blue-600" />
                 <span className="text-sm text-gray-700">{opt}</span>
@@ -960,8 +962,8 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             ))}</div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-2">?댁뿰湲곌?(?묒닔湲? ???ъ슜?щ?</label>
-            <div className="flex gap-4">{["?ъ슜", "誘몄궗??].map(opt => (
+            <label className="block text-xs font-medium text-gray-600 mb-2">내연기관(발전기 등) 사용여부</label>
+            <div className="flex gap-4">{["사용", "미사용"].map(opt => (
               <label key={opt} className="flex items-center gap-2 cursor-pointer">
                 <input type="radio" name="useInternalEngine2" value={opt} checked={form.useInternalEngine === opt} onChange={() => onChange("useInternalEngine", opt)} className="w-4 h-4 text-blue-600" />
                 <span className="text-sm text-gray-700">{opt}</span>
@@ -971,11 +973,11 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={3} title="?덉쟾議곗튂 ?붽뎄?ы빆" />
+        <SectionHeader num={3} title="안전조치 이행사항" />
         <SafetyCheckTable items={form.safetyChecks} onChange={updated => onChange("safetyChecks", updated)} />
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={4} title="?밸퀎議곗튂 ?꾩슂?ы빆" />
+        <SectionHeader num={4} title="특별조치 필요사항" />
         <textarea value={form.specialMeasures} onChange={e => onChange("specialMeasures", e.target.value)} rows={3} className={textareaClass} />
       </div>
       <PhotoAttachSection documentId={documentId} canAdd={true} />
@@ -1010,25 +1012,25 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
   return (
     <>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={1} title="?⑹뿭 媛쒖슂" />
+        <SectionHeader num={1} title="용역 개요" />
         <div className="space-y-3">
-          <FormInput label="?좉퀬?? required><input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
+          <FormInput label="신고일" required><input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
           <WorkPeriodField startDate={form.workStartDate} endDate={form.workEndDate} startTime={form.workStartTime} endTime={form.workEndTime}
             onChangeStartDate={v => onChange("workStartDate", v)} onChangeEndDate={v => onChange("workEndDate", v)}
             onChangeStartTime={v => onChange("workStartTime", v)} onChangeEndTime={v => onChange("workEndTime", v)} />
           <FormInput label="?⑹뿭紐? required><input type="text" value={taskName} readOnly className="w-full px-3 py-3 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
           <FormInput label="?섍툒?낆껜紐?><input type="text" value={form.contractorCompany} onChange={e => onChange("contractorCompany", e.target.value)} className={inputClass} /></FormInput>
           <div className="grid grid-cols-2 gap-3">
-            <FormInput label="?⑹뿭湲곌컙 ?쒖옉"><input type="date" value={form.contractPeriodStart} onChange={e => onChange("contractPeriodStart", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
-            <FormInput label="?⑹뿭湲곌컙 醫낅즺"><input type="date" value={form.contractPeriodEnd} onChange={e => onChange("contractPeriodEnd", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
+            <FormInput label="용역기간 시작"><input type="date" value={form.contractPeriodStart} onChange={e => onChange("contractPeriodStart", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
+            <FormInput label="용역기간 종료"><input type="date" value={form.contractPeriodEnd} onChange={e => onChange("contractPeriodEnd", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
           </div>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={2} title="?댁씪?묒뾽 媛쒖슂" />
+        <SectionHeader num={2} title="휴일작업 개요" />
         <div className="space-y-3">
           <FormInput label="?묒뾽????쒖꽕臾? required><input type="text" value={form.facilityName} onChange={e => onChange("facilityName", e.target.value)} className={inputClass} /></FormInput>
-          <FormInput label="?쒖꽕臾??꾩튂">
+          <FormInput label="시설물 위치">
             <input type="text" value={form.facilityLocation} onChange={e => onChange("facilityLocation", e.target.value)} className={inputClass + " mb-1.5"} />
             <LocationField workLatitude={workLatitude} workAddress={workAddress} onOpenLocation={onOpenLocation} onClearLocation={onClearLocation} />
           </FormInput>
@@ -1036,8 +1038,8 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             <FormInput label="?쒖꽕 愿由ъ옄"><input type="text" value={form.facilityManager} onChange={e => onChange("facilityManager", e.target.value)} className={inputClass} /></FormInput>
             <FormInput label="愿由ъ옄 吏곴툒"><input type="text" value={form.facilityManagerGrade} onChange={e => onChange("facilityManagerGrade", e.target.value)} className={inputClass} /></FormInput>
           </div>
-          <FormInput label="?묒뾽?꾩튂"><input type="text" value={form.workPosition} onChange={e => onChange("workPosition", e.target.value)} className={inputClass} /></FormInput>
-          <FormInput label="?묒뾽怨듭쥌"><textarea value={form.workContents} onChange={e => onChange("workContents", e.target.value)} rows={3} className={textareaClass} /></FormInput>
+          <FormInput label="작업위치"><input type="text" value={form.workPosition} onChange={e => onChange("workPosition", e.target.value)} className={inputClass} /></FormInput>
+          <FormInput label="작업공종"><textarea value={form.workContents} onChange={e => onChange("workContents", e.target.value)} rows={3} className={textareaClass} /></FormInput>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -1052,7 +1054,7 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
                 {idx >= 1 && <button onClick={() => onChange("participants", form.participants.filter((_, i) => i !== idx))} className="text-gray-400 hover:text-red-500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <FormInput label="?깅챸"><input type="text" value={p.name} onChange={e => updateP(idx, "name", e.target.value)} className={inputClass} /></FormInput>
+                <FormInput label="성명"><input type="text" value={p.name} onChange={e => updateP(idx, "name", e.target.value)} className={inputClass} /></FormInput>
                 <FormInput label="?곕씫泥?><input type="tel" value={p.phone} onChange={e => updateP(idx, "phone", e.target.value)} placeholder="010-0000-0000" className={inputClass} /></FormInput>
               </div>
             </div>
@@ -1066,15 +1068,15 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={4} title="?꾪뿕?붿냼 諛?媛쒖꽑?梨? />
         <div className="space-y-3">
-          <FormInput label="?꾪뿕?붿냼"><textarea value={form.riskFactors} onChange={e => onChange("riskFactors", e.target.value)} rows={2} className={textareaClass} /></FormInput>
+          <FormInput label="위험요소"><textarea value={form.riskFactors} onChange={e => onChange("riskFactors", e.target.value)} rows={2} className={textareaClass} /></FormInput>
           <FormInput label="媛쒖꽑?梨?><textarea value={form.improvementMeasures} onChange={e => onChange("improvementMeasures", e.target.value)} rows={2} className={textareaClass} /></FormInput>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={5} title="?좎껌???뺣낫" />
+        <SectionHeader num={5} title="신청자 정보" />
         <div className="grid grid-cols-2 gap-3">
-          <FormInput label="?좎껌???깅챸" required><input type="text" value={form.applicantName} onChange={e => onChange("applicantName", e.target.value)} className={inputClass} /></FormInput>
-          <FormInput label="?뚯냽"><input type="text" value={form.applicantOrg} onChange={e => onChange("applicantOrg", e.target.value)} className={inputClass} /></FormInput>
+          <FormInput label="신청자 성명" required><input type="text" value={form.applicantName} onChange={e => onChange("applicantName", e.target.value)} className={inputClass} /></FormInput>
+          <FormInput label="소속"><input type="text" value={form.applicantOrg} onChange={e => onChange("applicantOrg", e.target.value)} className={inputClass} /></FormInput>
         </div>
       </div>
       <PhotoAttachSection documentId={documentId} canAdd={true} />
@@ -1117,9 +1119,9 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
   return (
     <>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={1} title="湲곕낯?뺣낫" />
+        <SectionHeader num={1} title="기본정보" />
         <div className="space-y-3">
-          <FormInput label="?좎껌?? required><input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
+          <FormInput label="신청일" required><input type="date" value={form.requestDate} onChange={e => onChange("requestDate", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
           <WorkPeriodField startDate={form.workStartDate} endDate={form.workEndDate} startTime={form.workStartTime} endTime={form.workEndTime}
             onChangeStartDate={v => onChange("workStartDate", v)} onChangeEndDate={v => onChange("workEndDate", v)}
             onChangeStartTime={v => onChange("workStartTime", v)} onChangeEndTime={v => onChange("workEndTime", v)} />
@@ -1127,22 +1129,22 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
           <div className="grid grid-cols-3 gap-2">
             <FormInput label="?낆껜紐?><input type="text" value={form.applicantCompany} onChange={e => onChange("applicantCompany", e.target.value)} className={inputClass} /></FormInput>
             <FormInput label="吏곸콉"><input type="text" value={form.applicantTitle} onChange={e => onChange("applicantTitle", e.target.value)} className={inputClass} /></FormInput>
-            <FormInput label="?깅챸" required><input type="text" value={form.applicantName} onChange={e => onChange("applicantName", e.target.value)} className={inputClass} /></FormInput>
+            <FormInput label="성명" required><input type="text" value={form.applicantName} onChange={e => onChange("applicantName", e.target.value)} className={inputClass} /></FormInput>
           </div>
-          <FormInput label="?묒뾽 ?μ냼" required>
+          <FormInput label="작업 장소" required>
             <input type="text" value={form.workLocation} onChange={e => onChange("workLocation", e.target.value)} className={inputClass + " mb-1.5"} />
             <LocationField workLatitude={workLatitude} workAddress={workAddress} onOpenLocation={onOpenLocation} onClearLocation={onClearLocation} />
           </FormInput>
-          <FormInput label="?묒뾽 ?댁슜" required><textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} /></FormInput>
+          <FormInput label="작업 내용" required><textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} /></FormInput>
           <FormInput label="異쒖엯??紐낅떒"><textarea value={form.entryList} onChange={e => onChange("entryList", e.target.value)} rows={2} className={textareaClass} /></FormInput>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={2} title="?덇? 議곌굔" />
+        <SectionHeader num={2} title="허가 조건" />
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-2">諛?먭났媛꾩텧???덇? ?꾩슂?щ?</label>
-            <div className="flex gap-4">{["?꾩슂", "遺덊븘??].map(opt => (
+            <div className="flex gap-4">{["필요", "불필요"].map(opt => (
               <label key={opt} className="flex items-center gap-2 cursor-pointer">
                 <input type="radio" name="needConfinedSpace4" value={opt} checked={form.needConfinedSpace === opt} onChange={() => onChange("needConfinedSpace", opt)} className="w-4 h-4 text-blue-600" />
                 <span className="text-sm text-gray-700">{opt}</span>
@@ -1150,8 +1152,8 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             ))}</div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-2">?붽린?묒뾽 ?덇? ?꾩슂?щ?</label>
-            <div className="flex gap-4">{["?꾩슂", "遺덊븘??].map(opt => (
+            <label className="block text-xs font-medium text-gray-600 mb-2">화기작업 허가 필요여부</label>
+            <div className="flex gap-4">{["필요", "불필요"].map(opt => (
               <label key={opt} className="flex items-center gap-2 cursor-pointer">
                 <input type="radio" name="needFireWork4" value={opt} checked={form.needFireWork === opt} onChange={() => onChange("needFireWork", opt)} className="w-4 h-4 text-blue-600" />
                 <span className="text-sm text-gray-700">{opt}</span>
@@ -1161,11 +1163,11 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={3} title="?덉쟾議곗튂 ?붽뎄?ы빆" />
+        <SectionHeader num={3} title="안전조치 이행사항" />
         <SafetyCheckTable items={form.safetyChecks} onChange={updated => onChange("safetyChecks", updated)} />
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={4} title="?먭? ?뺤씤 寃곌낵" />
+        <SectionHeader num={4} title="기기 확인 결과" />
         <div className="grid grid-cols-4 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg mb-2">
           {["?먭?湲곌린", "李⑤떒?뺤씤??, "?꾧린?대떦??, "?꾩옣?뺣퉬"].map(h => (
             <div key={h} className="text-xs font-medium text-gray-600 text-center">{h}</div>
@@ -1187,7 +1189,7 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         </button>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={5} title="?밸퀎議곗튂 ?꾩슂?ы빆" />
+        <SectionHeader num={5} title="특별조치 필요사항" />
         <textarea value={form.specialMeasures} onChange={e => onChange("specialMeasures", e.target.value)} rows={3} className={textareaClass} />
       </div>
       <PhotoAttachSection documentId={documentId} canAdd={true} />
@@ -1341,7 +1343,7 @@ export default function DocumentEditPage() {
           </div>
           <div className="flex items-center gap-2">
             {lastSaved && <span className="text-xs text-gray-400">{lastSaved}</span>}
-            <button onClick={() => setShowPrev(true)} className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">?댁쟾 遺덈윭?ㅺ린</button>
+            <button onClick={() => setShowPrev(true)} className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">이전 불러오기</button>
           </div>
         </div>
       </div>
@@ -1382,7 +1384,7 @@ export default function DocumentEditPage() {
           onClose={() => setShowApproval(false)}
           onSubmitted={() => {
             setShowApproval(false);
-            alert("?쒖텧???꾨즺?먯뒿?덈떎. 寃곗옱?먯뿉寃??뚮┝???꾩넚?⑸땲??");
+            alert("제출이 완료됐습니다. 결재자에게 알림이 전송됩니다.");
             router.push(`/tasks/${taskId}`);
           }} />
       )}
