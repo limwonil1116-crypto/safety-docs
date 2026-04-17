@@ -16,11 +16,11 @@ interface RiskAssessRow {
 declare global { interface Window { kakao: any; daum: any; } }
 
 const DOC_TYPE_INFO: Record<string, { title: string; short: string; approverLabel: string; confirmerLabel: string }> = {
+const DOC_TYPE_INFO: Record<string, { title: string; short: string; approverLabel: string; confirmerLabel: string }> = {
   SAFETY_WORK_PERMIT: { title: "안전작업허가서",    short: "붙임1", approverLabel: "최종검토자", confirmerLabel: "최종허가자" },
   CONFINED_SPACE:     { title: "밀폐공간작업허가서", short: "붙임2", approverLabel: "허가자",    confirmerLabel: "확인자" },
   HOLIDAY_WORK:       { title: "휴일작업신청서",     short: "붙임3", approverLabel: "검토자",    confirmerLabel: "승인자" },
   POWER_OUTAGE:       { title: "정전작업허가서",     short: "붙임4", approverLabel: "허가자",    confirmerLabel: "확인자" },
-};
 
 const inputClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none";
 const textareaClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none";
@@ -28,9 +28,9 @@ const dateInputClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-
 const timeInputClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500";
 
 // ?꾪뿕怨듭쥌 愿?⑥옉???μ냼) ?곸꽭 ??ぉ
-const HIGH_PLACE_ITEMS = ["??섏? ?ъ닔濡?移⑥닔??, "諛⑹“??諛곗닔媛묐Ц", "??諛곗닔??嫄댁텞臾?];
-const WATER_WORK_ITEMS = ["??섏? ?λ쪟?쒕㈃ 臾쇰꽆??媛먯꽭怨?, "諛⑹“???쒕갑?쒕㈃ 諛곗닔媛묐Ц", "?묐같?섏옣 ?좎엯쨌?좎텧?섎줈"];
-
+// 위험공종 관련작업(장소) 항목 목록
+const HIGH_PLACE_ITEMS = ["저수지 여수로 침수탑", "방조제 제방시면 배수갑문", "제방 비탈면 제체"];
+const WATER_WORK_ITEMS = ["저수지 여수로 침수탑", "방조제 제방시면 배수갑문", "배수개선 양수장·배수장"];
 const defaultRiskAssessRow: RiskAssessRow = {
   workType: "", riskFactor: "", riskLevel: "以?,
   currentMeasure: "", residualRisk: "??, additionalMeasure: "",
