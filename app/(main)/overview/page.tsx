@@ -357,7 +357,7 @@ export default function DashboardPage() {
         const docs: DocumentMapItem[] = (data.documents ?? []).map((d: any) => {
           const statusKey = d.status === "IN_REVIEW" && d.currentApprovalOrder === 2 ? "IN_REVIEW_FINAL" : d.status;
           const fd = d.formDataJson ?? {};
-          // ✅ requestDate 절대 사용 안 함 - workStartDate/workEndDate만
+          // workStartDate/workEndDate: formDataJson 우선, 구버전 workDate fallback
           return {
             id: d.id,
             taskId: d.taskId ?? "",
@@ -370,8 +370,8 @@ export default function DashboardPage() {
             lat: d.workLatitude ?? null,
             lng: d.workLongitude ?? null,
             workAddress: d.workAddress ?? null,
-            workStartDate: fd.workStartDate ?? null,
-            workEndDate: fd.workEndDate ?? null,
+            workStartDate: fd.workStartDate ?? fd.workDate ?? null,
+            workEndDate: fd.workEndDate ?? fd.workDate ?? null,
           };
         });
         setDocuments(docs);

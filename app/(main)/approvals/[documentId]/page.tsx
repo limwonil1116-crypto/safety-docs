@@ -906,6 +906,8 @@ export default function ApprovalDetailPage() {
           <textarea value={reviewOpinion} onChange={e => setReviewOpinion(e.target.value)}
             placeholder="검토 의견을 입력해주세요 (반려 시 필수)"
             rows={3}
+            onCompositionStart={e => e.stopPropagation()}
+            onCompositionEnd={e => { e.stopPropagation(); }}
             className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
         </div>
         <div>
@@ -913,6 +915,8 @@ export default function ApprovalDetailPage() {
           <textarea value={reviewResult} onChange={e => setReviewResult(e.target.value)}
             placeholder="조치결과를 입력해주세요"
             rows={2}
+            onCompositionStart={e => e.stopPropagation()}
+            onCompositionEnd={e => { e.stopPropagation(); }}
             className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
         </div>
       </div>

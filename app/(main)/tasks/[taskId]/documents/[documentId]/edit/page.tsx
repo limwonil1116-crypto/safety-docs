@@ -456,7 +456,7 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
       const latlng = mouseEvent.latLng; marker.setPosition(latlng);
       const newLat = latlng.getLat(); const newLng = latlng.getLng();
       setLat(newLat); setLng(newLng);
-      if (!window.kakao.maps.services) { setAddress(`${newLat.toFixed(5)}, ${newLng.toFixed(5)}`); return; }
+      if (!window.kakao.maps.services) { return; } // services 없으면 주소 변경 안 함 (좌표 표시 방지)
       const geocoder = new window.kakao.maps.services.Geocoder();
       geocoder.coord2Address(newLng, newLat, (result: any, status: any) => {
         if (status === window.kakao.maps.services.Status.OK)
