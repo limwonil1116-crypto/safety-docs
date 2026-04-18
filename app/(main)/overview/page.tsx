@@ -20,12 +20,12 @@ interface DocumentMapItem {
 }
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string; pin: string }> = {
-  SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료",        pin: "#2563eb" },
-  IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중",          pin: "#d97706" },
-  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종결재 진행중",  pin: "#ea580c" },
-  APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료",        pin: "#16a34a" },
-  REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "반려",            pin: "#dc2626" },
-  DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중",          pin: "#6b7280" },
+  SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료",       pin: "#2563eb" },
+  IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중",         pin: "#d97706" },
+  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종결재 진행중", pin: "#ea580c" },
+  APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료",       pin: "#16a34a" },
+  REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "반려",           pin: "#dc2626" },
+  DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중",         pin: "#6b7280" },
 };
 
 const DOC_TYPE_LABEL: Record<string, string> = {
@@ -36,34 +36,37 @@ const DOC_TYPE_LABEL: Record<string, string> = {
 };
 
 const DOC_TYPE_CAL_COLOR: Record<string, { bg: string; text: string; border: string }> = {
-  SAFETY_WORK_PERMIT: { bg: "#dbeafe", text: "#1d4ed8", border: "#3b82f6" },
-  CONFINED_SPACE:     { bg: "#ede9fe", text: "#6d28d9", border: "#8b5cf6" },
-  HOLIDAY_WORK:       { bg: "#fef3c7", text: "#b45309", border: "#f59e0b" },
-  POWER_OUTAGE:       { bg: "#fee2e2", text: "#b91c1c", border: "#ef4444" },
+  SAFETY_WORK_PERMIT: { bg: "#3b82f6", text: "#ffffff", border: "#2563eb" },
+  CONFINED_SPACE:     { bg: "#8b5cf6", text: "#ffffff", border: "#7c3aed" },
+  HOLIDAY_WORK:       { bg: "#f59e0b", text: "#ffffff", border: "#d97706" },
+  POWER_OUTAGE:       { bg: "#ef4444", text: "#ffffff", border: "#dc2626" },
 };
 
 declare global { interface Window { kakao: any; } }
 
-// ✅ 날짜 범위 생성 (workStartDate ~ workEndDate 기준, 정확히 해당 날짜만)
-function getDateRange(startDate: string, endDate: string): string[] {
+// 로컬 타임존 기준 날짜 파싱
+function parseLocalDate(dateStr: string): Date {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function toDateKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function getDateRange(startStr: string, endStr: string): string[] {
   const dates: string[] = [];
-  // 정확한 날짜 파싱 (로컬 타임존 기준)
-  const [sy, sm, sd] = startDate.split("-").map(Number);
-  const [ey, em, ed] = endDate.split("-").map(Number);
-  const start = new Date(sy, sm - 1, sd);
-  const end = new Date(ey, em - 1, ed);
+  const start = parseLocalDate(startStr);
+  const end = parseLocalDate(endStr);
   const cur = new Date(start);
   while (cur <= end) {
-    const y = cur.getFullYear();
-    const m = String(cur.getMonth() + 1).padStart(2, "0");
-    const d = String(cur.getDate()).padStart(2, "0");
-    dates.push(`${y}-${m}-${d}`);
+    dates.push(toDateKey(cur));
     cur.setDate(cur.getDate() + 1);
   }
   return dates;
 }
 
-// ===== 캘린더 =====
+// ===== 캘린더 (구글 캘린더 스타일) =====
 function CalendarView({ documents, onDocClick }: {
   documents: DocumentMapItem[];
   onDocClick: (doc: DocumentMapItem) => void;
@@ -73,25 +76,20 @@ function CalendarView({ documents, onDocClick }: {
   const [month, setMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  // ✅ 승인완료 + workStartDate 있는 문서만
-  const approvedDocs = documents.filter(
-    (d) => d.status === "APPROVED" && d.workStartDate
-  );
+  const approvedDocs = documents.filter(d => d.status === "APPROVED" && d.workStartDate);
 
-  // ✅ 날짜별 문서 매핑 (workStartDate~workEndDate 정확히)
+  // 날짜별 문서 매핑
   const docsByDate: Record<string, DocumentMapItem[]> = {};
-  approvedDocs.forEach((d) => {
+  approvedDocs.forEach(d => {
     const start = d.workStartDate!;
-    const end = d.workEndDate || d.workStartDate!;
-    const dateRange = getDateRange(start, end);
-    dateRange.forEach((dateKey) => {
-      if (!docsByDate[dateKey]) docsByDate[dateKey] = [];
-      if (!docsByDate[dateKey].find((x) => x.id === d.id)) {
-        docsByDate[dateKey].push(d);
-      }
+    const end = d.workEndDate || start;
+    getDateRange(start, end).forEach(key => {
+      if (!docsByDate[key]) docsByDate[key] = [];
+      if (!docsByDate[key].find(x => x.id === d.id)) docsByDate[key].push(d);
     });
   });
 
+  // 해당 월의 셀 생성
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const prevDays = new Date(year, month, 0).getDate();
@@ -106,69 +104,72 @@ function CalendarView({ documents, onDocClick }: {
   for (let d = 1; d <= daysInMonth; d++) {
     cells.push({ date: d, cur: true, key: `${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}` });
   }
-  const rem = 42 - cells.length;
-  for (let d = 1; d <= rem; d++) {
+  while (cells.length < 42) {
+    const d = cells.length - firstDay - daysInMonth + 1;
     const m = month === 11 ? 1 : month + 2;
     const y = month === 11 ? year + 1 : year;
     cells.push({ date: d, cur: false, key: `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}` });
   }
 
-  const todayKey = (() => {
-    const y = today.getFullYear();
-    const m = String(today.getMonth() + 1).padStart(2, "0");
-    const d = String(today.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  })();
-
+  const todayKey = toDateKey(today);
   const selectedDocs = selectedDate ? (docsByDate[selectedDate] ?? []) : [];
+  const rows = Array.from({ length: 6 }, (_, i) => cells.slice(i * 7, i * 7 + 7));
 
-  // ✅ 각 문서의 전체 기간에서 텍스트를 균등 분배
-  // 전체 기간의 중간 날짜에 한 번 + 시작일에 한 번만 표시
-  const getTextPositions = (doc: DocumentMapItem, currentMonth: number, currentYear: number): Set<string> => {
-    const start = doc.workStartDate!;
-    const end = doc.workEndDate || doc.workStartDate!;
-    const allDates = getDateRange(start, end);
+  // 각 문서의 주(row)별 바 계산
+  // 구글 캘린더처럼: 각 row에서 문서가 차지하는 연속 셀을 하나의 바로 표시
+  interface BarItem {
+    docId: string;
+    doc: DocumentMapItem;
+    startCol: number; // 0~6
+    span: number;     // 몇 칸
+    label: string;    // 텍스트 (바 맨 왼쪽 셀에만 표시)
+    lane: number;     // 같은 날 여러 문서일 때 겹침 방지 레인
+  }
 
-    // 현재 달에 해당하는 날짜만 필터
-    const monthDates = allDates.filter(d => {
-      const [y, m] = d.split("-").map(Number);
-      return y === currentYear && m === currentMonth + 1;
+  const rowBars: BarItem[][] = rows.map((row) => {
+    const bars: BarItem[] = [];
+    // 이 row에서 각 문서가 어느 범위를 차지하는지 계산
+    const docLanes: Record<string, number> = {};
+    let laneCounter = 0;
+
+    approvedDocs.forEach(doc => {
+      const start = doc.workStartDate!;
+      const end = doc.workEndDate || start;
+      const docRange = new Set(getDateRange(start, end));
+
+      // 이 row에서 연속된 셀 찾기
+      let segStart = -1;
+      let segEnd = -1;
+      row.forEach((cell, col) => {
+        if (docRange.has(cell.key)) {
+          if (segStart === -1) segStart = col;
+          segEnd = col;
+        }
+      });
+
+      if (segStart === -1) return; // 이 row에 없음
+
+      const span = segEnd - segStart + 1;
+      if (!(doc.id in docLanes)) {
+        docLanes[doc.id] = laneCounter % 3;
+        laneCounter++;
+      }
+      const lane = docLanes[doc.id];
+
+      // 텍스트: 이 바에서 시작일이 포함되거나 row 첫 셀이 포함된 경우 표시
+      const barFirstKey = row[segStart].key;
+      const showLabel = barFirstKey === start || segStart === 0;
+      const label = showLabel ? `${doc.taskName} ${DOC_TYPE_LABEL[doc.documentType] ?? ""}` : "";
+
+      bars.push({ docId: doc.id, doc, startCol: segStart, span, label, lane });
     });
 
-    if (monthDates.length === 0) return new Set();
-
-    const positions = new Set<string>();
-
-    // 시작일이 현재 달에 있으면 시작일에 표시
-    const [sy, sm] = start.split("-").map(Number);
-    if (sy === currentYear && sm === currentMonth + 1) {
-      positions.add(start);
-    } else {
-      // 시작일이 이전 달이면 현재 달 첫 날에 표시
-      positions.add(monthDates[0]);
-    }
-
-    // 전체 기간이 7일 이상이면 중간에 한 번 더
-    if (allDates.length >= 7 && monthDates.length >= 4) {
-      const midIdx = Math.floor(monthDates.length / 2);
-      const midDate = monthDates[midIdx];
-      if (!positions.has(midDate)) {
-        // 일요일이면 +1
-        const [my, mm, md] = midDate.split("-").map(Number);
-        const dow = new Date(my, mm - 1, md).getDay();
-        if (dow === 0 && midIdx + 1 < monthDates.length) {
-          positions.add(monthDates[midIdx + 1]);
-        } else {
-          positions.add(midDate);
-        }
-      }
-    }
-
-    return positions;
-  };
+    return bars;
+  });
 
   return (
     <div>
+      {/* 월 네비게이션 */}
       <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-gray-100">
         <button onClick={() => { if (month === 0) { setMonth(11); setYear(y => y-1); } else setMonth(m => m-1); }}
           className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500">
@@ -181,87 +182,102 @@ function CalendarView({ documents, onDocClick }: {
         </button>
       </div>
 
+      {/* 요일 헤더 */}
       <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-100">
         {["일","월","화","수","목","금","토"].map((d, i) => (
-          <div key={d} className={`text-center py-2 text-xs font-semibold ${i===0?"text-red-500":i===6?"text-blue-500":"text-gray-500"}`}>{d}</div>
+          <div key={d} className={`text-center py-1.5 text-xs font-semibold ${i===0?"text-red-500":i===6?"text-blue-500":"text-gray-500"}`}>{d}</div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 border-b border-gray-100">
-        {cells.map((cell, idx) => {
-          const hasDocs = !!docsByDate[cell.key]?.length && cell.cur;
-          const isToday = cell.key === todayKey && cell.cur;
-          const isSelected = cell.key === selectedDate;
-          const dow = idx % 7;
-          const cellDocs = cell.cur ? (docsByDate[cell.key] ?? []) : [];
+      {/* 캘린더 본체 - row 단위 렌더링 */}
+      <div className="border-b border-gray-100">
+        {rows.map((row, rowIdx) => {
+          const bars = rowBars[rowIdx];
+          // 이 row에서 최대 lane 수 계산 (높이 결정)
+          const maxLane = bars.length > 0 ? Math.max(...bars.map(b => b.lane)) + 1 : 0;
+          const rowHeight = 36 + maxLane * 18; // 날짜숫자 높이 + 바 높이
 
           return (
-            <div key={idx}
-              onClick={() => hasDocs && setSelectedDate(isSelected ? null : cell.key)}
-              className={`min-h-[70px] border-r border-b border-gray-100 p-0.5 ${
-                isSelected ? "bg-blue-50" : hasDocs ? "cursor-pointer hover:bg-gray-50 active:bg-blue-50" : ""
-              } ${!cell.cur ? "bg-gray-50/50" : ""}`}
-            >
-              <div className={`text-xs w-6 h-6 flex items-center justify-center rounded-full mx-auto mb-0.5 font-medium ${
-                isToday ? "bg-blue-600 text-white font-bold" :
-                !cell.cur ? "text-gray-300" :
-                dow===0 ? "text-red-500" : dow===6 ? "text-blue-500" : "text-gray-700"
-              }`}>{cell.date}</div>
-
-              <div className="space-y-0.5 px-0.5">
-                {cellDocs.slice(0, 2).map((doc) => {
-                  const col = DOC_TYPE_CAL_COLOR[doc.documentType] ?? DOC_TYPE_CAL_COLOR.SAFETY_WORK_PERMIT;
-                  const start = doc.workStartDate!;
-                  const end = doc.workEndDate || start;
-
-                  const [sy, sm, sd] = start.split("-").map(Number);
-                  const [ey, em, ed] = end.split("-").map(Number);
-                  const [cy, cm, cd] = cell.key.split("-").map(Number);
-
-                  const isStartDate = sy === cy && sm === cm && sd === cd;
-                  const isEndDate = ey === cy && em === cm && ed === cd;
-                  const isSingleDay = start === end;
-
-                  // ✅ 텍스트 표시 위치 계산
-                  const textPositions = getTextPositions(doc, month, year);
-                  const showLabel = textPositions.has(cell.key);
-                  const fullLabel = `${doc.taskName} ${DOC_TYPE_LABEL[doc.documentType] ?? ""}`;
-
-                  const borderRadius = isSingleDay ? "4px"
-                    : isStartDate ? "4px 0 0 4px"
-                    : isEndDate   ? "0 4px 4px 0"
-                    : "0";
-                  // 이전/다음 달과 연결되는 경우 마진 처리
-                  const isFirstOfRow = dow === 0;
-                  const isLastOfRow  = dow === 6;
-                  const marginLeft  = (!isSingleDay && !isStartDate && !isFirstOfRow) ? "-2px" : "0";
-                  const marginRight = (!isSingleDay && !isEndDate   && !isLastOfRow)  ? "-2px" : "0";
+            <div key={rowIdx} className="relative border-b border-gray-100" style={{ height: `${rowHeight}px` }}>
+              {/* 날짜 숫자 행 */}
+              <div className="grid grid-cols-7 absolute inset-0">
+                {row.map((cell, colIdx) => {
+                  const isToday = cell.key === todayKey && cell.cur;
+                  const isSelected = cell.key === selectedDate;
+                  const hasDocs = !!docsByDate[cell.key]?.length && cell.cur;
+                  const dow = colIdx;
 
                   return (
-                    <div
-                      key={doc.id}
-                      style={{
-                        backgroundColor: col.bg,
-                        color: col.text,
-                        borderLeft: (isStartDate || isSingleDay || isFirstOfRow) ? `2.5px solid ${col.border}` : "none",
-                        borderRadius,
-                        marginLeft,
-                        marginRight,
-                      }}
-                      className="text-[9px] px-1 py-0.5 leading-tight font-semibold min-h-[14px] overflow-hidden"
+                    <div key={colIdx}
+                      onClick={() => hasDocs && setSelectedDate(isSelected ? null : cell.key)}
+                      className={`border-r border-gray-100 relative ${hasDocs ? "cursor-pointer" : ""} ${isSelected ? "bg-blue-50" : ""}`}
                     >
-                      {showLabel ? (
-                        <span className="block truncate">{fullLabel}</span>
-                      ) : (
-                        <span className="invisible text-[8px]">·</span>
-                      )}
+                      {/* 날짜 숫자 */}
+                      <div className="flex justify-center pt-1">
+                        <span className={`text-xs w-6 h-6 flex items-center justify-center rounded-full font-medium ${
+                          isToday ? "bg-blue-600 text-white font-bold" :
+                          !cell.cur ? "text-gray-300" :
+                          dow === 0 ? "text-red-500" : dow === 6 ? "text-blue-500" : "text-gray-700"
+                        }`}>{cell.date}</span>
+                      </div>
                     </div>
                   );
                 })}
-                {cellDocs.length > 2 && (
-                  <div className="text-[9px] text-gray-400 pl-1">+{cellDocs.length - 2}건</div>
-                )}
               </div>
+
+              {/* 이벤트 바 - 절대위치로 row 전체에 오버레이 */}
+              {bars.map((bar, barIdx) => {
+                const col = DOC_TYPE_CAL_COLOR[bar.doc.documentType] ?? DOC_TYPE_CAL_COLOR.SAFETY_WORK_PERMIT;
+                const cellWidthPct = 100 / 7;
+                const left = `${bar.startCol * cellWidthPct + 0.5}%`;
+                const width = `${bar.span * cellWidthPct - 1}%`;
+                const top = 28 + bar.lane * 18; // 날짜 숫자 아래부터
+
+                // 바 모양: 시작/끝에 따라 둥근 모서리 결정
+                const isFirstOfPeriod = bar.doc.workStartDate === row[bar.startCol]?.key;
+                const isLastOfPeriod  = (bar.doc.workEndDate || bar.doc.workStartDate) === row[bar.startCol + bar.span - 1]?.key;
+                const borderRadius = isFirstOfPeriod && isLastOfPeriod ? "6px"
+                  : isFirstOfPeriod ? "6px 0 0 6px"
+                  : isLastOfPeriod  ? "0 6px 6px 0"
+                  : "0";
+
+                return (
+                  <div
+                    key={barIdx}
+                    onClick={() => onDocClick(bar.doc)}
+                    style={{
+                      position: "absolute",
+                      left,
+                      width,
+                      top: `${top}px`,
+                      height: "15px",
+                      backgroundColor: col.bg,
+                      borderRadius,
+                      cursor: "pointer",
+                      zIndex: 10,
+                      overflow: "hidden",
+                    }}
+                    className="flex items-center"
+                  >
+                    {bar.label && (
+                      <span style={{
+                        color: col.text,
+                        fontSize: "9px",
+                        fontWeight: 600,
+                        paddingLeft: "4px",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        lineHeight: "15px",
+                        display: "block",
+                        width: "100%",
+                      }}>
+                        {bar.label}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           );
         })}
@@ -271,46 +287,41 @@ function CalendarView({ documents, onDocClick }: {
       <div className="flex flex-wrap gap-3 px-4 py-2.5 bg-white border-t border-gray-100">
         {Object.entries(DOC_TYPE_CAL_COLOR).map(([key, col]) => (
           <div key={key} className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: col.border }} />
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: col.bg }} />
             <span className="text-xs text-gray-500">{DOC_TYPE_LABEL[key]}</span>
           </div>
         ))}
         <span className="text-xs text-gray-400 ml-auto">승인완료 기준</span>
       </div>
 
-      {/* 날짜 클릭 시 상세 목록 */}
+      {/* 날짜 클릭 시 상세 */}
       {selectedDate && selectedDocs.length > 0 && (
         <div className="mx-4 mb-4 bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
             <span className="text-sm font-bold text-gray-900">
               {(() => {
                 const [y, m, d] = selectedDate.split("-").map(Number);
-                return new Date(y, m - 1, d).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
+                return new Date(y, m-1, d).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
               })()}
             </span>
-            <button onClick={() => setSelectedDate(null)} className="text-gray-400 hover:text-gray-600">
+            <button onClick={() => setSelectedDate(null)} className="text-gray-400">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
           <div className="divide-y divide-gray-50">
-            {selectedDocs.map((doc) => {
+            {selectedDocs.map(doc => {
               const col = DOC_TYPE_CAL_COLOR[doc.documentType] ?? DOC_TYPE_CAL_COLOR.SAFETY_WORK_PERMIT;
-              const periodText = doc.workStartDate && doc.workEndDate && doc.workStartDate !== doc.workEndDate
-                ? `${doc.workStartDate} ~ ${doc.workEndDate}`
-                : doc.workStartDate || "";
+              const period = doc.workStartDate && doc.workEndDate && doc.workStartDate !== doc.workEndDate
+                ? `${doc.workStartDate} ~ ${doc.workEndDate}` : doc.workStartDate || "";
               return (
-                <div key={doc.id} className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-gray-50"
-                  onClick={() => onDocClick(doc)}>
-                  <div className="w-1.5 h-10 rounded-full shrink-0" style={{ backgroundColor: col.border }} />
+                <div key={doc.id} className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-gray-50" onClick={() => onDocClick(doc)}>
+                  <div className="w-1.5 h-10 rounded-full shrink-0" style={{ backgroundColor: col.bg }} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900">{doc.taskName}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{DOC_TYPE_LABEL[doc.documentType]}</p>
-                    <p className="text-xs text-gray-400">{periodText}</p>
+                    <p className="text-xs text-gray-400">{period}</p>
                   </div>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
-                    style={{ backgroundColor: col.bg, color: col.text }}>
-                    승인완료
-                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0" style={{ backgroundColor: col.bg + "30", color: col.border }}>승인완료</span>
                 </div>
               );
             })}
@@ -334,21 +345,19 @@ export default function DashboardPage() {
 
   const stats = {
     total: documents.length,
-    inProgress: documents.filter((d) => d.status === "IN_REVIEW" || d.status === "SUBMITTED").length,
-    completed: documents.filter((d) => d.status === "APPROVED").length,
-    rejected: documents.filter((d) => d.status === "REJECTED").length,
+    inProgress: documents.filter(d => d.status === "IN_REVIEW" || d.status === "SUBMITTED").length,
+    completed: documents.filter(d => d.status === "APPROVED").length,
+    rejected: documents.filter(d => d.status === "REJECTED").length,
   };
 
   useEffect(() => {
     fetch("/api/documents?withLocation=true")
-      .then((r) => r.json())
-      .then((data) => {
+      .then(r => r.json())
+      .then(data => {
         const docs: DocumentMapItem[] = (data.documents ?? []).map((d: any) => {
           const statusKey = d.status === "IN_REVIEW" && d.currentApprovalOrder === 2 ? "IN_REVIEW_FINAL" : d.status;
           const fd = d.formDataJson ?? {};
-          // ✅ workStartDate/workEndDate만 사용 (requestDate 절대 사용 안 함)
-          const workStartDate: string | null = fd.workStartDate ?? null;
-          const workEndDate: string | null = fd.workEndDate ?? null;
+          // ✅ requestDate 절대 사용 안 함 - workStartDate/workEndDate만
           return {
             id: d.id,
             taskId: d.taskId ?? "",
@@ -361,8 +370,8 @@ export default function DashboardPage() {
             lat: d.workLatitude ?? null,
             lng: d.workLongitude ?? null,
             workAddress: d.workAddress ?? null,
-            workStartDate,
-            workEndDate,
+            workStartDate: fd.workStartDate ?? null,
+            workEndDate: fd.workEndDate ?? null,
           };
         });
         setDocuments(docs);
@@ -390,12 +399,12 @@ export default function DashboardPage() {
     mapInstanceRef.current = map;
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => { map.setCenter(new window.kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude)); map.setLevel(10); },
+        pos => { map.setCenter(new window.kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude)); map.setLevel(10); },
         () => {}
       );
     }
-    const filtered = filterTab === "ALL" ? documents : documents.filter((d) => d.documentType === filterTab);
-    filtered.filter((d) => d.lat && d.lng).forEach((doc) => {
+    const filtered = filterTab === "ALL" ? documents : documents.filter(d => d.documentType === filterTab);
+    filtered.filter(d => d.lat && d.lng).forEach(doc => {
       const pos = new window.kakao.maps.LatLng(doc.lat!, doc.lng!);
       const pinColor = STATUS_STYLE[doc.status]?.pin ?? "#2563eb";
       const markerImage = new window.kakao.maps.MarkerImage(
@@ -404,8 +413,7 @@ export default function DashboardPage() {
       );
       const marker = new window.kakao.maps.Marker({ position: pos, map, image: markerImage });
       const periodText = doc.workStartDate && doc.workEndDate && doc.workStartDate !== doc.workEndDate
-        ? `${doc.workStartDate} ~ ${doc.workEndDate}`
-        : doc.workStartDate || "";
+        ? `${doc.workStartDate} ~ ${doc.workEndDate}` : doc.workStartDate || "";
       const shortName = doc.taskName.length > 8 ? doc.taskName.slice(0, 8) + "..." : doc.taskName;
       const labelContent = `<div style="background:${pinColor};color:white;font-size:10px;font-weight:600;padding:3px 7px;border-radius:10px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.25);font-family:sans-serif;margin-bottom:4px;">${shortName}</div>`;
       const labelOverlay = new window.kakao.maps.CustomOverlay({ position: pos, content: labelContent, yAnchor: 2.7, map });
@@ -416,11 +424,7 @@ export default function DashboardPage() {
     });
   }, [mapLoaded, documents, filterTab, viewMode]);
 
-  const filtered = filterTab === "ALL" ? documents : documents.filter((d) => d.documentType === filterTab);
-
-  const handleDocClick = (doc: DocumentMapItem) => {
-    router.push(`/approvals/${doc.id}`);
-  };
+  const filtered = filterTab === "ALL" ? documents : documents.filter(d => d.documentType === filterTab);
 
   return (
     <div className="pb-20">
@@ -430,7 +434,7 @@ export default function DashboardPage() {
           { label: "진행중", value: stats.inProgress,  color: "#d97706", bg: "bg-amber-50" },
           { label: "승인",   value: stats.completed,   color: "#16a34a", bg: "bg-green-50" },
           { label: "반려",   value: stats.rejected,    color: "#dc2626", bg: "bg-red-50" },
-        ].map((item) => (
+        ].map(item => (
           <div key={item.label} className={`${item.bg} rounded-2xl p-3 text-center`}>
             <div className="text-xl font-bold" style={{ color: item.color }}>{loading ? "-" : item.value}</div>
             <div className="text-xs text-gray-500 mt-0.5">{item.label}</div>
@@ -445,7 +449,7 @@ export default function DashboardPage() {
           { key: "CONFINED_SPACE",    label: "붙임2" },
           { key: "HOLIDAY_WORK",      label: "붙임3" },
           { key: "POWER_OUTAGE",      label: "붙임4" },
-        ].map((tab) => (
+        ].map(tab => (
           <button key={tab.key} onClick={() => setFilterTab(tab.key)}
             className={`flex-shrink-0 px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
               filterTab === tab.key ? "border-blue-600 text-blue-600" : "border-transparent text-gray-700"
@@ -502,7 +506,7 @@ export default function DashboardPage() {
           {loading ? (
             <div className="p-8 text-center text-sm text-gray-400">불러오는 중...</div>
           ) : (
-            <CalendarView documents={filtered} onDocClick={handleDocClick} />
+            <CalendarView documents={filtered} onDocClick={doc => router.push(`/approvals/${doc.id}`)} />
           )}
         </div>
       )}
@@ -534,7 +538,7 @@ export default function DashboardPage() {
                   return (
                     <tr key={doc.id}
                       className={`cursor-pointer hover:bg-blue-50 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
-                      onClick={() => handleDocClick(doc)}
+                      onClick={() => router.push(`/approvals/${doc.id}`)}
                     >
                       <td className="px-3 py-2.5 text-gray-800 font-medium max-w-[110px] truncate">{doc.taskName}</td>
                       <td className="text-center px-2 py-2.5 text-gray-700">{doc.type}</td>
