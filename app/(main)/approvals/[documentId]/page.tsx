@@ -744,6 +744,9 @@ export default function ApprovalDetailPage() {
   const [activeTab, setActiveTab] = useState("내용");
   const [reviewOpinion, setReviewOpinion] = useState("");
   const [reviewResult, setReviewResult] = useState("");
+  // ✅ IME 버그 해결: textarea ref로 직접 DOM 접근
+  const reviewOpinionRef = useRef<HTMLTextAreaElement>(null);
+  const reviewResultRef = useRef<HTMLTextAreaElement>(null);
   const [step1ApproverName, setStep1ApproverName] = useState("");
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
@@ -850,7 +853,12 @@ export default function ApprovalDetailPage() {
       const signatureData = canvas ? canvas.toDataURL("image/png") : null;
       const res = await fetch(`/api/documents/${documentId}/approve`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: pendingAction, comment: reviewOpinion.trim() || null, reviewResult: reviewResult.trim() || null, signatureData }),
+        body: JSON.stringify({ 
+          action: pendingAction, 
+          comment: (reviewOpinionRef.current?.value ?? reviewOpinion).trim() || null, 
+          reviewResult: (reviewResultRef.current?.value ?? reviewResult).trim() || null, 
+          signatureData 
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "오류 발생");
@@ -892,8 +900,8 @@ export default function ApprovalDetailPage() {
             검토의견 {doc.currentApprovalOrder === 1 && <span className="text-red-500 text-xs">(반려 시 필수)</span>}
           </label>
           <textarea
-            value={reviewOpinion}
-            onChange={e => setReviewOpinion(e.target.value)}
+            ref={reviewOpinionRef}
+            defaultValue={reviewOpinion}
             placeholder="검토 의견을 입력해주세요 (반려 시 필수)"
             rows={3}
             className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
@@ -901,8 +909,8 @@ export default function ApprovalDetailPage() {
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1.5">조치결과</label>
           <textarea
-            value={reviewResult}
-            onChange={e => setReviewResult(e.target.value)}
+            ref={reviewResultRef}
+            defaultValue={reviewResult}
             placeholder="조치결과를 입력해주세요"
             rows={2}
             className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
@@ -993,7 +1001,7 @@ export default function ApprovalDetailPage() {
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
             <h3 className="text-base font-bold text-gray-900 mb-2">반려하시겠습니까?</h3>
             <p className="text-sm text-gray-500 mb-4">반려 처리 후 신청인에게 알림이 전송됩니다.</p>
-            {!reviewOpinion.trim() && <p className="text-xs text-red-500 mb-3">반려 사유(검토의견)를 먼저 입력해주세요.</p>}
+            {!(reviewOpinionRef.current?.value ?? reviewOpinion).trim() && <p className="text-xs text-red-500 mb-3">반려 사유(검토의견)를 먼저 입력해주세요.</p>}
             <div className="flex gap-3">
               <button onClick={() => setShowRejectConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">취소</button>
               <button onClick={() => handleAction("REJECT")} disabled={!reviewOpinion.trim()}
