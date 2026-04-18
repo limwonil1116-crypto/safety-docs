@@ -18,7 +18,7 @@ interface Task {
   lastDate: string;
 }
 
-// 용역 등록 모달
+// 용역 신규 등록 모달
 function CreateTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [form, setForm] = useState({ name: "", contractorCompanyName: "", description: "", startDate: "", endDate: "" });
   const [loading, setLoading] = useState(false);
@@ -38,7 +38,8 @@ function CreateTaskModal({ onClose, onCreated }: { onClose: () => void; onCreate
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-      <div className="bg-white w-full rounded-t-3xl p-6 pb-10">
+      {/* ✅ pb-24로 네비게이션 바 높이만큼 여백 */}
+      <div className="bg-white w-full rounded-t-3xl p-6 pb-24">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-bold text-gray-900">용역 신규 등록</h2>
           <button onClick={onClose} className="text-gray-400">
@@ -108,7 +109,8 @@ function EditTaskModal({ task, onClose, onUpdated }: { task: Task; onClose: () =
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-      <div className="bg-white w-full rounded-t-3xl p-6 pb-10">
+      {/* ✅ pb-24로 네비게이션 바 높이만큼 여백 */}
+      <div className="bg-white w-full rounded-t-3xl p-6 pb-24">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-bold text-gray-900">용역 수정</h2>
           <button onClick={onClose} className="text-gray-400">

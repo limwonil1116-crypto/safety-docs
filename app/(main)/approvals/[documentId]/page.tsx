@@ -73,13 +73,7 @@ function LocationMapPreview({ lat, lng, address }: { lat: number; lng: number; a
         const center = new window.kakao.maps.LatLng(lat, lng);
         const map = new window.kakao.maps.Map(mapRef.current, { center, level: 4, draggable: false, scrollwheel: false, disableDoubleClick: true });
         const marker = new window.kakao.maps.Marker({ position: center, map });
-        if (address) {
-          const infowindow = new window.kakao.maps.InfoWindow({
-            content: `<div style="padding:5px 8px;font-size:11px;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis">${address}</div>`,
-            removable: false,
-          });
-          infowindow.open(map, marker);
-        }
+        // ✅ infowindow 제거 - 마커 위 주소 텍스트 불필요
       });
     };
     if (window.kakao?.maps) { initMap(); }
@@ -99,16 +93,10 @@ function LocationMapPreview({ lat, lng, address }: { lat: number; lng: number; a
 
   return (
     <div className="mt-2 rounded-xl overflow-hidden border border-gray-200">
-      <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-        {/* ✅ 5번: text-gray-900으로 검정 글씨 */}
-        <div className="flex items-center gap-1.5 text-xs text-gray-900 font-medium">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-          </svg>
-          <span className="truncate max-w-[220px]">{address || `${lat.toFixed(5)}, ${lng.toFixed(5)}`}</span>
-        </div>
+      {/* ✅ 주소 박스 제거 - 작업장소 Field에서만 표시 */}
+      <div className="flex items-center justify-end px-3 py-1.5 bg-gray-50 border-b border-gray-100">
         <a href={mapUrl} target="_blank" rel="noopener noreferrer"
-          className="text-xs text-blue-500 shrink-0 ml-2 font-medium">지도열기 →</a>
+          className="text-xs text-blue-500 font-medium">지도열기 →</a>
       </div>
       <div ref={mapRef} style={{ width: "100%", height: "200px" }}>
         <div className="w-full h-full flex items-center justify-center bg-gray-50">
@@ -904,31 +892,19 @@ export default function ApprovalDetailPage() {
             검토의견 {doc.currentApprovalOrder === 1 && <span className="text-red-500 text-xs">(반려 시 필수)</span>}
           </label>
           <textarea
-            defaultValue={reviewOpinion}
-            onChange={e => {
-              if ((e.nativeEvent as any).isComposing) return;
-              setReviewOpinion(e.target.value);
-            }}
-            onBlur={e => setReviewOpinion(e.target.value)}
-            onCompositionEnd={e => setReviewOpinion((e.target as HTMLTextAreaElement).value)}
+            value={reviewOpinion}
+            onChange={e => setReviewOpinion(e.target.value)}
             placeholder="검토 의견을 입력해주세요 (반려 시 필수)"
             rows={3}
-            key={`opinion-${reviewOpinion.length === 0 ? 'empty' : 'filled'}`}
             className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1.5">조치결과</label>
           <textarea
-            defaultValue={reviewResult}
-            onChange={e => {
-              if ((e.nativeEvent as any).isComposing) return;
-              setReviewResult(e.target.value);
-            }}
-            onBlur={e => setReviewResult(e.target.value)}
-            onCompositionEnd={e => setReviewResult((e.target as HTMLTextAreaElement).value)}
+            value={reviewResult}
+            onChange={e => setReviewResult(e.target.value)}
             placeholder="조치결과를 입력해주세요"
             rows={2}
-            key={`result-${reviewResult.length === 0 ? 'empty' : 'filled'}`}
             className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
         </div>
       </div>

@@ -91,7 +91,7 @@ function CreateDocumentModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-      <div className="bg-white w-full rounded-t-3xl p-6 pb-10">
+      <div className="bg-white w-full rounded-t-3xl p-6 pb-24">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-bold text-gray-900">서류 신규 작성</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">

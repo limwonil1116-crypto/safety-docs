@@ -10,6 +10,19 @@ interface BeforeInstallPromptEvent extends Event {
 type InstallState = "idle" | "ready" | "ios" | "inapp_kakao" | "inapp_other" | "installed";
 
 export default function Header() {
+  // ✅ 안드로이드 인앱 브라우저(카카오톡 등) → 페이지 로드 즉시 Chrome으로 자동 이동
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    const isAndroid = /Android/i.test(ua);
+    const isInApp = /KAKAOTALK|kakaotalk|Instagram|NAVER|NaverApp|FB_IAB|FBAN|FBIOS|Line|Twitter/i.test(ua);
+    if (isAndroid && isInApp) {
+      const currentUrl = window.location.href;
+      // intent:// 딥링크로 Chrome 즉시 실행
+      const intentUrl = `intent://${currentUrl.replace(/^https?:\/\//, "")}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(currentUrl)};end`;
+      window.location.replace(intentUrl);
+    }
+  }, []);
+
   const [installState, setInstallState] = useState<InstallState>("idle");
   const [showModal, setShowModal] = useState(false);
   const promptRef = useRef<BeforeInstallPromptEvent | null>(null);
