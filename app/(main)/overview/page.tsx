@@ -20,12 +20,12 @@ interface DocumentMapItem {
 }
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string; pin: string }> = {
-  SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료",       pin: "#2563eb" },
-  IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중",         pin: "#d97706" },
-  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종결재 진행중", pin: "#ea580c" },
-  APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료",       pin: "#16a34a" },
-  REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "반려",           pin: "#dc2626" },
-  DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중",         pin: "#6b7280" },
+  SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료",        pin: "#2563eb" },
+  IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중",          pin: "#d97706" },
+  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종결재 진행중",  pin: "#ea580c" },
+  APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료",        pin: "#16a34a" },
+  REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "반려",            pin: "#dc2626" },
+  DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중",          pin: "#6b7280" },
 };
 
 const DOC_TYPE_LABEL: Record<string, string> = {
@@ -44,20 +44,26 @@ const DOC_TYPE_CAL_COLOR: Record<string, { bg: string; text: string; border: str
 
 declare global { interface Window { kakao: any; } }
 
+// ✅ 날짜 범위 생성 (workStartDate ~ workEndDate 기준, 정확히 해당 날짜만)
 function getDateRange(startDate: string, endDate: string): string[] {
   const dates: string[] = [];
-  const start = new Date(startDate + "T00:00:00");
-  const end = new Date(endDate + "T00:00:00");
+  // 정확한 날짜 파싱 (로컬 타임존 기준)
+  const [sy, sm, sd] = startDate.split("-").map(Number);
+  const [ey, em, ed] = endDate.split("-").map(Number);
+  const start = new Date(sy, sm - 1, sd);
+  const end = new Date(ey, em - 1, ed);
   const cur = new Date(start);
   while (cur <= end) {
-    dates.push(cur.toISOString().split("T")[0]);
+    const y = cur.getFullYear();
+    const m = String(cur.getMonth() + 1).padStart(2, "0");
+    const d = String(cur.getDate()).padStart(2, "0");
+    dates.push(`${y}-${m}-${d}`);
     cur.setDate(cur.getDate() + 1);
   }
   return dates;
 }
 
-// ✅ 8번: workStartDate~workEndDate 기준 캘린더
-// ✅ 9번: 전체 제목 표시 (용역명 + 허가종류)
+// ===== 캘린더 =====
 function CalendarView({ documents, onDocClick }: {
   documents: DocumentMapItem[];
   onDocClick: (doc: DocumentMapItem) => void;
@@ -67,10 +73,12 @@ function CalendarView({ documents, onDocClick }: {
   const [month, setMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
+  // ✅ 승인완료 + workStartDate 있는 문서만
   const approvedDocs = documents.filter(
     (d) => d.status === "APPROVED" && d.workStartDate
   );
 
+  // ✅ 날짜별 문서 매핑 (workStartDate~workEndDate 정확히)
   const docsByDate: Record<string, DocumentMapItem[]> = {};
   approvedDocs.forEach((d) => {
     const start = d.workStartDate!;
@@ -105,27 +113,58 @@ function CalendarView({ documents, onDocClick }: {
     cells.push({ date: d, cur: false, key: `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}` });
   }
 
-  const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+  const todayKey = (() => {
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, "0");
+    const d = String(today.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  })();
+
   const selectedDocs = selectedDate ? (docsByDate[selectedDate] ?? []) : [];
 
-  // ✅ 9번: 시작일에 "용역명 + 허가종류" 전체 표시, 이후 구간은 색상 바만
-  const getCalLabel = (doc: DocumentMapItem, dateKey: string): string => {
-    const isStart = doc.workStartDate === dateKey;
-    const docTypeShort = DOC_TYPE_LABEL[doc.documentType] ?? "";
-    if (isStart) {
-      return `${doc.taskName} ${docTypeShort}`;
+  // ✅ 각 문서의 전체 기간에서 텍스트를 균등 분배
+  // 전체 기간의 중간 날짜에 한 번 + 시작일에 한 번만 표시
+  const getTextPositions = (doc: DocumentMapItem, currentMonth: number, currentYear: number): Set<string> => {
+    const start = doc.workStartDate!;
+    const end = doc.workEndDate || doc.workStartDate!;
+    const allDates = getDateRange(start, end);
+
+    // 현재 달에 해당하는 날짜만 필터
+    const monthDates = allDates.filter(d => {
+      const [y, m] = d.split("-").map(Number);
+      return y === currentYear && m === currentMonth + 1;
+    });
+
+    if (monthDates.length === 0) return new Set();
+
+    const positions = new Set<string>();
+
+    // 시작일이 현재 달에 있으면 시작일에 표시
+    const [sy, sm] = start.split("-").map(Number);
+    if (sy === currentYear && sm === currentMonth + 1) {
+      positions.add(start);
+    } else {
+      // 시작일이 이전 달이면 현재 달 첫 날에 표시
+      positions.add(monthDates[0]);
     }
-    // 중간/종료일: 3일마다 또는 주 시작(일요일)에 반복 표시
-    if (doc.workStartDate) {
-      const startDt = new Date(doc.workStartDate + "T00:00:00");
-      const curDt = new Date(dateKey + "T00:00:00");
-      const diffDays = Math.round((curDt.getTime() - startDt.getTime()) / (1000 * 60 * 60 * 24));
-      const dow = curDt.getDay();
-      if (dow === 0 || (diffDays > 0 && diffDays % 3 === 0)) {
-        return `${doc.taskName} ${docTypeShort}`;
+
+    // 전체 기간이 7일 이상이면 중간에 한 번 더
+    if (allDates.length >= 7 && monthDates.length >= 4) {
+      const midIdx = Math.floor(monthDates.length / 2);
+      const midDate = monthDates[midIdx];
+      if (!positions.has(midDate)) {
+        // 일요일이면 +1
+        const [my, mm, md] = midDate.split("-").map(Number);
+        const dow = new Date(my, mm - 1, md).getDay();
+        if (dow === 0 && midIdx + 1 < monthDates.length) {
+          positions.add(monthDates[midIdx + 1]);
+        } else {
+          positions.add(midDate);
+        }
       }
     }
-    return "";
+
+    return positions;
   };
 
   return (
@@ -141,11 +180,13 @@ function CalendarView({ documents, onDocClick }: {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
+
       <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-100">
         {["일","월","화","수","목","금","토"].map((d, i) => (
           <div key={d} className={`text-center py-2 text-xs font-semibold ${i===0?"text-red-500":i===6?"text-blue-500":"text-gray-500"}`}>{d}</div>
         ))}
       </div>
+
       <div className="grid grid-cols-7 border-b border-gray-100">
         {cells.map((cell, idx) => {
           const hasDocs = !!docsByDate[cell.key]?.length && cell.cur;
@@ -154,56 +195,79 @@ function CalendarView({ documents, onDocClick }: {
           const dow = idx % 7;
           const cellDocs = cell.cur ? (docsByDate[cell.key] ?? []) : [];
 
-          const isStart = (doc: DocumentMapItem) => doc.workStartDate === cell.key;
-          const isEnd = (doc: DocumentMapItem) => (doc.workEndDate || doc.workStartDate) === cell.key;
-          const isSingle = (doc: DocumentMapItem) => doc.workStartDate === (doc.workEndDate || doc.workStartDate);
-
           return (
             <div key={idx}
               onClick={() => hasDocs && setSelectedDate(isSelected ? null : cell.key)}
-              className={`min-h-[72px] border-r border-b border-gray-100 p-1 ${
-                isSelected ? "bg-blue-50" : hasDocs ? "cursor-pointer hover:bg-gray-50" : ""
+              className={`min-h-[70px] border-r border-b border-gray-100 p-0.5 ${
+                isSelected ? "bg-blue-50" : hasDocs ? "cursor-pointer hover:bg-gray-50 active:bg-blue-50" : ""
               } ${!cell.cur ? "bg-gray-50/50" : ""}`}
             >
-              <div className={`text-xs w-6 h-6 flex items-center justify-center rounded-full mx-auto mb-1 font-medium ${
+              <div className={`text-xs w-6 h-6 flex items-center justify-center rounded-full mx-auto mb-0.5 font-medium ${
                 isToday ? "bg-blue-600 text-white font-bold" :
                 !cell.cur ? "text-gray-300" :
                 dow===0 ? "text-red-500" : dow===6 ? "text-blue-500" : "text-gray-700"
               }`}>{cell.date}</div>
-              <div className="space-y-0.5">
-                {cellDocs.slice(0, 2).map((doc, i) => {
-                  const col = DOC_TYPE_CAL_COLOR[doc.documentType] ?? DOC_TYPE_CAL_COLOR.SAFETY_WORK_PERMIT;
-                  const single = isSingle(doc);
-                  const start = isStart(doc);
-                  const end = isEnd(doc);
-                  const label = getCalLabel(doc, cell.key);
 
-                  const borderRadius = single ? "4px" : start ? "4px 0 0 4px" : end ? "0 4px 4px 0" : "0";
-                  const marginLeft = (!single && !start) ? "-4px" : "0";
-                  const marginRight = (!single && !end) ? "-4px" : "0";
+              <div className="space-y-0.5 px-0.5">
+                {cellDocs.slice(0, 2).map((doc) => {
+                  const col = DOC_TYPE_CAL_COLOR[doc.documentType] ?? DOC_TYPE_CAL_COLOR.SAFETY_WORK_PERMIT;
+                  const start = doc.workStartDate!;
+                  const end = doc.workEndDate || start;
+
+                  const [sy, sm, sd] = start.split("-").map(Number);
+                  const [ey, em, ed] = end.split("-").map(Number);
+                  const [cy, cm, cd] = cell.key.split("-").map(Number);
+
+                  const isStartDate = sy === cy && sm === cm && sd === cd;
+                  const isEndDate = ey === cy && em === cm && ed === cd;
+                  const isSingleDay = start === end;
+
+                  // ✅ 텍스트 표시 위치 계산
+                  const textPositions = getTextPositions(doc, month, year);
+                  const showLabel = textPositions.has(cell.key);
+                  const fullLabel = `${doc.taskName} ${DOC_TYPE_LABEL[doc.documentType] ?? ""}`;
+
+                  const borderRadius = isSingleDay ? "4px"
+                    : isStartDate ? "4px 0 0 4px"
+                    : isEndDate   ? "0 4px 4px 0"
+                    : "0";
+                  // 이전/다음 달과 연결되는 경우 마진 처리
+                  const isFirstOfRow = dow === 0;
+                  const isLastOfRow  = dow === 6;
+                  const marginLeft  = (!isSingleDay && !isStartDate && !isFirstOfRow) ? "-2px" : "0";
+                  const marginRight = (!isSingleDay && !isEndDate   && !isLastOfRow)  ? "-2px" : "0";
 
                   return (
-                    <div key={i}
+                    <div
+                      key={doc.id}
                       style={{
                         backgroundColor: col.bg,
                         color: col.text,
-                        borderLeft: start || single ? `2.5px solid ${col.border}` : "none",
+                        borderLeft: (isStartDate || isSingleDay || isFirstOfRow) ? `2.5px solid ${col.border}` : "none",
                         borderRadius,
                         marginLeft,
                         marginRight,
                       }}
-                      className="text-[9px] px-1 py-0.5 truncate leading-tight font-medium min-h-[14px]"
+                      className="text-[9px] px-1 py-0.5 leading-tight font-semibold min-h-[14px] overflow-hidden"
                     >
-                      {label}
+                      {showLabel ? (
+                        <span className="block truncate">{fullLabel}</span>
+                      ) : (
+                        <span className="invisible text-[8px]">·</span>
+                      )}
                     </div>
                   );
                 })}
-                {cellDocs.length > 2 && <div className="text-[9px] text-gray-400 pl-1">+{cellDocs.length - 2}건</div>}
+                {cellDocs.length > 2 && (
+                  <div className="text-[9px] text-gray-400 pl-1">+{cellDocs.length - 2}건</div>
+                )}
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* 범례 */}
       <div className="flex flex-wrap gap-3 px-4 py-2.5 bg-white border-t border-gray-100">
         {Object.entries(DOC_TYPE_CAL_COLOR).map(([key, col]) => (
           <div key={key} className="flex items-center gap-1.5">
@@ -213,11 +277,16 @@ function CalendarView({ documents, onDocClick }: {
         ))}
         <span className="text-xs text-gray-400 ml-auto">승인완료 기준</span>
       </div>
+
+      {/* 날짜 클릭 시 상세 목록 */}
       {selectedDate && selectedDocs.length > 0 && (
         <div className="mx-4 mb-4 bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
             <span className="text-sm font-bold text-gray-900">
-              {new Date(selectedDate + "T00:00:00").toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" })}
+              {(() => {
+                const [y, m, d] = selectedDate.split("-").map(Number);
+                return new Date(y, m - 1, d).toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
+              })()}
             </span>
             <button onClick={() => setSelectedDate(null)} className="text-gray-400 hover:text-gray-600">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -277,8 +346,9 @@ export default function DashboardPage() {
         const docs: DocumentMapItem[] = (data.documents ?? []).map((d: any) => {
           const statusKey = d.status === "IN_REVIEW" && d.currentApprovalOrder === 2 ? "IN_REVIEW_FINAL" : d.status;
           const fd = d.formDataJson ?? {};
-          const workStartDate: string | null = fd.workStartDate ?? fd.workDate ?? null;
-          const workEndDate: string | null = fd.workEndDate ?? fd.workDate ?? null;
+          // ✅ workStartDate/workEndDate만 사용 (requestDate 절대 사용 안 함)
+          const workStartDate: string | null = fd.workStartDate ?? null;
+          const workEndDate: string | null = fd.workEndDate ?? null;
           return {
             id: d.id,
             taskId: d.taskId ?? "",
@@ -354,7 +424,6 @@ export default function DashboardPage() {
 
   return (
     <div className="pb-20">
-      {/* KPI */}
       <div className="grid grid-cols-4 gap-2 mx-4 mt-4">
         {[
           { label: "전체",   value: stats.total,      color: "#2563eb", bg: "bg-blue-50" },
@@ -369,7 +438,6 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* ✅ 7번: 탭 글씨 가독성 - text-gray-700로 진하게 */}
       <div className="bg-white border-b border-gray-200 flex mt-4 overflow-x-auto">
         {[
           { key: "ALL",               label: "전체" },
@@ -387,9 +455,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* 지도/캘린더 전환 */}
       <div className="flex gap-2 mx-4 mt-4">
-        {/* ✅ 7번: 버튼 글씨도 text-gray-700 */}
         <button onClick={() => setViewMode("map")}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${
             viewMode === "map" ? "border-blue-500 bg-blue-50 text-blue-600" : "border-gray-200 text-gray-700 hover:bg-gray-50"
@@ -412,7 +478,6 @@ export default function DashboardPage() {
         </button>
       </div>
 
-      {/* 지도 */}
       {viewMode === "map" && (
         <div className="mx-4 mt-4 rounded-2xl overflow-hidden shadow-sm border border-gray-100">
           <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-100">
@@ -432,7 +497,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 캘린더 */}
       {viewMode === "calendar" && (
         <div className="mx-4 mt-4 rounded-2xl overflow-hidden shadow-sm border border-gray-100 bg-white">
           {loading ? (
@@ -443,7 +507,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 서류 목록 */}
       <div className="mx-4 mt-4 bg-white rounded-2xl shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
           <h3 className="text-sm font-bold text-gray-900">서류 목록</h3>
