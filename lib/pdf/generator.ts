@@ -2,7 +2,7 @@
 import { renderToBuffer } from "@react-pdf/renderer";
 import { put } from "@vercel/blob";
 import React from "react";
-import { SafetyWorkPermitPDF, ConfinedSpacePDF, HolidayWorkPDF, PowerOutagePDF } from "./templates";
+import { SafetyWorkPermitPDF, ConfinedSpacePDF, HolidayWorkPDF, PowerOutagePDF, AttachmentPagesPDF } from "./templates";
 
 export interface ApprovalLineInfo {
   approverName?: string;
@@ -10,6 +10,15 @@ export interface ApprovalLineInfo {
   approvalOrder: number;
   signatureData?: string;
   actedAt?: string;
+}
+
+export interface AttachmentInfo {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  mimeType: string | null;
+  attachmentType: string;
+  description: string | null;
 }
 
 export interface GeneratePDFOptions {
@@ -20,14 +29,15 @@ export interface GeneratePDFOptions {
   createdAt: string;
   taskName?: string;
   applicantSignature?: string;
-  workAddress?: string | null;  // ✅ 추가
+  workAddress?: string | null;
+  attachments?: AttachmentInfo[];  // ✅ 첨부파일
 }
 
 export async function generatePDF(options: GeneratePDFOptions): Promise<{ buffer: Buffer; filename: string }> {
   const {
     documentId, documentType, formData, approvalLines,
-    createdAt, taskName, applicantSignature,
-    workAddress,  // ✅ 추가
+    createdAt, taskName, applicantSignature, workAddress,
+    attachments = [],
   } = options;
 
   const TYPE_MAP: Record<string, string> = {
@@ -41,7 +51,6 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ buffer
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   const filename = `${typeName}_${dateStr}_${documentId.slice(0, 8)}.pdf`;
 
-  // ✅ workAddress 포함
   const commonProps = {
     formData: formData as Record<string, any>,
     approvalLines,
@@ -50,17 +59,61 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ buffer
     taskName,
     applicantSignature,
     workAddress,
+    attachments,
   };
 
-  let element: React.ReactElement;
+  // ✅ 메인 문서 element
+  let mainElement: React.ReactElement;
   switch (documentType) {
-    case "CONFINED_SPACE": element = React.createElement(ConfinedSpacePDF,     commonProps); break;
-    case "HOLIDAY_WORK":   element = React.createElement(HolidayWorkPDF,       commonProps); break;
-    case "POWER_OUTAGE":   element = React.createElement(PowerOutagePDF,       commonProps); break;
-    default:               element = React.createElement(SafetyWorkPermitPDF,  commonProps);
+    case "CONFINED_SPACE": mainElement = React.createElement(ConfinedSpacePDF,    commonProps); break;
+    case "HOLIDAY_WORK":   mainElement = React.createElement(HolidayWorkPDF,      commonProps); break;
+    case "POWER_OUTAGE":   mainElement = React.createElement(PowerOutagePDF,      commonProps); break;
+    default:               mainElement = React.createElement(SafetyWorkPermitPDF, commonProps);
   }
 
-  const buffer = await renderToBuffer(element);
+  // ✅ 첨부파일 페이지 (이미지/PDF URL들을 추가 페이지로)
+  // - 위험성평가표: description === "위험성평가표" 인 DOCUMENT 파일
+  // - 개선대책: PHOTO 타입 (사진)
+  const riskAssessFiles = attachments.filter(a =>
+    a.attachmentType === "DOCUMENT" && a.description === "위험성평가표"
+  );
+  const safetyCheckPhotos = attachments.filter(a =>
+    a.attachmentType === "PHOTO"
+  );
+  const safetyCheckDocs = attachments.filter(a =>
+    a.attachmentType === "DOCUMENT" && a.description === "개선대책확인자료"
+  );
+
+  const hasAttachments = riskAssessFiles.length > 0 || safetyCheckPhotos.length > 0 || safetyCheckDocs.length > 0;
+
+  // 첨부파일이 있으면 함께 렌더링
+  if (hasAttachments) {
+    const attachElement = React.createElement(AttachmentPagesPDF, {
+      riskAssessFiles,
+      safetyCheckPhotos,
+      safetyCheckDocs,
+      documentId,
+      createdAt,
+    });
+    // 두 Document를 합치기 위해 각각 buffer 생성 후 합침
+    const [mainBuffer, attachBuffer] = await Promise.all([
+      renderToBuffer(mainElement),
+      renderToBuffer(attachElement),
+    ]);
+    // PDF 병합 (간단히 PDFLib 없이 buffer concat은 안되므로 PDFLib 사용)
+    const { PDFDocument } = await import("pdf-lib");
+    const mergedPdf = await PDFDocument.create();
+    const mainPdf = await PDFDocument.load(mainBuffer);
+    const attachPdf = await PDFDocument.load(attachBuffer);
+    const mainPages = await mergedPdf.copyPages(mainPdf, mainPdf.getPageIndices());
+    mainPages.forEach(p => mergedPdf.addPage(p));
+    const attachPages = await mergedPdf.copyPages(attachPdf, attachPdf.getPageIndices());
+    attachPages.forEach(p => mergedPdf.addPage(p));
+    const mergedBytes = await mergedPdf.save();
+    return { buffer: Buffer.from(mergedBytes), filename };
+  }
+
+  const buffer = await renderToBuffer(mainElement);
   return { buffer: Buffer.from(buffer), filename };
 }
 
