@@ -22,9 +22,13 @@ export default function Header() {
     const isIOS = /iPhone|iPad|iPod/.test(ua) && !(window as any).MSStream;
     const isKakao = /KAKAOTALK|kakaotalk/i.test(ua);
     const isOtherInApp = /Instagram|NAVER|NaverApp|FB_IAB|FBAN|Line/i.test(ua);
+    // Samsung Internet 브라우저 감지
+    const isSamsungBrowser = /SamsungBrowser/i.test(ua);
+
     if (isKakao)      { setInstallState("inapp_kakao"); return; }
     if (isOtherInApp) { setInstallState("inapp_other"); return; }
     if (isIOS)        { setInstallState("ios"); return; }
+
     const handler = (e: Event) => {
       e.preventDefault();
       promptRef.current = e as BeforeInstallPromptEvent;
@@ -33,7 +37,10 @@ export default function Header() {
     window.addEventListener("beforeinstallprompt", handler);
     const installedHandler = () => setInstallState("installed");
     window.addEventListener("appinstalled", installedHandler);
+
+    // Android/Samsung: 버튼 표시
     if (/Android/i.test(ua)) setInstallState("idle");
+
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
       window.removeEventListener("appinstalled", installedHandler);
@@ -70,7 +77,8 @@ function HeaderShell({ showInstallBtn, onInstall }: { showInstallBtn: boolean; o
         </div>
         <div className="flex flex-col leading-tight">
           <span className="text-white font-bold text-sm leading-tight">안전기술본부</span>
-          <span className="text-blue-200 text-xs leading-tight">현장안전 허가작업 시스템</span>
+          {/* ✅ 4번: 헤더 문구 변경 */}
+          <span className="text-blue-200 text-xs leading-tight">스마트 안전관리 시스템</span>
         </div>
       </div>
       <div className="flex items-center gap-2">
@@ -99,6 +107,11 @@ function HeaderShell({ showInstallBtn, onInstall }: { showInstallBtn: boolean; o
 
 function InstallModal({ installState, onClose }: { installState: InstallState; onClose: () => void }) {
   const currentUrl = typeof window !== "undefined" ? window.location.href : "https://safety-docs.vercel.app";
+
+  // ✅ 1번: Samsung Internet 전용 안내 추가
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const isSamsung = /SamsungBrowser/i.test(ua);
+
   if (installState === "inapp_kakao") {
     return (
       <ModalWrapper onClose={onClose}>
@@ -109,7 +122,7 @@ function InstallModal({ installState, onClose }: { installState: InstallState; o
         </div>
         <div className="space-y-3">
           {[
-            { step: 1, title: "오른쪽 상단 더보기 버튼 탭", desc: "카카오톡 브라우저 우측 상단 점 3개 버튼" },
+            { step: 1, title: "오른쪽 상단 더보기(…) 버튼 탭", desc: "카카오톡 브라우저 우측 상단 점 3개 버튼" },
             { step: 2, title: "다른 브라우저로 열기 선택", desc: "Chrome 또는 Safari로 열기를 선택하세요" },
             { step: 3, title: "앱설치 버튼 탭", desc: "동일한 화면에서 앱설치 버튼을 누르면 설치됩니다" },
           ].map(({ step, title, desc }) => (
@@ -158,11 +171,34 @@ function InstallModal({ installState, onClose }: { installState: InstallState; o
       </ModalWrapper>
     );
   }
+
+  // Android 기본 (Samsung Internet 포함)
+  if (isSamsung) {
+    return (
+      <ModalWrapper onClose={onClose}>
+        <h2 className="text-base font-bold text-gray-900 mb-3">앱 설치 안내</h2>
+        <div className="space-y-3 mb-4">
+          {[
+            { step: 1, title: "하단 메뉴바 탭", desc: "Samsung Internet 하단 메뉴(≡) 버튼을 탭합니다" },
+            { step: 2, title: "페이지 추가 선택", desc: "'페이지 추가' 또는 '홈 화면에 추가'를 선택합니다" },
+            { step: 3, title: "홈 화면에 추가 완료", desc: "아이콘이 홈 화면에 생성됩니다" },
+          ].map(({ step, title, desc }) => (
+            <div key={step} className="flex items-start gap-3">
+              <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0">{step}</div>
+              <div><p className="text-sm font-medium text-gray-900">{title}</p><p className="text-xs text-gray-500 mt-0.5">{desc}</p></div>
+            </div>
+          ))}
+        </div>
+        <button onClick={onClose} className="w-full py-3 rounded-xl text-white font-medium text-sm" style={{ background: "#2563eb" }}>확인</button>
+      </ModalWrapper>
+    );
+  }
+
   return (
     <ModalWrapper onClose={onClose}>
       <h2 className="text-base font-bold text-gray-900 mb-3">앱 설치 안내</h2>
       <p className="text-sm text-gray-600 mb-4">Chrome 브라우저 주소창 우측의 설치 아이콘을 탭하거나, 메뉴에서 앱 설치를 선택하세요.</p>
-      <div className="bg-blue-50 rounded-xl p-3 mb-4 text-xs text-blue-700">이미 방문한 사이트는 Chrome이 자동으로 설치 버튼을 제공합니다.</div>
+      <div className="bg-blue-50 rounded-xl p-3 mb-4 text-xs text-blue-700">💡 이미 방문한 사이트는 Chrome이 자동으로 설치 버튼을 제공합니다.</div>
       <button onClick={onClose} className="w-full py-3 rounded-xl text-white font-medium text-sm" style={{ background: "#2563eb" }}>확인</button>
     </ModalWrapper>
   );

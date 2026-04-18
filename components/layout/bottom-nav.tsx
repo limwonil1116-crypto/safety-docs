@@ -15,7 +15,7 @@ export default function BottomNav() {
           const data = await res.json();
           setUnreadCount(data.unreadCount ?? 0);
         }
-      } catch (e) { /* 무시 */ }
+      } catch {}
     };
     fetchUnread();
     const interval = setInterval(fetchUnread, 30000);
@@ -46,7 +46,7 @@ export default function BottomNav() {
       ),
     },
     {
-      href: "/dashboard",
+      href: "/overview",
       label: "현황",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -20,12 +20,12 @@ interface DocumentMapItem {
 }
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string; pin: string }> = {
-  SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료",         pin: "#2563eb" },
-  IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중",           pin: "#d97706" },
-  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종결재 진행중",   pin: "#ea580c" },
-  APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료",         pin: "#16a34a" },
-  REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "반려",             pin: "#dc2626" },
-  DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중",           pin: "#6b7280" },
+  SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료",       pin: "#2563eb" },
+  IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중",         pin: "#d97706" },
+  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종결재 진행중", pin: "#ea580c" },
+  APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료",       pin: "#16a34a" },
+  REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "반려",           pin: "#dc2626" },
+  DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중",         pin: "#6b7280" },
 };
 
 const DOC_TYPE_LABEL: Record<string, string> = {
@@ -56,7 +56,8 @@ function getDateRange(startDate: string, endDate: string): string[] {
   return dates;
 }
 
-// ===== 캘린더 =====
+// ✅ 8번: workStartDate~workEndDate 기준 캘린더
+// ✅ 9번: 전체 제목 표시 (용역명 + 허가종류)
 function CalendarView({ documents, onDocClick }: {
   documents: DocumentMapItem[];
   onDocClick: (doc: DocumentMapItem) => void;
@@ -66,12 +67,10 @@ function CalendarView({ documents, onDocClick }: {
   const [month, setMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  // ★ workStartDate 기준으로만 필터 (requestDate 제외)
   const approvedDocs = documents.filter(
     (d) => d.status === "APPROVED" && d.workStartDate
   );
 
-  // 날짜별 문서 매핑 (workStartDate ~ workEndDate 범위)
   const docsByDate: Record<string, DocumentMapItem[]> = {};
   approvedDocs.forEach((d) => {
     const start = d.workStartDate!;
@@ -109,27 +108,18 @@ function CalendarView({ documents, onDocClick }: {
   const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
   const selectedDocs = selectedDate ? (docsByDate[selectedDate] ?? []) : [];
 
-  // ★ 캘린더 셀 너비 기반으로 몇 글자 보여줄지 결정
-  // 전체 기간에 걸쳐 "과업명 + 허가서종류" 풀네임 표시
-  // 시작일: 텍스트 표시 / 중간: 텍스트 없이 색상 바만 / 종료일: 색상 바만
+  // ✅ 9번: 시작일에 "용역명 + 허가종류" 전체 표시, 이후 구간은 색상 바만
   const getCalLabel = (doc: DocumentMapItem, dateKey: string): string => {
     const isStart = doc.workStartDate === dateKey;
-    const totalDays = doc.workStartDate && doc.workEndDate
-      ? getDateRange(doc.workStartDate, doc.workEndDate).length
-      : 1;
     const docTypeShort = DOC_TYPE_LABEL[doc.documentType] ?? "";
-
     if (isStart) {
-      // 시작일: "과업명 허가서종류" 풀네임
       return `${doc.taskName} ${docTypeShort}`;
     }
-
-    // 중간/종료일: 날짜 간격마다 반복 표시 (3일마다 한번씩)
+    // 중간/종료일: 3일마다 또는 주 시작(일요일)에 반복 표시
     if (doc.workStartDate) {
       const startDt = new Date(doc.workStartDate + "T00:00:00");
       const curDt = new Date(dateKey + "T00:00:00");
       const diffDays = Math.round((curDt.getTime() - startDt.getTime()) / (1000 * 60 * 60 * 24));
-      // 주 시작(일요일)이거나 3일 간격마다 반복
       const dow = curDt.getDay();
       if (dow === 0 || (diffDays > 0 && diffDays % 3 === 0)) {
         return `${doc.taskName} ${docTypeShort}`;
@@ -188,11 +178,7 @@ function CalendarView({ documents, onDocClick }: {
                   const end = isEnd(doc);
                   const label = getCalLabel(doc, cell.key);
 
-                  const borderRadius = single
-                    ? "4px"
-                    : start ? "4px 0 0 4px"
-                    : end ? "0 4px 4px 0"
-                    : "0";
+                  const borderRadius = single ? "4px" : start ? "4px 0 0 4px" : end ? "0 4px 4px 0" : "0";
                   const marginLeft = (!single && !start) ? "-4px" : "0";
                   const marginRight = (!single && !end) ? "-4px" : "0";
 
@@ -248,7 +234,7 @@ function CalendarView({ documents, onDocClick }: {
                   onClick={() => onDocClick(doc)}>
                   <div className="w-1.5 h-10 rounded-full shrink-0" style={{ backgroundColor: col.border }} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{doc.taskName}</p>
+                    <p className="text-sm font-semibold text-gray-900">{doc.taskName}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{DOC_TYPE_LABEL[doc.documentType]}</p>
                     <p className="text-xs text-gray-400">{periodText}</p>
                   </div>
@@ -291,7 +277,6 @@ export default function DashboardPage() {
         const docs: DocumentMapItem[] = (data.documents ?? []).map((d: any) => {
           const statusKey = d.status === "IN_REVIEW" && d.currentApprovalOrder === 2 ? "IN_REVIEW_FINAL" : d.status;
           const fd = d.formDataJson ?? {};
-          // ★ workStartDate/workEndDate만 사용 (requestDate 제외)
           const workStartDate: string | null = fd.workStartDate ?? fd.workDate ?? null;
           const workEndDate: string | null = fd.workEndDate ?? fd.workDate ?? null;
           return {
@@ -369,6 +354,7 @@ export default function DashboardPage() {
 
   return (
     <div className="pb-20">
+      {/* KPI */}
       <div className="grid grid-cols-4 gap-2 mx-4 mt-4">
         {[
           { label: "전체",   value: stats.total,      color: "#2563eb", bg: "bg-blue-50" },
@@ -383,6 +369,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      {/* ✅ 7번: 탭 글씨 가독성 - text-gray-700로 진하게 */}
       <div className="bg-white border-b border-gray-200 flex mt-4 overflow-x-auto">
         {[
           { key: "ALL",               label: "전체" },
@@ -392,18 +379,20 @@ export default function DashboardPage() {
           { key: "POWER_OUTAGE",      label: "붙임4" },
         ].map((tab) => (
           <button key={tab.key} onClick={() => setFilterTab(tab.key)}
-            className={`flex-shrink-0 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-              filterTab === tab.key ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500"
+            className={`flex-shrink-0 px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
+              filterTab === tab.key ? "border-blue-600 text-blue-600" : "border-transparent text-gray-700"
             }`}>
             {tab.label}
           </button>
         ))}
       </div>
 
+      {/* 지도/캘린더 전환 */}
       <div className="flex gap-2 mx-4 mt-4">
+        {/* ✅ 7번: 버튼 글씨도 text-gray-700 */}
         <button onClick={() => setViewMode("map")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
-            viewMode === "map" ? "border-blue-500 bg-blue-50 text-blue-600" : "border-gray-200 text-gray-500 hover:bg-gray-50"
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${
+            viewMode === "map" ? "border-blue-500 bg-blue-50 text-blue-600" : "border-gray-200 text-gray-700 hover:bg-gray-50"
           }`}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
@@ -411,8 +400,8 @@ export default function DashboardPage() {
           지도 현황
         </button>
         <button onClick={() => setViewMode("calendar")}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
-            viewMode === "calendar" ? "border-blue-500 bg-blue-50 text-blue-600" : "border-gray-200 text-gray-500 hover:bg-gray-50"
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${
+            viewMode === "calendar" ? "border-blue-500 bg-blue-50 text-blue-600" : "border-gray-200 text-gray-700 hover:bg-gray-50"
           }`}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -423,13 +412,14 @@ export default function DashboardPage() {
         </button>
       </div>
 
+      {/* 지도 */}
       {viewMode === "map" && (
         <div className="mx-4 mt-4 rounded-2xl overflow-hidden shadow-sm border border-gray-100">
           <div className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-100">
             <h3 className="text-sm font-bold text-gray-900">작업위치 현황</h3>
             <div className="flex gap-2 text-xs flex-wrap justify-end">
               {Object.entries(STATUS_STYLE).filter(([k]) => k !== "DRAFT").map(([key, val]) => (
-                <span key={key} className="flex items-center gap-1">
+                <span key={key} className="flex items-center gap-1 text-gray-700">
                   <span className="w-2 h-2 rounded-full inline-block" style={{ background: val.pin }}/>
                   {val.label}
                 </span>
@@ -442,6 +432,7 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* 캘린더 */}
       {viewMode === "calendar" && (
         <div className="mx-4 mt-4 rounded-2xl overflow-hidden shadow-sm border border-gray-100 bg-white">
           {loading ? (
@@ -452,22 +443,23 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* 서류 목록 */}
       <div className="mx-4 mt-4 bg-white rounded-2xl shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-gray-900">문서 목록</h3>
-          <span className="text-xs text-gray-400">{filtered.length}건</span>
+          <h3 className="text-sm font-bold text-gray-900">서류 목록</h3>
+          <span className="text-xs text-gray-500">{filtered.length}건</span>
         </div>
         {loading ? (
           <div className="p-6 text-center text-sm text-gray-400">불러오는 중...</div>
         ) : filtered.length === 0 ? (
-          <div className="p-6 text-center text-sm text-gray-400">해당하는 문서가 없습니다.</div>
+          <div className="p-6 text-center text-sm text-gray-400">해당하는 서류가 없습니다.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr style={{ background: "#1e3a5f" }}>
                   <th className="text-left px-3 py-2.5 text-white font-medium">용역명</th>
-                  <th className="text-center px-2 py-2.5 text-white font-medium">문서종류</th>
+                  <th className="text-center px-2 py-2.5 text-white font-medium">서류종류</th>
                   <th className="text-center px-2 py-2.5 text-white font-medium">업체</th>
                   <th className="text-center px-2 py-2.5 text-white font-medium">위치</th>
                   <th className="text-center px-2 py-2.5 text-white font-medium">상태</th>
@@ -482,8 +474,8 @@ export default function DashboardPage() {
                       onClick={() => handleDocClick(doc)}
                     >
                       <td className="px-3 py-2.5 text-gray-800 font-medium max-w-[110px] truncate">{doc.taskName}</td>
-                      <td className="text-center px-2 py-2.5 text-gray-600">{doc.type}</td>
-                      <td className="text-center px-2 py-2.5 text-gray-500 max-w-[80px] truncate">{doc.company}</td>
+                      <td className="text-center px-2 py-2.5 text-gray-700">{doc.type}</td>
+                      <td className="text-center px-2 py-2.5 text-gray-700 max-w-[80px] truncate">{doc.company}</td>
                       <td className="text-center px-2 py-2.5">
                         {doc.lat ? <span className="text-blue-500">📍</span> : <span className="text-gray-300">-</span>}
                       </td>

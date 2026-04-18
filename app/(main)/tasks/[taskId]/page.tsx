@@ -31,21 +31,20 @@ interface DocumentItem {
   submittedAt?: string;
   currentApproverName?: string;
   approvalLines?: ApprovalLineSummary[];
+  formDataJson?: Record<string, unknown>;
 }
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
-  DRAFT:              { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중" },
-  SUBMITTED:          { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료" },
-  IN_REVIEW:          { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중" },
-  IN_REVIEW_FINAL:    { bg: "bg-orange-100", text: "text-orange-600", label: "최종검토 진행중" },
-  APPROVED:           { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료" },
-  REJECTED:           { bg: "bg-red-100",    text: "text-red-600",    label: "반려" },
+  DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중" },
+  SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료" },
+  IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중" },
+  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종결재 진행중" },
+  APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료" },
+  REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "반려" },
 };
 
 function getStatusKey(doc: DocumentItem): string {
-  if (doc.status === "IN_REVIEW" && doc.currentApprovalOrder === 2) {
-    return "IN_REVIEW_FINAL";
-  }
+  if (doc.status === "IN_REVIEW" && doc.currentApprovalOrder === 2) return "IN_REVIEW_FINAL";
   return doc.status;
 }
 
@@ -65,13 +64,9 @@ const DOC_TYPES = [
 ];
 
 function CreateDocumentModal({
-  taskId,
-  onClose,
-  onCreated,
+  taskId, onClose, onCreated,
 }: {
-  taskId: string;
-  onClose: () => void;
-  onCreated: (docId: string) => void;
+  taskId: string; onClose: () => void; onCreated: (docId: string) => void;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -79,12 +74,10 @@ function CreateDocumentModal({
 
   const handleCreate = async () => {
     if (!selected) { setError("서류 종류를 선택해주세요."); return; }
-    setLoading(true);
-    setError("");
+    setLoading(true); setError("");
     try {
       const res = await fetch("/api/documents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ taskId, documentType: selected }),
       });
       const data = await res.json();
@@ -92,16 +85,14 @@ function CreateDocumentModal({
       onCreated(data.document.id);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "알 수 없는 오류가 발생했습니다.");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
       <div className="bg-white w-full rounded-t-3xl p-6 pb-10">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-base font-bold text-gray-900">서류 양식 작성</h2>
+          <h2 className="text-base font-bold text-gray-900">서류 신규 작성</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -110,21 +101,14 @@ function CreateDocumentModal({
         </div>
         <div className="space-y-2 mb-5">
           {DOC_TYPES.map((type) => (
-            <button
-              key={type.key}
-              onClick={() => setSelected(type.key)}
+            <button key={type.key} onClick={() => setSelected(type.key)}
               className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-colors ${
                 selected === type.key ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300"
-              }`}
-            >
+              }`}>
               <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold ${
                 selected === type.key ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-600"
-              }`}>
-                {type.label}
-              </span>
-              <span className={`text-sm font-medium ${selected === type.key ? "text-blue-700" : "text-gray-700"}`}>
-                {type.desc}
-              </span>
+              }`}>{type.label}</span>
+              <span className={`text-sm font-medium ${selected === type.key ? "text-blue-700" : "text-gray-700"}`}>{type.desc}</span>
               {selected === type.key && (
                 <svg className="ml-auto text-blue-500" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <polyline points="20 6 9 17 4 12" />
@@ -134,12 +118,9 @@ function CreateDocumentModal({
           ))}
         </div>
         {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
-        <button
-          onClick={handleCreate}
-          disabled={loading || !selected}
+        <button onClick={handleCreate} disabled={loading || !selected}
           className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50"
-          style={{ background: "#2563eb" }}
-        >
+          style={{ background: "#2563eb" }}>
           {loading ? "작성 중..." : "서류 작성 시작"}
         </button>
       </div>
@@ -159,21 +140,20 @@ export default function TaskDetailPage() {
   const [activeTab, setActiveTab] = useState("ALL");
   const [showCreate, setShowCreate] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [copyingId, setCopyingId] = useState<string | null>(null);
 
   const handleCancelApproval = async (docId: string) => {
-    if (!confirm("결재를 취소하고 작성중 상태로 되돌리시겠습니까?\n(결재라인이 초기화됩니다)")) return;
+    if (!confirm("결재를 취소하고 작성중 상태로 되돌리시겠습니까?\n(결재선이 삭제됩니다)")) return;
     setCancellingId(docId);
     try {
       const res = await fetch(`/api/documents/${docId}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "오류 발생");
-      alert("결재가 취소되었습니다. 서류를 다시 작성할 수 있습니다.");
+      alert("결재가 취소됩니다. 서류를 다시 작성할 수 있습니다.");
       fetchData();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "취소에 실패했습니다.");
-    } finally {
-      setCancellingId(null);
-    }
+    } finally { setCancellingId(null); }
   };
 
   const handleDeleteDocument = async (docId: string, docType: string) => {
@@ -188,9 +168,51 @@ export default function TaskDetailPage() {
     }
   };
 
+  // ✅ 6번: 복사하기 기능 - 기존 문서 내용을 복사해 새 문서 생성 후 편집 페이지로 이동
+  const handleCopyDocument = async (doc: DocumentItem) => {
+    if (!confirm(`"${DOCUMENT_TYPE_LABELS[doc.documentType] ?? doc.documentType}" 내용을 복사하여 새 문서를 작성하시겠습니까?`)) return;
+    setCopyingId(doc.id);
+    try {
+      // 1. 원본 문서 formDataJson 가져오기 (이미 docList에 있으면 그대로, 없으면 API 호출)
+      let formDataJson = doc.formDataJson;
+      if (!formDataJson) {
+        const res = await fetch(`/api/documents/${doc.id}`);
+        const data = await res.json();
+        formDataJson = data.document?.formDataJson ?? {};
+      }
+
+      // 2. 새 문서 생성
+      const createRes = await fetch("/api/documents", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId, documentType: doc.documentType }),
+      });
+      const createData = await createRes.json();
+      if (!createRes.ok) throw new Error(createData.error || "새 문서 생성 실패");
+      const newDocId = createData.document.id;
+
+      // 3. 복사한 내용으로 새 문서 업데이트 (날짜 초기화)
+      const copiedData = { ...formDataJson };
+      // 날짜 관련 필드 초기화 (새로 작성해야 하는 항목)
+      copiedData.workStartDate = "";
+      copiedData.workEndDate = "";
+      copiedData.requestDate = new Date().toISOString().split("T")[0];
+      // 서명 데이터 제거
+      delete copiedData.signatureData;
+
+      await fetch(`/api/documents/${newDocId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formDataJson: copiedData }),
+      });
+
+      // 4. 편집 페이지로 이동
+      router.push(`/tasks/${taskId}/documents/${newDocId}/edit`);
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : "복사에 실패했습니다.");
+    } finally { setCopyingId(null); }
+  };
+
   const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError("");
+    setLoading(true); setError("");
     try {
       const res = await fetch(`/api/tasks/${taskId}`);
       const data = await res.json();
@@ -199,9 +221,7 @@ export default function TaskDetailPage() {
       setDocList(data.documents);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "알 수 없는 오류가 발생했습니다.");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, [taskId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -229,7 +249,7 @@ export default function TaskDetailPage() {
           <div className="h-3 bg-blue-900 rounded w-1/2" />
         </div>
         <div className="p-4 space-y-3">
-          {[1, 2, 3].map((i) => (
+          {[1,2,3].map((i) => (
             <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 animate-pulse">
               <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
               <div className="h-3 bg-gray-100 rounded w-1/2" />
@@ -301,6 +321,7 @@ export default function TaskDetailPage() {
             const typeShort = DOCUMENT_TYPE_SHORT[doc.documentType] ?? doc.documentType;
             const typeLabel = DOCUMENT_TYPE_LABELS[doc.documentType] ?? doc.documentType;
             const canEdit = doc.status === "DRAFT" || doc.status === "REJECTED";
+            const isCopying = copyingId === doc.id;
 
             return (
               <div key={doc.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
@@ -309,10 +330,30 @@ export default function TaskDetailPage() {
                     <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{typeShort}</span>
                     <span className="text-sm font-medium text-gray-900">{typeLabel}</span>
                   </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${style.bg} ${style.text}`}>
-                    {style.label}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${style.bg} ${style.text}`}>
+                      {style.label}
+                    </span>
+                    {/* ✅ 6번: 복사하기 버튼 - 오른쪽 상단 */}
+                    <button
+                      onClick={() => handleCopyDocument(doc)}
+                      disabled={isCopying}
+                      className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50 disabled:opacity-50 transition-colors"
+                      title="이 문서 내용을 복사하여 새로 작성"
+                    >
+                      {isCopying ? (
+                        <svg className="animate-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                      ) : (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                      )}
+                      {isCopying ? "복사중..." : "복사하기"}
+                    </button>
+                  </div>
                 </div>
+
                 <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
                   {doc.writerName && <span>작성자: {doc.writerName}</span>}
                   {doc.submittedAt && <span>제출: {doc.submittedAt}</span>}
@@ -329,7 +370,6 @@ export default function TaskDetailPage() {
                 {/* 결재 단계 표시 - 1단계(신청자) / 2단계 / 3단계 */}
                 {doc.approvalLines && doc.approvalLines.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
-                    {/* 1단계: 신청자 (작성자) */}
                     <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg ${
                       doc.status !== "DRAFT" ? "bg-green-50 text-green-600" : "bg-gray-50 text-gray-400"
                     }`}>
@@ -337,7 +377,6 @@ export default function TaskDetailPage() {
                       <span>{doc.writerName ?? "신청자"}</span>
                       {doc.status !== "DRAFT" && <span>✓</span>}
                     </div>
-                    {/* 2단계 이상: approvalLines */}
                     {doc.approvalLines.map((line) => {
                       const isDone = line.stepStatus === "APPROVED";
                       const isActive = line.stepStatus === "WAITING";
@@ -363,14 +402,14 @@ export default function TaskDetailPage() {
                 )}
 
                 <div className="flex gap-2 mt-3">
-                  {/* 상세보기 버튼 - /approvals/[documentId] 로 이동 (올바른 경로) */}
+                  {/* 상세보기 버튼 */}
                   <button
                     onClick={() => router.push(`/approvals/${doc.id}`)}
                     className="flex-1 text-center py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50"
                   >
                     상세 보기
                   </button>
-                  {/* 편집 버튼 - DRAFT/REJECTED만 */}
+                  {/* 수정 버튼 - DRAFT/REJECTED만 */}
                   {canEdit && (
                     <Link
                       href={`/tasks/${taskId}/documents/${doc.id}/edit`}
@@ -380,7 +419,7 @@ export default function TaskDetailPage() {
                       {doc.status === "REJECTED" ? "재작성" : "이어서 작성"}
                     </Link>
                   )}
-                  {/* 결재 취소 버튼 - DRAFT/REJECTED 제외 전부 */}
+                  {/* 결재 취소 버튼 - DRAFT/REJECTED 제외 */}
                   {!canEdit && doc.status !== "DRAFT" && (
                     <button
                       onClick={() => handleCancelApproval(doc.id)}

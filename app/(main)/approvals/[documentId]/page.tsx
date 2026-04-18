@@ -9,7 +9,6 @@ interface DocumentDetail {
   id: string; taskId: string; documentType: DocumentType; status: string;
   formDataJson: Record<string, unknown>; submittedAt?: string;
   createdBy: string; currentApproverUserId?: string; currentApprovalOrder?: number;
-  // 위치 정보
   workLatitude?: number | null;
   workLongitude?: number | null;
   workAddress?: string | null;
@@ -56,12 +55,12 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="flex gap-3">
       <span className="text-gray-400 w-24 flex-shrink-0 text-sm">{label}</span>
-      <span className="text-gray-900 text-sm">{value}</span>
+      <span className="text-gray-900 text-sm font-medium">{value}</span>
     </div>
   );
 }
 
-// ── 카카오맵 SDK 마커 지도 미리보기 ─────────────────
+// ✅ 5번: 지도 주소 검정 글씨
 function LocationMapPreview({ lat, lng, address }: { lat: number; lng: number; address?: string | null }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapUrl = `https://map.kakao.com/link/map/${encodeURIComponent(address || "작업장소")},${lat},${lng}`;
@@ -83,10 +82,8 @@ function LocationMapPreview({ lat, lng, address }: { lat: number; lng: number; a
         }
       });
     };
-
-    if (window.kakao?.maps) {
-      initMap();
-    } else {
+    if (window.kakao?.maps) { initMap(); }
+    else {
       const existing = document.getElementById("kakao-map-script");
       if (existing) {
         const check = setInterval(() => { if (window.kakao?.maps) { clearInterval(check); initMap(); } }, 200);
@@ -103,7 +100,8 @@ function LocationMapPreview({ lat, lng, address }: { lat: number; lng: number; a
   return (
     <div className="mt-2 rounded-xl overflow-hidden border border-gray-200">
       <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-xs text-gray-600">
+        {/* ✅ 5번: text-gray-900으로 검정 글씨 */}
+        <div className="flex items-center gap-1.5 text-xs text-gray-900 font-medium">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
           </svg>
@@ -121,6 +119,52 @@ function LocationMapPreview({ lat, lng, address }: { lat: number; lng: number; a
   );
 }
 
+// ✅ 3번: 결재현황 탭에서는 사진 첨부만 (PDF/문서파일 제외), canAdd 제거
+function PhotoViewer({ documentId }: { documentId: string }) {
+  const [photos, setPhotos] = useState<Attachment[]>([]);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/documents/${documentId}/attachments`)
+      .then(r => r.json())
+      .then(data => {
+        const all: Attachment[] = data.attachments ?? [];
+        setPhotos(all.filter(a => a.attachmentType === "PHOTO"));
+      })
+      .catch(() => {});
+  }, [documentId]);
+
+  if (photos.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-sm">
+      <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+        </svg>
+        첨부 사진 <span className="text-xs text-gray-400 font-normal">({photos.length}장)</span>
+      </h3>
+      <div className="grid grid-cols-3 gap-2">
+        {photos.map(photo => (
+          <div key={photo.id} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-50 cursor-pointer active:opacity-80"
+            onClick={() => setPreviewUrl(photo.fileUrl)}>
+            <img src={photo.fileUrl} alt={photo.fileName} className="w-full h-full object-cover" />
+          </div>
+        ))}
+      </div>
+      {previewUrl && (
+        <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center" onClick={() => setPreviewUrl(null)}>
+          <button className="absolute top-4 right-4 text-white p-2 z-10">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <img src={previewUrl} alt="미리보기" className="max-w-full max-h-[85vh] object-contain" onClick={e => e.stopPropagation()} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 내용탭용 전체 첨부파일 뷰어 (사진+문서)
 function AttachmentViewer({ documentId, canAdd = false }: { documentId: string; canAdd?: boolean }) {
   const [photos, setPhotos] = useState<Attachment[]>([]);
   const [docFiles, setDocFiles] = useState<Attachment[]>([]);
@@ -270,9 +314,9 @@ function ApprovalFlow({ doc, approvalLines, writerName }: { doc: DocumentDetail;
   const finalLabel = FINAL_ROLE_LABELS[doc.documentType] ?? "최종 허가자";
   const steps = [
     { icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />, label: "신청자", name: writerName, status: isSubmitted ? "done" : "active" },
-    ...(line1 ? [{ icon: <StepIcon type="review" status={getStepStatus(line1)} />, label: roleLabels[1] ?? "검토자", name: line1.approverName ?? "", comment: line1.comment, actedAt: line1.actedAt, status: getStepStatus(line1) }] : []),
-    ...(line2 ? [{ icon: <StepIcon type="approve" status={getStepStatus(line2)} />, label: line2.approvalRole === "FINAL_APPROVER" ? finalLabel : (roleLabels[2] ?? "허가자"), name: line2.approverName ?? "", comment: line2.comment, actedAt: line2.actedAt, status: getStepStatus(line2) }] : []),
-  ] as Array<{ icon: React.ReactNode; label: string; name: string; comment?: string; actedAt?: string; status: string }>;
+    ...(line1 ? [{ icon: <StepIcon type="review" status={getStepStatus(line1)} />, label: roleLabels[1] ?? "검토자", name: line1.approverName ?? "", comment: line1.comment, actedAt: line1.actedAt, signatureData: line1.signatureData, status: getStepStatus(line1) }] : []),
+    ...(line2 ? [{ icon: <StepIcon type="approve" status={getStepStatus(line2)} />, label: line2.approvalRole === "FINAL_APPROVER" ? finalLabel : (roleLabels[2] ?? "허가자"), name: line2.approverName ?? "", comment: line2.comment, actedAt: line2.actedAt, signatureData: line2.signatureData, status: getStepStatus(line2) }] : []),
+  ] as Array<{ icon: React.ReactNode; label: string; name: string; comment?: string; actedAt?: string; signatureData?: string; status: string }>;
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -299,6 +343,11 @@ function ApprovalFlow({ doc, approvalLines, writerName }: { doc: DocumentDetail;
                 </span>
               </div>
               <span className="text-xs text-gray-600">{step.name}</span>
+              {step.signatureData && (
+                <div className="mt-1.5 border border-gray-200 rounded-lg overflow-hidden bg-white inline-block">
+                  <img src={step.signatureData} alt="서명" className="h-10 object-contain px-2" />
+                </div>
+              )}
               {step.comment && <div className="mt-1 text-xs text-gray-500 bg-white/70 rounded-lg px-2 py-1">💬 {step.comment}</div>}
               {step.actedAt && <span className="text-[10px] text-gray-400 mt-0.5 block">{new Date(step.actedAt).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>}
             </div>
@@ -341,7 +390,7 @@ function FinalApproverModal({ documentId, documentType, onClose, onAssigned }: {
           <h2 className="text-base font-bold text-gray-900">{finalRoleLabel} 지정</h2>
           <button onClick={onClose} className="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
-        <div className="bg-amber-50 rounded-xl p-3 mb-4 text-xs text-amber-700">검토가 완료됐습니다. 최종 결재자를 지정해주세요.</div>
+        <div className="bg-amber-50 rounded-xl p-3 mb-4 text-xs text-amber-700">검토가 완료됩니다. 최종 결재자를 지정해주세요.</div>
         <div className={`p-3 rounded-xl border-2 mb-4 ${selected ? "border-green-400 bg-green-50" : "border-dashed border-gray-300"}`}>
           <div className="text-xs text-gray-500 mb-1">{finalRoleLabel} <span className="text-red-500">*</span></div>
           {selected ? (
@@ -351,10 +400,8 @@ function FinalApproverModal({ documentId, documentType, onClose, onAssigned }: {
             </div>
           ) : <p className="text-xs text-gray-400">아래 목록에서 선택해주세요</p>}
         </div>
-        <div className="relative mb-2">
-          <input value={keyword} onChange={e => setKeyword(e.target.value)} placeholder="이름으로 검색"
-            className="w-full pl-3 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
+        <input value={keyword} onChange={e => setKeyword(e.target.value)} placeholder="이름으로 검색"
+          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2" />
         <div className="space-y-1.5 max-h-48 overflow-y-auto mb-4">
           {users.filter(u => u.id !== selected?.id).map(u => (
             <button key={u.id} onClick={() => setSelected(u)}
@@ -419,17 +466,18 @@ function PdfButtons({ documentId }: { documentId: string }) {
   );
 }
 
+// ✅ 2번: 붙임1~4 입력내용 전체 표시
 function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: Record<string, unknown>; approvalLines: ApprovalLine[] }) {
-  const workPeriod = fd.workStartDate && fd.workEndDate ? `${fd.workStartDate} ~ ${fd.workEndDate}` : (fd.workDate as string) || "";
+  const workPeriod = fd.workStartDate && fd.workEndDate
+    ? `${fd.workStartDate} ~ ${fd.workEndDate}`
+    : (fd.workDate as string) || "";
   const highPlaceItems: string[] = Array.isArray(fd.riskHighPlaceItems) ? fd.riskHighPlaceItems as string[] : [];
   const waterWorkItems: string[] = Array.isArray(fd.riskWaterWorkItems) ? fd.riskWaterWorkItems as string[] : [];
-
-  // 작업장소: formData의 workLocation 또는 facilityLocation
   const workLocation = (fd.workLocation ?? fd.facilityLocation) as string | undefined;
 
   const riskTypesSummary = [
     fd.riskHighPlace && `고소작업${highPlaceItems.length ? ": " + highPlaceItems.join(", ") : ""}${fd.riskHighPlaceDetail ? (highPlaceItems.length ? ", " : ": ") + fd.riskHighPlaceDetail : ""}`,
-    fd.riskWaterWork && `수중작업${waterWorkItems.length ? ": " + waterWorkItems.join(", ") : ""}${fd.riskWaterWorkDetail ? (waterWorkItems.length ? ", " : ": ") + fd.riskWaterWorkDetail : ""}`,
+    fd.riskWaterWork && `수상·수중작업${waterWorkItems.length ? ": " + waterWorkItems.join(", ") : ""}${fd.riskWaterWorkDetail ? (waterWorkItems.length ? ", " : ": ") + fd.riskWaterWorkDetail : ""}`,
     fd.riskConfinedSpace && `밀폐공간${fd.riskConfinedSpaceDetail ? ": " + fd.riskConfinedSpaceDetail : ""}`,
     fd.riskPowerOutage && `정전작업${fd.riskPowerOutageDetail ? ": " + fd.riskPowerOutageDetail : ""}`,
     fd.riskFireWork && `화기작업${fd.riskFireWorkDetail ? ": " + fd.riskFireWorkDetail : ""}`,
@@ -437,8 +485,8 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
   ].filter(Boolean) as string[];
 
   const factorLabels: Record<string, string> = {
-    factorNarrowAccess: "접근통로 협소", factorSlippery: "미끄러움",
-    factorSteepSlope: "급경사", factorWaterHazard: "익수·유수",
+    factorNarrowAccess: "접근통로 협소", factorSlippery: "미끄러운 지반",
+    factorSteepSlope: "급경사면", factorWaterHazard: "익수·유수",
     factorRockfall: "낙석·굴러떨어짐", factorNoRailing: "안전 난간재",
     factorLadderNoGuard: "사다리 안전잠금장치", factorSuffocation: "질식·산소결핍·유해가스",
     factorElectricFire: "감전·전기화재요인", factorSparkFire: "불꽃·불티에 의한 화재",
@@ -453,6 +501,7 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
 
   return (
     <div className="space-y-4">
+      {/* 기본정보 */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <h3 className="text-sm font-bold text-gray-900 mb-3">기본정보</h3>
         <div className="space-y-2">
@@ -463,31 +512,42 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
           <Field label="업체명" value={fd.applicantCompany as string} />
           <Field label="직책" value={fd.applicantTitle as string} />
           <Field label="신청자" value={fd.applicantName as string} />
+          {/* 붙임3 전용 */}
+          {isForm3 && <Field label="시공사업체" value={fd.contractorCompany as string} />}
+          {isForm3 && (fd.contractPeriodStart || fd.contractPeriodEnd) && (
+            <Field label="용역기간" value={`${fd.contractPeriodStart || ""} ~ ${fd.contractPeriodEnd || ""}`} />
+          )}
         </div>
       </div>
 
+      {/* 작업정보 */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <h3 className="text-sm font-bold text-gray-900 mb-3">작업정보</h3>
         <div className="space-y-2">
-          {/* 작업장소 텍스트 */}
           <Field label="작업장소" value={workLocation} />
-          {/* 지도 프레임 - 위도/경도가 있을 때만 표시 */}
           {doc.workLatitude && doc.workLongitude && (
-            <LocationMapPreview
-              lat={doc.workLatitude}
-              lng={doc.workLongitude}
-              address={doc.workAddress || workLocation}
-            />
+            <LocationMapPreview lat={doc.workLatitude} lng={doc.workLongitude} address={doc.workAddress || workLocation} />
           )}
           <Field label="작업내용" value={(fd.workContent ?? fd.workContents) as string} />
-          <Field label="작업원 명단" value={fd.participants as string} />
+          <Field label="작업참여자" value={fd.participants as string} />
           <Field label="입장자 명단" value={fd.entryList as string} />
+          {/* 붙임3 전용 */}
+          {isForm3 && <Field label="시설물명" value={fd.facilityName as string} />}
+          {isForm3 && <Field label="시설 관리자" value={fd.facilityManager as string} />}
+          {isForm3 && <Field label="관리자 직급" value={fd.facilityManagerGrade as string} />}
+          {isForm3 && <Field label="작업위치" value={fd.workPosition as string} />}
+          {/* 붙임2/4 허가 조건 */}
+          {isForm2 && <Field label="화기작업 필요" value={fd.needFireWork as string} />}
+          {isForm2 && <Field label="내연기관 사용" value={fd.useInternalEngine as string} />}
+          {isForm4 && <Field label="밀폐공간작업" value={fd.needConfinedSpace as string} />}
+          {isForm4 && <Field label="화기작업 필요" value={fd.needFireWork as string} />}
         </div>
       </div>
 
+      {/* 붙임1: 위험공종 체크 */}
       {isForm1 && riskTypesSummary.length > 0 && (
         <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 mb-3">위험공종 확인내용</h3>
+          <h3 className="text-sm font-bold text-gray-900 mb-3">위험공종 체크사항</h3>
           <div className="space-y-1.5">
             {riskTypesSummary.map((item, i) => (
               <div key={i} className="flex items-start gap-2">
@@ -501,6 +561,7 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
         </div>
       )}
 
+      {/* 붙임1: 발생위험요소 */}
       {isForm1 && checkedFactors.length > 0 && (
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3">발생하는 위험요소</h3>
@@ -512,6 +573,7 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
         </div>
       )}
 
+      {/* 붙임1: 위험요소/개선대책 */}
       {isForm1 && Array.isArray(fd.riskRows) && (fd.riskRows as any[]).some(r => r.riskFactor || r.improvement) && (
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3">위험요소 · 개선대책</h3>
@@ -527,6 +589,7 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
         </div>
       )}
 
+      {/* 붙임2/4: 안전조치 이행사항 */}
       {(isForm2 || isForm4) && Array.isArray(fd.safetyChecks) && (
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3">안전조치 이행사항</h3>
@@ -544,13 +607,43 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
         </div>
       )}
 
+      {/* 붙임4: 기기 확인 결과 */}
+      {isForm4 && Array.isArray(fd.inspectionItems) && (fd.inspectionItems as any[]).some(i => i.equipment) && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-bold text-gray-900 mb-3">기기 확인 결과</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="text-left px-2 py-1.5 text-gray-600 font-medium">기기기관</th>
+                  <th className="text-left px-2 py-1.5 text-gray-600 font-medium">차단확인자</th>
+                  <th className="text-left px-2 py-1.5 text-gray-600 font-medium">전기담당자</th>
+                  <th className="text-left px-2 py-1.5 text-gray-600 font-medium">현장수리</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(fd.inspectionItems as any[]).filter(i => i.equipment).map((item, i) => (
+                  <tr key={i} className="border-t border-gray-100">
+                    <td className="px-2 py-1.5 text-gray-800">{item.equipment}</td>
+                    <td className="px-2 py-1.5 text-gray-800">{item.cutoffConfirmer}</td>
+                    <td className="px-2 py-1.5 text-gray-800">{item.electrician}</td>
+                    <td className="px-2 py-1.5 text-gray-800">{item.siteRepair}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* 붙임3: 작업 참여자 */}
       {isForm3 && Array.isArray(fd.participants) && (
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3">작업 참여자</h3>
           <div className="space-y-1.5">
             {(fd.participants as any[]).map((p, i) => (
               <div key={i} className="flex gap-3 text-sm">
-                <span className="text-gray-400 w-24 shrink-0">{p.role}</span>
+                <span className="text-gray-400 w-28 shrink-0">{p.role}</span>
                 <span className="text-gray-900">{p.name} {p.phone ? `(${p.phone})` : ""}</span>
               </div>
             ))}
@@ -558,6 +651,18 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
         </div>
       )}
 
+      {/* 붙임3: 위험요소/개선대책 */}
+      {isForm3 && (fd.riskFactors || fd.improvementMeasures) && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-bold text-gray-900 mb-3">위험요소 및 개선대책</h3>
+          <div className="space-y-2">
+            {fd.riskFactors && <Field label="위험요소" value={fd.riskFactors as string} />}
+            {fd.improvementMeasures && <Field label="개선대책" value={fd.improvementMeasures as string} />}
+          </div>
+        </div>
+      )}
+
+      {/* 붙임2/4: 특별조치 */}
       {(isForm2 || isForm4) && fd.specialMeasures && (
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-2">특별조치 필요사항</h3>
@@ -565,9 +670,10 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
         </div>
       )}
 
+      {/* 검토의견 */}
       {(fd.reviewOpinion || fd.reviewResult) && (
         <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 mb-3">안전감독 검토의견</h3>
+          <h3 className="text-sm font-bold text-gray-900 mb-3">안전관리자 검토의견</h3>
           <div className="space-y-2">
             {fd.reviewOpinion && (
               <div>
@@ -585,6 +691,7 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
         </div>
       )}
 
+      {/* 서명 */}
       {(fd.signatureData || approvalLines.some(l => l.signatureData && l.stepStatus === "APPROVED")) && (
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3">서명</h3>
@@ -671,14 +778,11 @@ export default function ApprovalDetailPage() {
       setDoc(docObj);
       const lines = linesData.approvalLines ?? [];
       setApprovalLines(lines);
-
       const line1 = lines.find((l: ApprovalLine) => l.approvalOrder === 1);
       if (line1?.approverName) setStep1ApproverName(line1.approverName);
-
       const fd = docObj.formDataJson ?? {};
       if (fd.reviewOpinion) setReviewOpinion(fd.reviewOpinion as string);
       if (fd.reviewResult) setReviewResult(fd.reviewResult as string);
-
       const taskRes = await fetch(`/api/tasks/${docObj.taskId}`);
       const taskData = await taskRes.json();
       if (taskRes.ok) setTaskName(taskData.task?.name ?? "");
@@ -709,13 +813,13 @@ export default function ApprovalDetailPage() {
   }, [showSign]);
 
   const handleCancelApproval = async () => {
-    if (!confirm("결재를 취소하고 작성중 상태로 되돌리시겠습니까?\n(결재선이 초기화됩니다)")) return;
+    if (!confirm("결재를 취소하고 작성중 상태로 되돌리시겠습니까?\n(결재선이 삭제됩니다)")) return;
     setCancelling(true);
     try {
       const res = await fetch(`/api/documents/${documentId}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "오류 발생");
-      alert("결재가 취소됐습니다. 과업 페이지에서 다시 작성할 수 있습니다.");
+      alert("결재가 취소됩니다. 문서탭에서 다시 작성할 수 있습니다.");
       router.back();
     } catch (e: unknown) { alert(e instanceof Error ? e.message : "취소에 실패했습니다."); }
     finally { setCancelling(false); }
@@ -741,7 +845,7 @@ export default function ApprovalDetailPage() {
   const clearCanvas = () => { const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext("2d"); if (!ctx) return; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); };
 
   const handleAction = async (action: "APPROVE" | "REJECT") => {
-    if (action === "REJECT" && !reviewOpinion.trim()) { alert("반려 사유를 검토의견에 입력해주세요."); return; }
+    if (action === "REJECT" && !reviewOpinion.trim()) { alert("반려 사유를 검토의견란에 입력해주세요."); return; }
     setPendingAction(action); setShowRejectConfirm(false); setShowApproveConfirm(false);
     setShowSign(true); initCanvas();
   };
@@ -754,19 +858,14 @@ export default function ApprovalDetailPage() {
       const signatureData = canvas ? canvas.toDataURL("image/png") : null;
       const res = await fetch(`/api/documents/${documentId}/approve`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: pendingAction,
-          comment: reviewOpinion.trim() || null,
-          reviewResult: reviewResult.trim() || null,
-          signatureData,
-        }),
+        body: JSON.stringify({ action: pendingAction, comment: reviewOpinion.trim() || null, reviewResult: reviewResult.trim() || null, signatureData }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "오류 발생");
       setShowSign(false);
       if (data.action === "NEED_FINAL_APPROVER") { setShowFinalApprover(true); }
-      else if (data.action === "APPROVED") { alert("최종 승인이 완료됐습니다."); router.push("/approvals"); }
-      else { alert("처리됐습니다."); router.push("/approvals"); }
+      else if (data.action === "APPROVED") { alert("최종 승인이 완료됩니다."); router.push("/approvals"); }
+      else { alert("처리됩니다."); router.push("/approvals"); }
     } catch (e: unknown) { alert(e instanceof Error ? e.message : "오류가 발생했습니다."); }
     finally { setProcessing(false); }
   };
@@ -785,18 +884,16 @@ export default function ApprovalDetailPage() {
   const isApproved = doc.status === "APPROVED";
 
   const reviewGuideText = doc.currentApprovalOrder === 2
-    ? `💡 ${step1ApproverName || "1단계 검토자"}(검토자)가 작성한 내용입니다. 확인하여 최종 결재하시면 됩니다.`
+    ? `💡 ${step1ApproverName || "1단계 검토자"}(검토자)가 작성한 내용을 확인하여 최종 결재해주세요.`
     : null;
 
   const ReviewInputSection = () => (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
       <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
-        {doc.currentApprovalOrder === 1 ? "검토 의견 입력" : "검토의견 확인 및 수정"}
+        {doc.currentApprovalOrder === 1 ? "검토 의견 입력" : "검토의견 확인 및 설정"}
       </h3>
-      {reviewGuideText && (
-        <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-3">{reviewGuideText}</p>
-      )}
+      {reviewGuideText && <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-3">{reviewGuideText}</p>}
       <div className="space-y-3">
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1.5">
@@ -818,7 +915,6 @@ export default function ApprovalDetailPage() {
     </div>
   );
 
-  // ── 결재취소 버튼 (공통 컴포넌트) ──
   const CancelButton = () => canCancel ? (
     <button onClick={handleCancelApproval} disabled={cancelling}
       className="w-full py-2.5 rounded-xl text-sm font-medium border-2 border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50">
@@ -843,6 +939,7 @@ export default function ApprovalDetailPage() {
         {doc.submittedAt && <p className="text-xs text-gray-400 mt-0.5">제출일: {new Date(doc.submittedAt).toLocaleDateString("ko-KR")}</p>}
       </div>
 
+      {/* ✅ 탭 - 내용 / 결재현황 */}
       <div className="bg-white border-b border-gray-200 flex">
         {["내용", "결재현황"].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
@@ -853,10 +950,11 @@ export default function ApprovalDetailPage() {
       </div>
 
       <div className="p-4 space-y-4">
+        {/* ✅ 내용 탭: 모든 입력내용 + 첨부파일 + PDF (승인완료시) */}
         {activeTab === "내용" && (
           <>
             <DocumentContent doc={doc} fd={fd} approvalLines={approvalLines} />
-            <AttachmentViewer documentId={documentId} canAdd={isApproved} />
+            <AttachmentViewer documentId={documentId} canAdd={false} />
             {isApproved && (
               <div className="bg-white rounded-2xl p-4 shadow-sm">
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -867,32 +965,22 @@ export default function ApprovalDetailPage() {
               </div>
             )}
             {isMyTurn && <ReviewInputSection />}
-            {/* 내용 탭에서도 결재취소 버튼 표시 */}
             <CancelButton />
           </>
         )}
 
+        {/* ✅ 3번: 결재현황 탭 - 결재흐름 + 사진만 (PDF/문서 없음) */}
         {activeTab === "결재현황" && (
           <>
             <ApprovalFlow doc={doc} approvalLines={approvalLines} writerName={(fd.applicantName as string) || writerName} />
-            <AttachmentViewer documentId={documentId} canAdd={isApproved} />
-            {isApproved && (
-              <div className="bg-white rounded-2xl p-4 shadow-sm">
-                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  허가서 PDF
-                </h3>
-                <PdfButtons documentId={documentId} />
-              </div>
-            )}
+            <PhotoViewer documentId={documentId} />
             {isMyTurn && <ReviewInputSection />}
-            {/* 결재현황 탭에서도 결재취소 버튼 표시 */}
             <CancelButton />
           </>
         )}
       </div>
 
-      {/* 하단 고정 버튼 - 결재 액션만 (결재취소는 각 탭 내용에 포함) */}
+      {/* 하단 고정 버튼 - 결재 액션 */}
       {isMyTurn && (
         <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-3 pb-4">
           <div className="flex gap-3">
@@ -908,7 +996,7 @@ export default function ApprovalDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
             <h3 className="text-base font-bold text-gray-900 mb-2">반려하시겠습니까?</h3>
-            <p className="text-sm text-gray-500 mb-4">반려 처리 후 작성자에게 알림이 전송됩니다.</p>
+            <p className="text-sm text-gray-500 mb-4">반려 처리 후 신청인에게 알림이 전송됩니다.</p>
             {!reviewOpinion.trim() && <p className="text-xs text-red-500 mb-3">반려 사유(검토의견)를 먼저 입력해주세요.</p>}
             <div className="flex gap-3">
               <button onClick={() => setShowRejectConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">취소</button>
@@ -923,7 +1011,7 @@ export default function ApprovalDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
             <h3 className="text-base font-bold text-gray-900 mb-2">
-              {doc.currentApprovalOrder === 1 ? "검토완료 후 최종허가자를 지정합니다" : "최종 승인하시겠습니까?"}
+              {doc.currentApprovalOrder === 1 ? "검토완료 후 최종허가자에게 지정됩니다" : "최종 승인하시겠습니까?"}
             </h3>
             <p className="text-sm text-gray-500 mb-4">
               {doc.currentApprovalOrder === 1 ? "서명 후 최종허가자를 지정합니다." : "최종 승인 후 되돌릴 수 없습니다."}
@@ -945,7 +1033,7 @@ export default function ApprovalDetailPage() {
             </div>
             <div className="px-6 py-3">
               <div className="border-2 border-gray-200 rounded-2xl overflow-hidden bg-white relative">
-                <div className="absolute top-2 left-3 text-xs text-gray-300 pointer-events-none">여기에 서명해주세요</div>
+                <div className="absolute top-2 left-3 text-xs text-gray-300 pointer-events-none">아래에 서명해주세요</div>
                 <canvas ref={canvasRef} width={600} height={180} className="w-full"
                   style={{ cursor: "crosshair", touchAction: "none", display: "block" }}
                   onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
@@ -970,7 +1058,7 @@ export default function ApprovalDetailPage() {
       {showFinalApprover && doc && (
         <FinalApproverModal documentId={documentId} documentType={doc.documentType}
           onClose={() => setShowFinalApprover(false)}
-          onAssigned={() => { setShowFinalApprover(false); alert("최종허가자가 지정됐습니다. 알림이 전송됩니다."); router.push("/approvals"); }} />
+          onAssigned={() => { setShowFinalApprover(false); alert("최종허가자가 지정됩니다. 알림이 전송됩니다."); router.push("/approvals"); }} />
       )}
     </div>
   );
