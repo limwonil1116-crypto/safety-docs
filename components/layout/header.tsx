@@ -82,16 +82,30 @@ export default function Header() {
     setShowModal(true);
   };
 
+  // ✅ 안드로이드 인앱: 버튼을 Chrome intent 링크로 (클릭 즉시 Chrome 열림)
+  const getInstallHref = (): string | undefined => {
+    if (typeof window === "undefined") return undefined;
+    const ua = navigator.userAgent;
+    const isAndroid = /Android/i.test(ua);
+    const isInApp = /KAKAOTALK|kakaotalk|Instagram|NAVER|NaverApp|FB_IAB|FBAN|Line/i.test(ua);
+    if (isAndroid && isInApp) {
+      const url = window.location.href.replace(/^https?:\/\//, "");
+      return `intent://${url}#Intent;scheme=https;package=com.android.chrome;end`;
+    }
+    return undefined;
+  };
+  const installHref = getInstallHref();
+
   if (installState === "installed") return <HeaderShell showInstallBtn={false} onInstall={handleInstall} />;
   return (
     <>
-      <HeaderShell showInstallBtn={true} onInstall={handleInstall} />
+      <HeaderShell showInstallBtn={true} onInstall={handleInstall} installHref={installHref} />
       {showModal && <InstallModal installState={installState} onClose={() => setShowModal(false)} />}
     </>
   );
 }
 
-function HeaderShell({ showInstallBtn, onInstall }: { showInstallBtn: boolean; onInstall: () => void }) {
+function HeaderShell({ showInstallBtn, onInstall, installHref }: { showInstallBtn: boolean; onInstall: () => void; installHref?: string }) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-14" style={{ background: "#1e3a5f" }}>
       <div className="flex items-center gap-2.5">
@@ -105,6 +119,20 @@ function HeaderShell({ showInstallBtn, onInstall }: { showInstallBtn: boolean; o
       </div>
       <div className="flex items-center gap-2">
         {showInstallBtn && (
+          // ✅ 안드로이드 인앱: <a href="intent://..."> 로 Chrome 자동 실행
+          // 일반 안드로이드 Chrome: onClick으로 beforeinstallprompt 실행
+          installHref ? (
+            <a href={installHref}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold"
+              style={{ background: "#2563eb", color: "white" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              앱설치
+            </a>
+          ) : (
           <button onClick={onInstall} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold" style={{ background: "#2563eb", color: "white" }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -113,6 +141,7 @@ function HeaderShell({ showInstallBtn, onInstall }: { showInstallBtn: boolean; o
             </svg>
             앱설치
           </button>
+          )
         )}
         <button className="text-white opacity-80 p-1">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
