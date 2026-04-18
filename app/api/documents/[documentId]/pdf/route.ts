@@ -39,41 +39,28 @@ async function getApprovalLinesWithSig(documentId: string) {
   }));
 }
 
-// ===== 신청인 서명 추출 =====
-// 저장 위치 우선순위:
-// 1. formDataJson.signatureData (제출 시 저장)
-// 2. documentSignatures 테이블에서 signerUserId === createdBy인 것 (approval-lines POST에서 저장)
+// 신청자 서명 가져오기
 async function getApplicantSignature(
   doc: { formDataJson: unknown; createdBy: string; id: string }
 ): Promise<string | undefined> {
-  // 1순위: formDataJson.signatureData
   const fd = doc.formDataJson as Record<string, unknown> | null;
   if (fd && typeof fd.signatureData === "string" && fd.signatureData) {
     return fd.signatureData;
   }
-
-  // 2순위: documentSignatures에서 신청인(createdBy) 서명 찾기
   try {
     const sigs = await db
       .select()
       .from(documentSignatures)
       .where(eq(documentSignatures.documentId, doc.id));
-
-    // signerUserId가 문서 작성자인 서명
     const applicantSig = sigs.find(
       (s: { signerUserId: string; signatureData: string | null }) =>
         s.signerUserId === doc.createdBy && s.signatureData
     );
     if (applicantSig?.signatureData) return applicantSig.signatureData;
-
-    // 없으면 가장 먼저 저장된 서명 (신청 시 저장되는 서명)
-    if (sigs.length > 0 && sigs[0].signatureData) {
-      return sigs[0].signatureData;
-    }
+    if (sigs.length > 0 && sigs[0].signatureData) return sigs[0].signatureData;
   } catch (e) {
-    console.error("신청인 서명 조회 오류:", e);
+    console.error("신청자 서명 조회 오류:", e);
   }
-
   return undefined;
 }
 
@@ -104,14 +91,16 @@ export async function GET(
       : [{ name: undefined }];
     const taskName = task?.name ?? undefined;
 
-    // 신청인 서명 (두 경로 모두 확인)
     const applicantSignature = await getApplicantSignature({
       formDataJson: doc.formDataJson,
       createdBy: doc.createdBy,
       id: doc.id,
     });
 
-    // 다운로드 요청
+    // ✅ workAddress를 DB에서 직접 가져와 템플릿에 전달
+    const workAddress = (doc as any).workAddress ?? null;
+
+    // 다운로드 모드
     if (download) {
       const approvalLinesWithSig = await getApprovalLinesWithSig(documentId);
       const { buffer, filename } = await generatePDF({
@@ -122,6 +111,7 @@ export async function GET(
         createdAt: doc.createdAt.toISOString(),
         taskName,
         applicantSignature,
+        workAddress,  // ✅ 추가
       });
       return new NextResponse(new Uint8Array(buffer), {
         headers: {
@@ -132,7 +122,7 @@ export async function GET(
       });
     }
 
-    // 미리보기: 기존 완료된 output 확인 (force=true면 재생성)
+    // 미리보기: 기존 완료된 output 확인 (force=true면 새로 생성)
     if (!forceNew) {
       try {
         const [existingOutput] = await db
@@ -169,9 +159,9 @@ export async function GET(
         createdAt: doc.createdAt.toISOString(),
         taskName,
         applicantSignature,
+        workAddress,  // ✅ 추가
       });
 
-      // output 저장 (실패해도 URL은 반환)
       try {
         await db.insert(documentOutputs).values({
           documentId,
@@ -190,8 +180,7 @@ export async function GET(
 
       return NextResponse.json({ url, filename, size });
     } catch (uploadError) {
-      // Blob 업로드 실패 시 → 직접 다운로드로 fallback
-      console.error("Blob 업로드 실패, 직접 다운로드로 전환:", uploadError);
+      console.error("Blob 업로드 실패, 직접 다운로드로 fallback:", uploadError);
       const { buffer, filename } = await generatePDF({
         documentId,
         documentType: doc.documentType,
@@ -200,6 +189,7 @@ export async function GET(
         createdAt: doc.createdAt.toISOString(),
         taskName,
         applicantSignature,
+        workAddress,  // ✅ 추가
       });
       return new NextResponse(new Uint8Array(buffer), {
         headers: {
@@ -247,6 +237,9 @@ export async function POST(
     });
     const approvalLinesWithSig = await getApprovalLinesWithSig(documentId);
 
+    // ✅ workAddress 추가
+    const workAddress = (doc as any).workAddress ?? null;
+
     const { url, filename, size } = await generateAndUploadPDF({
       documentId,
       documentType: doc.documentType,
@@ -255,6 +248,7 @@ export async function POST(
       createdAt: doc.createdAt.toISOString(),
       taskName: task?.name ?? undefined,
       applicantSignature,
+      workAddress,  // ✅ 추가
     });
 
     await db.insert(documentOutputs).values({
@@ -269,7 +263,7 @@ export async function POST(
       generatedAt: new Date(),
     });
 
-    return NextResponse.json({ url, filename, size, message: "PDF가 생성되었습니다." });
+    return NextResponse.json({ url, filename, size, message: "PDF가 생성됐습니다." });
   } catch (error) {
     console.error("[POST /api/documents/[documentId]/pdf]", error);
     return NextResponse.json(
