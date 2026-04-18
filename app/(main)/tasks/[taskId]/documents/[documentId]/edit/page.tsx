@@ -435,8 +435,10 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
 
   useEffect(() => {
     if (!mapLoaded || !mapRef.current || !window.kakao?.maps) return;
-    const center = new window.kakao.maps.LatLng(lat ?? 36.4618, lng ?? 126.6422);
-    const map = new window.kakao.maps.Map(mapRef.current, { center, level: 5 });
+    // ✅ 1번: GPS 없을 때 기본 위치를 대한민국 중심(서울)으로, GPS 응답 후 이동
+    const defaultLat = lat ?? 36.5, defaultLng = lng ?? 127.5;
+    const center = new window.kakao.maps.LatLng(defaultLat, defaultLng);
+    const map = new window.kakao.maps.Map(mapRef.current, { center, level: lat ? 5 : 13 });
     mapInstanceRef.current = map;
     const marker = new window.kakao.maps.Marker({ position: center, map });
     markerRef.current = marker;
@@ -446,7 +448,7 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
         const gLat = pos.coords.latitude; const gLng = pos.coords.longitude;
         setLat(gLat); setLng(gLng);
         const ll = new window.kakao.maps.LatLng(gLat, gLng);
-        map.setCenter(ll); map.setLevel(4); marker.setPosition(ll);
+        map.setCenter(ll); map.setLevel(3); marker.setPosition(ll); // GPS 위치 확대
         if (window.kakao.maps.services) {
           const geocoder = new window.kakao.maps.services.Geocoder();
           geocoder.coord2Address(gLng, gLat, (result: any, status: any) => {
@@ -459,7 +461,7 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
           });
         }
         setGpsLoading(false);
-      }, () => { setGpsLoading(false); }, { timeout: 8000 });
+      }, (err) => { setGpsLoading(false); console.warn("GPS 실패:", err.message); }, { timeout: 8000, enableHighAccuracy: true });
     }
     window.kakao.maps.event.addListener(map, "click", (mouseEvent: any) => {
       const latlng = mouseEvent.latLng; marker.setPosition(latlng);

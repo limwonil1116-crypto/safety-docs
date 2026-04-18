@@ -47,7 +47,7 @@ export default function Header() {
   }, []);
 
   const handleInstall = async () => {
-    // ✅ prompt 있으면 바로 설치 (모달 없이)
+    // ✅ prompt 있으면 바로 설치 팝업 (모달 없이)
     if (promptRef.current) {
       try {
         await promptRef.current.prompt();
@@ -59,7 +59,26 @@ export default function Header() {
         return;
       } catch {}
     }
-    // prompt 없으면 안내 모달
+
+    // ✅ 2번: 안드로이드 인앱(카카오 등) → 크롬으로 자동 열기
+    const ua = navigator.userAgent;
+    const isAndroid = /Android/i.test(ua);
+    const isInApp = /KAKAOTALK|kakaotalk|Instagram|NAVER|NaverApp|FB_IAB|FBAN|Line/i.test(ua);
+
+    if (isAndroid && isInApp) {
+      // 크롬 딥링크로 자동 이동 (묻지 않고 바로)
+      const currentUrl = window.location.href;
+      const chromeUrl = `intent://${currentUrl.replace(/^https?:\/\//, "")}#Intent;scheme=https;package=com.android.chrome;end`;
+      window.location.href = chromeUrl;
+      // 딥링크 실패 대비 300ms 후 주소 복사 + 안내
+      setTimeout(() => {
+        navigator.clipboard?.writeText(currentUrl).catch(() => {});
+        setShowModal(true);
+      }, 800);
+      return;
+    }
+
+    // iOS 또는 크롬 prompt 없는 경우 → 안내 모달
     setShowModal(true);
   };
 
@@ -116,12 +135,12 @@ function InstallModal({ installState, onClose }: { installState: InstallState; o
     const chromeUrl = `intent://${currentUrl.replace(/^https?:\/\//, "")}#Intent;scheme=https;package=com.android.chrome;end`;
 
     const openInChrome = () => {
-      // Android Chrome 딥링크 시도
+      // Android Chrome 딥링크로 바로 이동
       window.location.href = chromeUrl;
-      // 실패 대비: 1.5초 후 주소 복사 안내
+      // 딥링크 실패 대비: 주소 클립보드 복사
       setTimeout(() => {
         navigator.clipboard?.writeText(currentUrl).catch(() => {});
-      }, 1500);
+      }, 1000);
     };
 
     return (
