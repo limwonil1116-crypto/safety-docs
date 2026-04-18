@@ -33,40 +33,6 @@ function ModalWrapper({ children, onClose }: { children: React.ReactNode; onClos
 function InstallModal({ installState, onClose }: { installState: InstallState; onClose: () => void }) {
   const currentUrl = typeof window !== "undefined" ? window.location.href : "https://safety-docs.vercel.app";
 
-  if (installState === "inapp_kakao") {
-    return (
-      <ModalWrapper onClose={onClose}>
-        <h2 className="text-base font-bold text-gray-900 mb-4">앱 설치 안내</h2>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
-          <p className="text-sm font-semibold text-yellow-800 mb-1">📌 카카오톡 인앱 브라우저 감지</p>
-          <p className="text-xs text-yellow-700">카카오톡 내에서는 앱 설치가 불가합니다.<br />아래 방법으로 외부 브라우저에서 열어주세요.</p>
-        </div>
-        <div className="space-y-3">
-          {[
-            { step: 1, title: "오른쪽 상단 ⋯ (더보기) 버튼 탭", desc: "카카오톡 브라우저 우측 상단 점 3개 버튼" },
-            { step: 2, title: "\"다른 브라우저로 열기\" 선택", desc: "Chrome 또는 Safari로 열기를 선택하세요" },
-            { step: 3, title: "열린 브라우저에서 앱설치 버튼 탭", desc: "동일한 화면에서 앱설치 버튼을 누르면 설치됩니다" },
-          ].map(({ step, title, desc }) => (
-            <div key={step} className="flex items-start gap-3">
-              <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold shrink-0">{step}</div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">{title}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-        <button
-          onClick={() => { navigator.clipboard?.writeText(currentUrl); onClose(); }}
-          className="w-full mt-5 py-3 rounded-xl text-white font-medium text-sm"
-          style={{ background: "#2563eb" }}
-        >
-          주소 복사 후 닫기
-        </button>
-      </ModalWrapper>
-    );
-  }
-
   if (installState === "ios") {
     return (
       <ModalWrapper onClose={onClose}>
@@ -97,16 +63,15 @@ function InstallModal({ installState, onClose }: { installState: InstallState; o
     return (
       <ModalWrapper onClose={onClose}>
         <h2 className="text-base font-bold text-gray-900 mb-3">앱 설치 안내</h2>
-        <p className="text-sm text-gray-600 mb-4">인앱 브라우저에서는 설치가 제한됩니다.<br /><b>Chrome 또는 Safari</b>로 접속 후 설치해 주세요.</p>
+        <p className="text-sm text-gray-600 mb-4">인앱 브라우저에서는 앱 설치가 제한됩니다.<br /><b>Chrome 또는 Safari</b>로 직접 열어 설치해주세요.</p>
         <div className="bg-gray-50 rounded-xl p-3 mb-4">
-          <p className="text-xs text-gray-500 mb-1">접속 주소</p>
+          <p className="text-xs text-gray-500 mb-1">직접 주소</p>
           <p className="text-sm font-mono text-blue-600 break-all">{currentUrl}</p>
         </div>
         <button
           onClick={() => { navigator.clipboard?.writeText(currentUrl); onClose(); }}
           className="w-full py-3 rounded-xl text-white font-medium text-sm"
-          style={{ background: "#2563eb" }}
-        >
+          style={{ background: "#2563eb" }}>
           주소 복사
         </button>
       </ModalWrapper>
@@ -116,7 +81,7 @@ function InstallModal({ installState, onClose }: { installState: InstallState; o
   return (
     <ModalWrapper onClose={onClose}>
       <h2 className="text-base font-bold text-gray-900 mb-3">앱 설치 안내</h2>
-      <p className="text-sm text-gray-600 mb-4">Chrome 브라우저 주소창 우측의 <b>설치</b> 아이콘을 탭하거나, 메뉴(⋮)에서 <b>"앱 설치"</b>를 선택하세요.</p>
+      <p className="text-sm text-gray-600 mb-4">Chrome 브라우저 주소창 오른쪽의 <b>설치</b> 아이콘을 탭하거나, 메뉴(⋮)에서 <b>"앱 설치"</b>를 선택하세요.</p>
       <button onClick={onClose} className="w-full py-3 rounded-xl text-white font-medium text-sm" style={{ background: "#2563eb" }}>
         확인
       </button>
@@ -133,7 +98,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // PWA 설치
   const [installState, setInstallState] = useState<InstallState>("idle");
   const [showModal, setShowModal] = useState(false);
   const promptRef = useRef<BeforeInstallPromptEvent | null>(null);
@@ -141,6 +105,17 @@ export default function LoginPage() {
   useEffect(() => {
     const ua = navigator.userAgent;
 
+    // ✅ 안드로이드 인앱(카카오톡 등) → 페이지 로드 즉시 Chrome으로 자동 이동
+    const isAndroid = /Android/i.test(ua);
+    const isInApp = /KAKAOTALK|kakaotalk|Instagram|NAVER|NaverApp|FB_IAB|FBAN|Line|Twitter/i.test(ua);
+    if (isAndroid && isInApp) {
+      const currentUrl = window.location.href;
+      const intentUrl = `intent://${currentUrl.replace(/^https?:\/\//, "")}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(currentUrl)};end`;
+      window.location.replace(intentUrl);
+      return;
+    }
+
+    // PWA 설치 상태 감지
     if (
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as any).standalone
@@ -150,10 +125,8 @@ export default function LoginPage() {
     }
 
     const isIOS = /iPhone|iPad|iPod/.test(ua) && !(window as any).MSStream;
-    const isKakao = /KAKAOTALK|kakaotalk/i.test(ua);
     const isOtherInApp = /Instagram|NAVER|NaverApp|FB_IAB|FBAN|Line/i.test(ua);
 
-    if (isKakao) { setInstallState("inapp_kakao"); return; }
     if (isOtherInApp) { setInstallState("inapp_other"); return; }
     if (isIOS) { setInstallState("ios"); return; }
 
@@ -172,6 +145,11 @@ export default function LoginPage() {
   }, []);
 
   const handleInstall = async () => {
+    const ua = navigator.userAgent;
+    const isIOS = /iPhone|iPad|iPod/.test(ua) && !(window as any).MSStream;
+
+    if (isIOS) { setShowModal(true); return; }
+
     if (installState === "ready" && promptRef.current) {
       try {
         await promptRef.current.prompt();
@@ -180,9 +158,7 @@ export default function LoginPage() {
           setInstallState("installed");
           promptRef.current = null;
         }
-      } catch {
-        setShowModal(true);
-      }
+      } catch { setShowModal(true); }
     } else {
       setShowModal(true);
     }
@@ -210,13 +186,13 @@ export default function LoginPage() {
     {
       category: "업무담당",
       name: "담당자",
-      org: "한국농어촌공사 안전기술본부 안전허가팀 안전허가담당",
+      org: "한국농어촌공사 안전기술본부 안전정책처 안전정책담당",
       tel: "042-479-8299",
     },
     {
       category: "시스템문의",
       name: "시스템담당자",
-      org: "한국농어촌공사 디지털혁신본부 디지털전환팀",
+      org: "한국농어촌공사 디지털혁신처 디지털전략팀",
       tel: "041-339-1844",
     },
   ];
@@ -246,22 +222,12 @@ export default function LoginPage() {
 
       <div className="w-full max-w-sm">
         <div className="bg-white rounded-3xl shadow-lg p-8">
-          <div className="flex justify-start mb-4">
-            <button className="text-gray-400 hover:text-gray-600">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-              </svg>
-            </button>
-          </div>
-
           <div className="flex flex-col items-center mb-8">
             <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-4 overflow-hidden bg-white shadow-sm">
               <Image src="/logo.png" alt="안전기술본부 로고" width={80} height={80} className="object-contain" />
             </div>
             <h1 className="text-xl font-bold text-gray-900 text-center leading-tight">
-              안전기술본부<br />현장안전 허가작업 시스템
+              안전기술본부<br />스마트 안전 작업허가 시스템
             </h1>
             <p className="text-sm text-gray-500 mt-1">계정으로 로그인하세요</p>
           </div>
@@ -325,11 +291,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <button className="w-full mt-3 py-3 rounded-xl font-medium text-sm transition-opacity"
-            style={{ background: "#FEE500", color: "#000000" }}>
-            카카오로 로그인
-          </button>
-
           <div className="flex justify-center gap-4 mt-4 text-sm text-gray-500">
             <Link href="/forgot-password" className="hover:text-blue-600">이메일 찾기</Link>
             <span>|</span>
@@ -348,7 +309,7 @@ export default function LoginPage() {
               {contacts.map((c) => (
                 <div key={c.category} className="bg-gray-50 rounded-xl px-3 py-2.5">
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="text-xs font-semibold text-blue-600">■ {c.category}</span>
+                    <span className="text-xs font-semibold text-blue-600">· {c.category}</span>
                   </div>
                   <p className="text-xs text-gray-500 leading-relaxed">{c.org}</p>
                   <div className="flex items-center justify-between mt-1">
@@ -368,7 +329,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* 설치 안내 모달 */}
       {showModal && (
         <InstallModal installState={installState} onClose={() => setShowModal(false)} />
       )}
