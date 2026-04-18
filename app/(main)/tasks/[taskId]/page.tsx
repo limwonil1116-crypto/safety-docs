@@ -48,19 +48,20 @@ function getStatusKey(doc: DocumentItem): string {
   return doc.status;
 }
 
+// ✅ 1번: 법정서류 제목으로 탭 이름 변경
 const TABS = [
   { key: "ALL",                label: "전체" },
-  { key: "SAFETY_WORK_PERMIT", label: "붙임1" },
-  { key: "CONFINED_SPACE",     label: "붙임2" },
-  { key: "HOLIDAY_WORK",       label: "붙임3" },
-  { key: "POWER_OUTAGE",       label: "붙임4" },
+  { key: "SAFETY_WORK_PERMIT", label: "안전작업허가서" },
+  { key: "CONFINED_SPACE",     label: "밀폐공간작업허가서" },
+  { key: "HOLIDAY_WORK",       label: "휴일작업신청서" },
+  { key: "POWER_OUTAGE",       label: "정전작업허가서" },
 ];
 
 const DOC_TYPES = [
   { key: "SAFETY_WORK_PERMIT", label: "붙임1", desc: "안전작업허가서" },
   { key: "CONFINED_SPACE",     label: "붙임2", desc: "밀폐공간작업허가서" },
-  { key: "HOLIDAY_WORK",       label: "붙임3", desc: "휴일작업 신청서" },
-  { key: "POWER_OUTAGE",       label: "붙임4", desc: "정전작업 허가서" },
+  { key: "HOLIDAY_WORK",       label: "붙임3", desc: "휴일작업신청서" },
+  { key: "POWER_OUTAGE",       label: "붙임4", desc: "정전작업허가서" },
 ];
 
 function CreateDocumentModal({
@@ -168,20 +169,16 @@ export default function TaskDetailPage() {
     }
   };
 
-  // ✅ 6번: 복사하기 기능 - 기존 문서 내용을 복사해 새 문서 생성 후 편집 페이지로 이동
   const handleCopyDocument = async (doc: DocumentItem) => {
     if (!confirm(`"${DOCUMENT_TYPE_LABELS[doc.documentType] ?? doc.documentType}" 내용을 복사하여 새 문서를 작성하시겠습니까?`)) return;
     setCopyingId(doc.id);
     try {
-      // 1. 원본 문서 formDataJson 가져오기 (이미 docList에 있으면 그대로, 없으면 API 호출)
       let formDataJson = doc.formDataJson;
       if (!formDataJson) {
         const res = await fetch(`/api/documents/${doc.id}`);
         const data = await res.json();
         formDataJson = data.document?.formDataJson ?? {};
       }
-
-      // 2. 새 문서 생성
       const createRes = await fetch("/api/documents", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ taskId, documentType: doc.documentType }),
@@ -189,22 +186,15 @@ export default function TaskDetailPage() {
       const createData = await createRes.json();
       if (!createRes.ok) throw new Error(createData.error || "새 문서 생성 실패");
       const newDocId = createData.document.id;
-
-      // 3. 복사한 내용으로 새 문서 업데이트 (날짜 초기화)
       const copiedData = { ...formDataJson };
-      // 날짜 관련 필드 초기화 (새로 작성해야 하는 항목)
       copiedData.workStartDate = "";
       copiedData.workEndDate = "";
       copiedData.requestDate = new Date().toISOString().split("T")[0];
-      // 서명 데이터 제거
       delete copiedData.signatureData;
-
       await fetch(`/api/documents/${newDocId}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ formDataJson: copiedData }),
       });
-
-      // 4. 편집 페이지로 이동
       router.push(`/tasks/${taskId}/documents/${newDocId}/edit`);
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "복사에 실패했습니다.");
@@ -283,12 +273,13 @@ export default function TaskDetailPage() {
         {formatPeriod() && <p className="text-blue-300 text-xs mt-0.5">{formatPeriod()}</p>}
       </div>
 
+      {/* ✅ 탭: 법정서류 이름 + 가로 스크롤 */}
       <div className="bg-white border-b border-gray-200 flex overflow-x-auto">
         {TABS.map((tab) => {
           const count = tab.key === "ALL" ? docList.length : docList.filter((d) => d.documentType === tab.key).length;
           return (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={`flex-shrink-0 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex-shrink-0 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab.key ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500"
               }`}>
               {tab.label}
@@ -334,7 +325,6 @@ export default function TaskDetailPage() {
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${style.bg} ${style.text}`}>
                       {style.label}
                     </span>
-                    {/* ✅ 6번: 복사하기 버튼 - 오른쪽 상단 */}
                     <button
                       onClick={() => handleCopyDocument(doc)}
                       disabled={isCopying}
@@ -367,7 +357,6 @@ export default function TaskDetailPage() {
                   )}
                 </div>
 
-                {/* 결재 단계 표시 - 1단계(신청자) / 2단계 / 3단계 */}
                 {doc.approvalLines && doc.approvalLines.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg ${
@@ -402,14 +391,12 @@ export default function TaskDetailPage() {
                 )}
 
                 <div className="flex gap-2 mt-3">
-                  {/* 상세보기 버튼 */}
                   <button
                     onClick={() => router.push(`/approvals/${doc.id}`)}
                     className="flex-1 text-center py-2 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50"
                   >
                     상세 보기
                   </button>
-                  {/* 수정 버튼 - DRAFT/REJECTED만 */}
                   {canEdit && (
                     <Link
                       href={`/tasks/${taskId}/documents/${doc.id}/edit`}
@@ -419,7 +406,6 @@ export default function TaskDetailPage() {
                       {doc.status === "REJECTED" ? "재작성" : "이어서 작성"}
                     </Link>
                   )}
-                  {/* 결재 취소 버튼 - DRAFT/REJECTED 제외 */}
                   {!canEdit && doc.status !== "DRAFT" && (
                     <button
                       onClick={() => handleCancelApproval(doc.id)}
@@ -429,7 +415,6 @@ export default function TaskDetailPage() {
                       {cancellingId === doc.id ? "취소중..." : "결재 취소"}
                     </button>
                   )}
-                  {/* 삭제 버튼 - DRAFT만 */}
                   {doc.status === "DRAFT" && (
                     <button
                       onClick={() => handleDeleteDocument(doc.id, DOCUMENT_TYPE_LABELS[doc.documentType] ?? doc.documentType)}

@@ -473,7 +473,11 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
     : (fd.workDate as string) || "";
   const highPlaceItems: string[] = Array.isArray(fd.riskHighPlaceItems) ? fd.riskHighPlaceItems as string[] : [];
   const waterWorkItems: string[] = Array.isArray(fd.riskWaterWorkItems) ? fd.riskWaterWorkItems as string[] : [];
-  const workLocation = (fd.workLocation ?? fd.facilityLocation) as string | undefined;
+  // ✅ 2번: 작업장소는 workAddress(지도 선택 주소) 우선, 없으면 직접입력값 사용
+  const workAddress = doc.workAddress as string | undefined;
+  const workLocationRaw = (fd.workLocation ?? fd.facilityLocation) as string | undefined;
+  // 좌표값이 아닌 실제 주소 표시 (workAddress가 있으면 우선)
+  const workLocation = workAddress || workLocationRaw;
 
   const riskTypesSummary = [
     fd.riskHighPlace && `고소작업${highPlaceItems.length ? ": " + highPlaceItems.join(", ") : ""}${fd.riskHighPlaceDetail ? (highPlaceItems.length ? ", " : ": ") + fd.riskHighPlaceDetail : ""}`,

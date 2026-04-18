@@ -445,10 +445,10 @@ export default function DashboardPage() {
       <div className="bg-white border-b border-gray-200 flex mt-4 overflow-x-auto">
         {[
           { key: "ALL",               label: "전체" },
-          { key: "SAFETY_WORK_PERMIT",label: "붙임1" },
-          { key: "CONFINED_SPACE",    label: "붙임2" },
-          { key: "HOLIDAY_WORK",      label: "붙임3" },
-          { key: "POWER_OUTAGE",      label: "붙임4" },
+          { key: "SAFETY_WORK_PERMIT",label: "안전작업허가서" },
+          { key: "CONFINED_SPACE",    label: "밀폐공간작업허가서" },
+          { key: "HOLIDAY_WORK",      label: "휴일작업신청서" },
+          { key: "POWER_OUTAGE",      label: "정전작업허가서" },
         ].map(tab => (
           <button key={tab.key} onClick={() => setFilterTab(tab.key)}
             className={`flex-shrink-0 px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
