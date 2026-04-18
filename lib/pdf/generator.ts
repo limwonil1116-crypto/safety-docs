@@ -71,9 +71,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ buffer
     default:               mainElement = React.createElement(SafetyWorkPermitPDF, commonProps);
   }
 
-  // ✅ 첨부파일 페이지 (이미지/PDF URL들을 추가 페이지로)
-  // - 위험성평가표: description === "위험성평가표" 인 DOCUMENT 파일
-  // - 개선대책: PHOTO 타입 (사진)
+  // ✅ 첨부파일 분류
   const riskAssessFiles = attachments.filter(a =>
     a.attachmentType === "DOCUMENT" && a.description === "위험성평가표"
   );
@@ -86,21 +84,24 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ buffer
 
   const hasAttachments = riskAssessFiles.length > 0 || safetyCheckPhotos.length > 0 || safetyCheckDocs.length > 0;
 
-  // 첨부파일이 있으면 함께 렌더링
+  // 첨부파일이 있으면 PDF 병합
   if (hasAttachments) {
+    // @react-pdf/renderer의 renderToBuffer는 Document element를 받음
+    // AttachmentPagesPDF는 Document를 반환하므로 타입 캐스팅 필요
     const attachElement = React.createElement(AttachmentPagesPDF, {
       riskAssessFiles,
       safetyCheckPhotos,
       safetyCheckDocs,
       documentId,
       createdAt,
-    });
-    // 두 Document를 합치기 위해 각각 buffer 생성 후 합침
+    }) as any;  // ✅ 타입 캐스팅으로 타입 에러 해결
+
     const [mainBuffer, attachBuffer] = await Promise.all([
       renderToBuffer(mainElement),
       renderToBuffer(attachElement),
     ]);
-    // PDF 병합 (간단히 PDFLib 없이 buffer concat은 안되므로 PDFLib 사용)
+
+    // pdf-lib으로 PDF 병합
     const { PDFDocument } = await import("pdf-lib");
     const mergedPdf = await PDFDocument.create();
     const mainPdf = await PDFDocument.load(mainBuffer);

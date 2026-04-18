@@ -165,6 +165,7 @@ function ApproverSection({ entries }: { entries: Array<{ roleLabel: string; dept
 }
 
 // ✅ 2번: 첨부파일 페이지들 (위험성평가표, 개선대책 사진/문서)
+// renderToBuffer는 Document 컴포넌트를 직접 받으므로 Document로 감싸서 반환
 export function AttachmentPagesPDF({ riskAssessFiles, safetyCheckPhotos, safetyCheckDocs, documentId, createdAt }: {
   riskAssessFiles: AttachmentInfo[];
   safetyCheckPhotos: AttachmentInfo[];
@@ -172,85 +173,83 @@ export function AttachmentPagesPDF({ riskAssessFiles, safetyCheckPhotos, safetyC
   documentId: string;
   createdAt: string;
 }) {
-  const pages: React.ReactElement[] = [];
-
-  // 위험성평가표 페이지 (각 파일을 1페이지씩)
-  riskAssessFiles.forEach((file, idx) => {
-    const isImage = file.mimeType?.startsWith("image/");
-    pages.push(
-      <Page key={`risk-${idx}`} size="A4" style={{ fontFamily: "NanumGothic", padding: 12, paddingBottom: 24 }}>
-        <View style={{ backgroundColor: C.sectionBg, padding: "6 8", marginBottom: 8, border: "0.8px solid " + C.border }}>
-          <Text style={{ fontSize: 12, fontWeight: "bold", color: C.navy }}>
-            붙임 1. 위험성평가표 {riskAssessFiles.length > 1 ? `(${idx + 1}/${riskAssessFiles.length})` : ""}
-          </Text>
-          <Text style={{ fontSize: 9, color: "#555", marginTop: 2 }}>{file.fileName}</Text>
-        </View>
-        {isImage ? (
-          <Image src={file.fileUrl} style={{ width: "100%", objectFit: "contain", maxHeight: 700 }} />
-        ) : (
-          <View style={{ flex: 1, alignItems: "center", justifyContent: "center", border: "1px solid #ddd", borderRadius: 4 }}>
-            <Text style={{ fontSize: 11, color: "#666", marginBottom: 8 }}>📄 {file.fileName}</Text>
-            <Text style={{ fontSize: 9, color: "#999" }}>PDF/Excel 파일 - 별도 확인 필요</Text>
-            <Text style={{ fontSize: 8, color: "#bbb", marginTop: 4 }}>{file.fileUrl}</Text>
-          </View>
-        )}
-        <Footer documentId={documentId} createdAt={createdAt} />
-      </Page>
-    );
-  });
-
-  // 개선대책 확인자료 (사진) - 한 페이지에 2x3 그리드
-  if (safetyCheckPhotos.length > 0) {
-    const photosPerPage = 6;
-    const chunks: AttachmentInfo[][] = [];
-    for (let i = 0; i < safetyCheckPhotos.length; i += photosPerPage) {
-      chunks.push(safetyCheckPhotos.slice(i, i + photosPerPage));
-    }
-    chunks.forEach((chunk, pageIdx) => {
-      pages.push(
-        <Page key={`photo-${pageIdx}`} size="A4" style={{ fontFamily: "NanumGothic", padding: 12, paddingBottom: 24 }}>
-          <View style={{ backgroundColor: C.sectionBg, padding: "6 8", marginBottom: 8, border: "0.8px solid " + C.border }}>
-            <Text style={{ fontSize: 12, fontWeight: "bold", color: C.navy }}>
-              붙임 2. 개선대책 확인자료 (사진) {chunks.length > 1 ? `(${pageIdx + 1}/${chunks.length})` : ""}
-            </Text>
-            <Text style={{ fontSize: 9, color: "#555", marginTop: 2 }}>{chunk.length}장</Text>
-          </View>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
-            {chunk.map((photo, i) => (
-              <View key={i} style={{ width: "31%", marginBottom: 6 }}>
-                <Image src={photo.fileUrl} style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 2, border: "0.5px solid #ccc" }} />
-                <Text style={{ fontSize: 7.5, color: "#666", marginTop: 2, textAlign: "center" }}>{photo.fileName}</Text>
+  return (
+    <Document>
+      {/* 위험성평가표 페이지 (각 파일을 1페이지씩) */}
+      {riskAssessFiles.map((file, idx) => {
+        const isImage = file.mimeType?.startsWith("image/");
+        return (
+          <Page key={`risk-${idx}`} size="A4" style={{ fontFamily: "NanumGothic", padding: 12, paddingBottom: 24 }}>
+            <View style={{ backgroundColor: C.sectionBg, padding: "6 8", marginBottom: 8, border: "0.8px solid " + C.border }}>
+              <Text style={{ fontSize: 12, fontWeight: "bold", color: C.navy }}>
+                {`붙임 1. 위험성평가표${riskAssessFiles.length > 1 ? ` (${idx + 1}/${riskAssessFiles.length})` : ""}`}
+              </Text>
+              <Text style={{ fontSize: 9, color: "#555", marginTop: 2 }}>{file.fileName}</Text>
+            </View>
+            {isImage ? (
+              <Image src={file.fileUrl} style={{ width: "100%", objectFit: "contain", maxHeight: 700 }} />
+            ) : (
+              <View style={{ flex: 1, alignItems: "center", justifyContent: "center", border: "1px solid #ddd" }}>
+                <Text style={{ fontSize: 11, color: "#666", marginBottom: 8 }}>{file.fileName}</Text>
+                <Text style={{ fontSize: 9, color: "#999" }}>PDF/Excel 파일 - 별도 확인 필요</Text>
               </View>
-            ))}
-          </View>
-          <Footer documentId={documentId} createdAt={createdAt} />
-        </Page>
-      );
-    });
-  }
+            )}
+            <Footer documentId={documentId} createdAt={createdAt} />
+          </Page>
+        );
+      })}
 
-  // 개선대책 문서 파일
-  safetyCheckDocs.forEach((file, idx) => {
-    const isImage = file.mimeType?.startsWith("image/");
-    pages.push(
-      <Page key={`doc-${idx}`} size="A4" style={{ fontFamily: "NanumGothic", padding: 12, paddingBottom: 24 }}>
-        <View style={{ backgroundColor: C.sectionBg, padding: "6 8", marginBottom: 8, border: "0.8px solid " + C.border }}>
-          <Text style={{ fontSize: 12, fontWeight: "bold", color: C.navy }}>개선대책 확인자료 (문서)</Text>
-          <Text style={{ fontSize: 9, color: "#555", marginTop: 2 }}>{file.fileName}</Text>
-        </View>
-        {isImage ? (
-          <Image src={file.fileUrl} style={{ width: "100%", objectFit: "contain", maxHeight: 700 }} />
-        ) : (
-          <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ fontSize: 11, color: "#666" }}>📄 {file.fileName}</Text>
-          </View>
-        )}
-        <Footer documentId={documentId} createdAt={createdAt} />
-      </Page>
-    );
-  });
+      {/* 개선대책 확인자료 (사진) - 한 페이지에 최대 6장 그리드 */}
+      {(() => {
+        if (safetyCheckPhotos.length === 0) return null;
+        const photosPerPage = 6;
+        const chunks: AttachmentInfo[][] = [];
+        for (let i = 0; i < safetyCheckPhotos.length; i += photosPerPage) {
+          chunks.push(safetyCheckPhotos.slice(i, i + photosPerPage));
+        }
+        return chunks.map((chunk, pageIdx) => (
+          <Page key={`photo-${pageIdx}`} size="A4" style={{ fontFamily: "NanumGothic", padding: 12, paddingBottom: 24 }}>
+            <View style={{ backgroundColor: C.sectionBg, padding: "6 8", marginBottom: 8, border: "0.8px solid " + C.border }}>
+              <Text style={{ fontSize: 12, fontWeight: "bold", color: C.navy }}>
+                {`붙임 2. 개선대책 확인자료 (사진)${chunks.length > 1 ? ` (${pageIdx + 1}/${chunks.length})` : ""}`}
+              </Text>
+              <Text style={{ fontSize: 9, color: "#555", marginTop: 2 }}>{`${chunk.length}장`}</Text>
+            </View>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+              {chunk.map((photo, i) => (
+                <View key={i} style={{ width: "31%", marginBottom: 6 }}>
+                  <Image src={photo.fileUrl} style={{ width: "100%", height: 140, objectFit: "cover", border: "0.5px solid #ccc" }} />
+                  <Text style={{ fontSize: 7.5, color: "#666", marginTop: 2, textAlign: "center" }}>{photo.fileName}</Text>
+                </View>
+              ))}
+            </View>
+            <Footer documentId={documentId} createdAt={createdAt} />
+          </Page>
+        ));
+      })()}
 
-  return <Document>{pages}</Document>;
+      {/* 개선대책 문서 파일 */}
+      {safetyCheckDocs.map((file, idx) => {
+        const isImage = file.mimeType?.startsWith("image/");
+        return (
+          <Page key={`doc-${idx}`} size="A4" style={{ fontFamily: "NanumGothic", padding: 12, paddingBottom: 24 }}>
+            <View style={{ backgroundColor: C.sectionBg, padding: "6 8", marginBottom: 8, border: "0.8px solid " + C.border }}>
+              <Text style={{ fontSize: 12, fontWeight: "bold", color: C.navy }}>개선대책 확인자료 (문서)</Text>
+              <Text style={{ fontSize: 9, color: "#555", marginTop: 2 }}>{file.fileName}</Text>
+            </View>
+            {isImage ? (
+              <Image src={file.fileUrl} style={{ width: "100%", objectFit: "contain", maxHeight: 700 }} />
+            ) : (
+              <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 11, color: "#666" }}>{file.fileName}</Text>
+              </View>
+            )}
+            <Footer documentId={documentId} createdAt={createdAt} />
+          </Page>
+        );
+      })}
+    </Document>
+  );
 }
 
 // ===== 붙임1: 안전작업허가서 =====
