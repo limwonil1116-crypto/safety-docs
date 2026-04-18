@@ -860,7 +860,13 @@ export default function ApprovalDetailPage() {
   const clearCanvas = () => { const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext("2d"); if (!ctx) return; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); };
 
   const handleAction = async (action: "APPROVE" | "REJECT") => {
-    if (action === "REJECT" && !reviewOpinion.trim()) { alert("반려 사유를 검토의견란에 입력해주세요."); return; }
+    // ✅ ref에서 최신 입력값 읽기 (uncontrolled textarea)
+    const currentOpinion = (reviewOpinionRef.current?.value ?? reviewOpinion).trim();
+    const currentResult = (reviewResultRef.current?.value ?? reviewResult).trim();
+    if (action === "REJECT" && !currentOpinion) { alert("반려 사유를 검토의견란에 입력해주세요."); return; }
+    // state도 동기화 (반려 확인 모달에서 사용)
+    if (currentOpinion) setReviewOpinion(currentOpinion);
+    if (currentResult) setReviewResult(currentResult);
     setPendingAction(action); setShowRejectConfirm(false); setShowApproveConfirm(false);
     setShowSign(true); initCanvas();
   };
@@ -875,8 +881,9 @@ export default function ApprovalDetailPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           action: pendingAction, 
-          comment: (reviewOpinionRef.current?.value ?? reviewOpinion).trim() || null, 
-          reviewResult: (reviewResultRef.current?.value ?? reviewResult).trim() || null, 
+          // ✅ ref 우선 → state fallback (handleAction에서 state 동기화됨)
+          comment: (reviewOpinionRef.current?.value || reviewOpinion).trim() || null, 
+          reviewResult: (reviewResultRef.current?.value || reviewResult).trim() || null, 
           signatureData 
         }),
       });
