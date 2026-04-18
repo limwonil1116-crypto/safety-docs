@@ -415,6 +415,11 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
   const [lat, setLat] = useState<number | null>(initialLat);
   const [lng, setLng] = useState<number | null>(initialLng);
   const [gpsLoading, setGpsLoading] = useState(false);
+  // ✅ 클로저 문제 해결: setAddress를 ref로 저장
+  const setAddressRef = useRef(setAddress);
+  const setLatRef = useRef(setLat);
+  const setLngRef = useRef(setLng);
+  useEffect(() => { setAddressRef.current = setAddress; setLatRef.current = setLat; setLngRef.current = setLng; });
 
   useEffect(() => {
     const initMap = () => { window.kakao.maps.load(() => setMapLoaded(true)); };
@@ -445,8 +450,12 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
         if (window.kakao.maps.services) {
           const geocoder = new window.kakao.maps.services.Geocoder();
           geocoder.coord2Address(gLng, gLat, (result: any, status: any) => {
-            if (status === window.kakao.maps.services.Status.OK)
-              setAddress(result[0].road_address ? result[0].road_address.address_name : result[0].address.address_name);
+            if (status === window.kakao.maps.services.Status.OK) {
+              const addr = result[0].road_address
+                ? result[0].road_address.address_name
+                : result[0].address.address_name;
+              setAddressRef.current(addr);
+            }
           });
         }
         setGpsLoading(false);
@@ -455,12 +464,18 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
     window.kakao.maps.event.addListener(map, "click", (mouseEvent: any) => {
       const latlng = mouseEvent.latLng; marker.setPosition(latlng);
       const newLat = latlng.getLat(); const newLng = latlng.getLng();
-      setLat(newLat); setLng(newLng);
-      if (!window.kakao.maps.services) { return; } // services 없으면 주소 변경 안 함 (좌표 표시 방지)
+      // ✅ ref 사용으로 클로저 문제 해결
+      setLatRef.current(newLat); setLngRef.current(newLng);
+      if (!window.kakao.maps.services) { return; }
       const geocoder = new window.kakao.maps.services.Geocoder();
       geocoder.coord2Address(newLng, newLat, (result: any, status: any) => {
-        if (status === window.kakao.maps.services.Status.OK)
-          setAddress(result[0].road_address ? result[0].road_address.address_name : result[0].address.address_name);
+        if (status === window.kakao.maps.services.Status.OK) {
+          const addr = result[0].road_address
+            ? result[0].road_address.address_name
+            : result[0].address.address_name;
+          // ✅ ref로 최신 setter 호출 → 상단 input 주소 업데이트
+          setAddressRef.current(addr);
+        }
       });
     });
   }, [mapLoaded]);
@@ -489,7 +504,7 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
           <h2 className="text-base font-bold text-gray-900">작업 위치 지정</h2>
           <button onClick={onClose} className="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
-        <div className="p-5 pb-10 space-y-4">
+        <div className="p-5 pb-28 space-y-4">
           <div className="flex gap-2">
             <input type="text" value={address} readOnly className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-700" />
             <button onClick={handleAddressSearch} className="px-4 py-2.5 rounded-xl text-white text-sm font-medium" style={{ background: "#2563eb" }}>주소 검색</button>
@@ -516,6 +531,7 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
             className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-40" style={{ background: "#2563eb" }}>
             ✓ 위치로 설정
           </button>
+          <div className="h-4" />
         </div>
       </div>
     </div>
