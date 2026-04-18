@@ -501,15 +501,15 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
             </div>
           )}
           <div className="rounded-2xl overflow-hidden border border-gray-200">
-            <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 text-xs text-gray-500">지도를 탭하면 위치를 직접 지정할 수 있습니다</div>
+            <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 text-xs text-gray-500">📍 지도를 탭하면 위치 지정 · 마커 위에 주소가 표시됩니다</div>
             <div ref={mapRef} style={{ width: "100%", height: "280px" }}>
               {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-50"><p className="text-sm text-gray-400">지도 로딩 중...</p></div>}
             </div>
           </div>
-          {lat && lng && (
-            <div className="bg-blue-50 rounded-xl px-3 py-2 text-xs text-blue-700 flex items-center gap-2">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              {address || "위치 선택됨"} ({lat.toFixed(5)}, {lng.toFixed(5)})
+          {lat && lng && address && !address.match(/^[0-9]/) && (
+            <div className="bg-gray-50 rounded-xl px-3 py-2 text-xs text-gray-900 font-medium flex items-center gap-2 border border-gray-200">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              {address}
             </div>
           )}
           <button onClick={() => { if (lat && lng) onConfirm(address, lat, lng); }} disabled={!lat || !lng}

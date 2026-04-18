@@ -903,20 +903,32 @@ export default function ApprovalDetailPage() {
           <label className="block text-xs font-medium text-gray-600 mb-1.5">
             검토의견 {doc.currentApprovalOrder === 1 && <span className="text-red-500 text-xs">(반려 시 필수)</span>}
           </label>
-          <textarea value={reviewOpinion} onChange={e => setReviewOpinion(e.target.value)}
+          <textarea
+            defaultValue={reviewOpinion}
+            onChange={e => {
+              if ((e.nativeEvent as any).isComposing) return;
+              setReviewOpinion(e.target.value);
+            }}
+            onBlur={e => setReviewOpinion(e.target.value)}
+            onCompositionEnd={e => setReviewOpinion((e.target as HTMLTextAreaElement).value)}
             placeholder="검토 의견을 입력해주세요 (반려 시 필수)"
             rows={3}
-            onCompositionStart={e => e.stopPropagation()}
-            onCompositionEnd={e => { e.stopPropagation(); }}
+            key={`opinion-${reviewOpinion.length === 0 ? 'empty' : 'filled'}`}
             className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1.5">조치결과</label>
-          <textarea value={reviewResult} onChange={e => setReviewResult(e.target.value)}
+          <textarea
+            defaultValue={reviewResult}
+            onChange={e => {
+              if ((e.nativeEvent as any).isComposing) return;
+              setReviewResult(e.target.value);
+            }}
+            onBlur={e => setReviewResult(e.target.value)}
+            onCompositionEnd={e => setReviewResult((e.target as HTMLTextAreaElement).value)}
             placeholder="조치결과를 입력해주세요"
             rows={2}
-            onCompositionStart={e => e.stopPropagation()}
-            onCompositionEnd={e => { e.stopPropagation(); }}
+            key={`result-${reviewResult.length === 0 ? 'empty' : 'filled'}`}
             className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
         </div>
       </div>

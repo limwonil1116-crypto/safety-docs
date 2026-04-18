@@ -80,26 +80,49 @@ export async function POST(
     if (file.size > 20 * 1024 * 1024)
       return NextResponse.json({ error: "파일 크기는 20MB 이하여야 합니다." }, { status: 400 });
 
+    // ✅ 1번: 허용 타입 확장 - jfif, heic, webp 등 추가
     const allowedTypes = [
-      "image/jpeg", "image/png", "image/gif", "image/webp", "image/heic",
+      // 이미지
+      "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp",
+      "image/heic", "image/heif", "image/bmp", "image/tiff",
+      // jfif는 image/jpeg로 인식되지만 명시적 추가
+      "image/jfif",
+      // 문서
       "application/pdf",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/msword",
     ];
-    if (!allowedTypes.includes(file.type))
+
+    // ✅ mimeType 체크 완화: 이미지는 image/로 시작하면 모두 허용
+    const isAllowed = allowedTypes.includes(file.type) ||
+      file.type.startsWith("image/") ||
+      file.type === "application/pdf" ||
+      file.type.includes("excel") ||
+      file.type.includes("spreadsheet");
+
+    if (!isAllowed)
       return NextResponse.json(
-        { error: "지원하지 않는 파일 형식입니다. (JPG, PNG, PDF, Excel만 가능)" },
+        { error: `지원하지 않는 파일 형식입니다. (${file.type}) JPG, PNG, PDF, Excel만 가능` },
         { status: 400 }
       );
 
     const supabase = getSupabase();
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const filePath = `${documentId}/${Date.now()}_${file.name}`;
+
+    // 파일 확장자 추출
+    const ext = file.name.split(".").pop()?.toLowerCase() || "bin";
+    const safeFileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    const filePath = `${documentId}/${safeFileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from(BUCKET)
-      .upload(filePath, buffer, { contentType: file.type, upsert: false });
+      .upload(filePath, buffer, {
+        contentType: file.type || "application/octet-stream",
+        upsert: false,
+      });
 
     if (uploadError) {
       console.error("Supabase 업로드 오류:", uploadError);
@@ -117,7 +140,7 @@ export async function POST(
         fileName: file.name,
         fileUrl,
         fileSize: file.size,
-        mimeType: file.type,
+        mimeType: file.type || "application/octet-stream",
         attachmentType: attachmentType as "PHOTO" | "DOCUMENT",
         sortOrder,
         description: description || null,
@@ -159,7 +182,6 @@ export async function DELETE(
     if (!attachment)
       return NextResponse.json({ error: "파일을 찾을 수 없습니다." }, { status: 404 });
 
-    // Supabase Storage에서 삭제
     const supabase = getSupabase();
     const urlParts = attachment.fileUrl.split(`/${BUCKET}/`);
     if (urlParts.length > 1) {

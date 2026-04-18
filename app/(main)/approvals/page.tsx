@@ -32,12 +32,13 @@ function getStatusKey(doc: ApprovalDoc): string {
   return doc.status;
 }
 
+// ✅ 4번: 법정서류 제목으로 탭 변경
 const TABS = [
   { key: "ALL",                label: "전체" },
-  { key: "SAFETY_WORK_PERMIT", label: "붙임1" },
-  { key: "CONFINED_SPACE",     label: "붙임2" },
-  { key: "HOLIDAY_WORK",       label: "붙임3" },
-  { key: "POWER_OUTAGE",       label: "붙임4" },
+  { key: "SAFETY_WORK_PERMIT", label: "안전작업허가서" },
+  { key: "CONFINED_SPACE",     label: "밀폐공간작업허가서" },
+  { key: "HOLIDAY_WORK",       label: "휴일작업신청서" },
+  { key: "POWER_OUTAGE",       label: "정전작업허가서" },
 ];
 
 const DATE_FILTERS = [
@@ -46,14 +47,7 @@ const DATE_FILTERS = [
   { key: "THIS_MONTH", label: "이번 달" },
 ];
 
-// ===== 결재 단계 아이콘 플로우 =====
 function ApprovalStepFlow({ doc }: { doc: ApprovalDoc }) {
-  const statusKey = getStatusKey(doc);
-
-  // 각 단계 상태 계산
-  // step1: 신청 (항상 완료 - 제출된 경우)
-  // step2: 1단계 검토
-  // step3: 2단계 최종허가
   const step1 = doc.status !== "DRAFT" ? "done" : "active";
 
   let step2: "done" | "active" | "pending" | "rejected" = "pending";
@@ -85,17 +79,13 @@ function ApprovalStepFlow({ doc }: { doc: ApprovalDoc }) {
   const c1 = stepColor(step1);
   const c2 = stepColor(step2);
   const c3 = stepColor(step3);
-
-  // 연결선 색상 (앞 단계가 done이면 파란색)
   const line1Color = step1 === "done" ? "#2563eb" : "#e5e7eb";
   const line2Color = step2 === "done" ? "#2563eb" : "#e5e7eb";
 
   return (
     <div className="flex items-center gap-1 mt-2.5">
-      {/* 1단계: 신청 */}
       <div className="flex flex-col items-center gap-0.5">
-        <div className="w-8 h-8 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: c1.bg }}>
+        <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: c1.bg }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c1.icon} strokeWidth="2.5" strokeLinecap="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
@@ -106,10 +96,8 @@ function ApprovalStepFlow({ doc }: { doc: ApprovalDoc }) {
         <span className="text-[9px] text-gray-500 font-medium">신청</span>
       </div>
 
-      {/* 연결선 1 */}
       <div className="flex-1 h-0.5 mb-3.5 rounded" style={{ backgroundColor: line1Color }} />
 
-      {/* 2단계: 검토 */}
       <div className="flex flex-col items-center gap-0.5">
         <div className="w-8 h-8 rounded-full flex items-center justify-center relative"
           style={{ backgroundColor: c2.bg, boxShadow: step2 === "active" ? `0 0 0 3px ${c2.bg}44` : undefined }}>
@@ -130,10 +118,8 @@ function ApprovalStepFlow({ doc }: { doc: ApprovalDoc }) {
         <span className="text-[9px] text-gray-500 font-medium">검토</span>
       </div>
 
-      {/* 연결선 2 */}
       <div className="flex-1 h-0.5 mb-3.5 rounded" style={{ backgroundColor: line2Color }} />
 
-      {/* 3단계: 허가 */}
       <div className="flex flex-col items-center gap-0.5">
         <div className="w-8 h-8 rounded-full flex items-center justify-center relative"
           style={{ backgroundColor: c3.bg, boxShadow: step3 === "active" ? `0 0 0 3px ${c3.bg}44` : undefined }}>
@@ -154,7 +140,6 @@ function ApprovalStepFlow({ doc }: { doc: ApprovalDoc }) {
         <span className="text-[9px] text-gray-500 font-medium">허가</span>
       </div>
 
-      {/* 현재 담당자 표시 */}
       {doc.current_approver_name && (
         <div className="ml-2 text-[10px] text-amber-600 font-medium shrink-0 max-w-[70px] truncate">
           {doc.current_approver_name}
@@ -230,13 +215,14 @@ export default function ApprovalsPage() {
         </div>
       </div>
 
+      {/* ✅ 4번: 법정서류 이름 탭 */}
       <div className="bg-white border-b border-gray-200 flex overflow-x-auto">
         {TABS.map((tab) => {
           const count = tab.key === "ALL" ? (typeCounts.ALL ?? 0) : (typeCounts[tab.key] ?? 0);
           return (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={`flex-shrink-0 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.key ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500"
+              className={`flex-shrink-0 px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === tab.key ? "border-blue-600 text-blue-600" : "border-transparent text-gray-700"
               }`}>
               {tab.label}
               {count > 0 && (
@@ -257,7 +243,7 @@ export default function ApprovalsPage() {
             </svg>
           </div>
           <input value={search} onChange={(e) => setSearch(e.target.value)}
-            placeholder="과업명, 업체명으로 검색하세요"
+            placeholder="용역명, 업체명으로 검색하세요"
             className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
       </div>
@@ -304,7 +290,7 @@ export default function ApprovalsPage() {
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                       </svg>
-                      작성 중 - 과업 페이지에서 이어서 작성
+                      작성 중 - 용역 페이지에서 이어서 작성
                     </div>
                   )}
                   {isMyTurn && (
@@ -329,8 +315,6 @@ export default function ApprovalsPage() {
                     <span>작성자: {doc.writer_name}</span>
                     {doc.submitted_at && <><span>·</span><span>{formatDate(doc.submitted_at)}</span></>}
                   </div>
-
-                  {/* 결재 단계 아이콘 플로우 - DRAFT 제외 */}
                   {doc.status !== "DRAFT" && <ApprovalStepFlow doc={doc} />}
                 </div>
               </Link>
