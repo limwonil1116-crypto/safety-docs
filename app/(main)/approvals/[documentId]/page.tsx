@@ -747,6 +747,18 @@ export default function ApprovalDetailPage() {
   // ✅ IME 버그 해결: textarea ref로 직접 DOM 접근
   const reviewOpinionRef = useRef<HTMLTextAreaElement>(null);
   const reviewResultRef = useRef<HTMLTextAreaElement>(null);
+
+  // ✅ state → ref DOM 동기화 (fetchData 완료 후 textarea에 값 반영)
+  useEffect(() => {
+    if (reviewOpinionRef.current && reviewOpinion) {
+      reviewOpinionRef.current.value = reviewOpinion;
+    }
+  }, [reviewOpinion]);
+  useEffect(() => {
+    if (reviewResultRef.current && reviewResult) {
+      reviewResultRef.current.value = reviewResult;
+    }
+  }, [reviewResult]);
   const [step1ApproverName, setStep1ApproverName] = useState("");
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
@@ -776,8 +788,16 @@ export default function ApprovalDetailPage() {
       const line1 = lines.find((l: ApprovalLine) => l.approvalOrder === 1);
       if (line1?.approverName) setStep1ApproverName(line1.approverName);
       const fd = docObj.formDataJson ?? {};
-      if (fd.reviewOpinion) setReviewOpinion(fd.reviewOpinion as string);
-      if (fd.reviewResult) setReviewResult(fd.reviewResult as string);
+      // ✅ 2단계 검토자가 작성한 comment를 3단계에서도 표시
+      // 우선순위: line1.comment(결재선 저장값) > formDataJson.reviewOpinion
+      const line1Data = lines.find((l: ApprovalLine) => l.approvalOrder === 1);
+      const initialOpinion = (line1Data?.comment || fd.reviewOpinion || "") as string;
+      const initialResult = (fd.reviewResult || "") as string;
+      setReviewOpinion(initialOpinion);
+      setReviewResult(initialResult);
+      // uncontrolled textarea ref 초기값도 설정
+      if (reviewOpinionRef.current) reviewOpinionRef.current.value = initialOpinion;
+      if (reviewResultRef.current) reviewResultRef.current.value = initialResult;
       const taskRes = await fetch(`/api/tasks/${docObj.taskId}`);
       const taskData = await taskRes.json();
       if (taskRes.ok) setTaskName(taskData.task?.name ?? "");
