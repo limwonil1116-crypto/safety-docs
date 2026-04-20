@@ -20,7 +20,7 @@ const C = {
 
 // ✅ 1번: 여백 최소화 + 폰트/표 크기 확대
 const S = StyleSheet.create({
-  page: { fontFamily: "NanumGothic", fontSize: 10, paddingTop: 8, paddingBottom: 20, paddingHorizontal: 12, color: "#000" },
+  page: { fontFamily: "NanumGothic", fontSize: 10, paddingTop: 6, paddingBottom: 18, paddingHorizontal: 10, color: "#000" },
   titleBox: { border: "1.5px solid " + C.black, paddingVertical: 13, marginBottom: 3 },
   titleMain: { fontSize: 20, fontWeight: "bold", textAlign: "center", letterSpacing: 3 },
   secHeader: { backgroundColor: C.sectionBg, border: "0.8px solid " + C.border, padding: "5 6", fontSize: 10, fontWeight: "bold", marginBottom: 0 },
@@ -109,14 +109,14 @@ function ApplicantRow({ applicantCompany, applicantTitle, applicantName, signatu
   return (
     <View style={[S.tr, { alignItems: "stretch", minHeight: 36 }]}>
       <Text style={[S.il, { width: labelWidth }]}>신  청  인</Text>
-      <View style={{ flex: 1.5, borderRight: "0.5px solid " + C.border, padding: "4 5", justifyContent: "center" }}>
-        <Text style={{ fontSize: 9.5 }}>{`(업체명) ${applicantCompany || ""}`}</Text>
+      <View style={{ flex: 1.5, borderRight: "0.5px solid " + C.border, padding: "4 4", justifyContent: "center" }}>
+        <Text style={{ fontSize: 9 }}>{`(업체명) ${applicantCompany || ""}`}</Text>
       </View>
-      <View style={{ flex: 1, borderRight: "0.5px solid " + C.border, padding: "4 5", justifyContent: "center" }}>
-        <Text style={{ fontSize: 9.5 }}>{`(직책) ${applicantTitle || ""}`}</Text>
+      <View style={{ flex: 1, borderRight: "0.5px solid " + C.border, padding: "4 4", justifyContent: "center" }}>
+        <Text style={{ fontSize: 9 }}>{`(직책) ${applicantTitle || ""}`}</Text>
       </View>
-      <View style={{ flex: 1, borderRight: "0.5px solid " + C.border, padding: "4 5", justifyContent: "center" }}>
-        <Text style={{ fontSize: 9.5 }}>{`(성명) ${applicantName || ""}`}</Text>
+      <View style={{ flex: 1, borderRight: "0.5px solid " + C.border, padding: "4 4", justifyContent: "center" }}>
+        <Text style={{ fontSize: 9 }}>{`(성명) ${applicantName || ""}`}</Text>
       </View>
       <View style={{ width: 95, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "4 4", gap: 4 }}>
         <Text style={{ fontSize: 8, color: "#888" }}>(서명)</Text>
@@ -272,7 +272,7 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
     { key: "riskConfinedSpace", label: "밀폐공간(협소포함)작업" },
     { key: "riskPowerOutage",   label: "정전작업" },
     { key: "riskFireWork",      label: "화기작업" },
-    { key: "riskOther",         label: `기타(별지에 별기재)${fd.riskOtherDetail ? ": " + fd.riskOtherDetail : ""}` },
+    { key: "riskOther",         label: `기타(별지에 별기재)` },
   ];
 
   const relatedWorkByType: Array<{ typeName: string; details: string[] }> = [];
@@ -291,6 +291,8 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
   if (fd.riskConfinedSpace && fd.riskConfinedSpaceDetail) relatedWorkByType.push({ typeName: "밀폐공간", details: [fd.riskConfinedSpaceDetail as string] });
   if (fd.riskPowerOutage && fd.riskPowerOutageDetail) relatedWorkByType.push({ typeName: "정전작업", details: [fd.riskPowerOutageDetail as string] });
   if (fd.riskFireWork && fd.riskFireWorkDetail) relatedWorkByType.push({ typeName: "화기작업", details: [fd.riskFireWorkDetail as string] });
+  // ✅ 3번: 기타 세부내용도 오른쪽 관련작업(장소) 칸으로
+  if (fd.riskOther && fd.riskOtherDetail) relatedWorkByType.push({ typeName: "기타", details: [fd.riskOtherDetail as string] });
 
   const factors = [
     { key: "factorNarrowAccess",  label: "접근통로 협소" },
@@ -334,11 +336,11 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
           </View>
           <View style={S.tr}>
             <Text style={[S.il, { width: 58 }]}>작업 내용</Text>
-            <Text style={[S.iv, { borderRight: 0, minHeight: 28 }]}>{fd.workContent || ""}</Text>
+            <Text style={[S.iv, { borderRight: 0, minHeight: 36 }]}>{fd.workContent || ""}</Text>
           </View>
           <View style={S.trLast}>
             <Text style={[S.il, { width: 58 }]}>작업참여자</Text>
-            <Text style={[S.iv, { borderRight: 0, minHeight: 24 }]}>{fd.participants || ""}</Text>
+            <Text style={[S.iv, { borderRight: 0, minHeight: 28 }]}>{fd.participants || ""}</Text>
           </View>
         </View>
 
@@ -351,7 +353,7 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
             <Text style={[S.th, { flex: 1 }]}>관련작업(장소)</Text>
             <Text style={[S.th, { flex: 1, borderRight: 0 }]}>발생하는 위험요소</Text>
           </View>
-          <View style={[S.trLast, { minHeight: 110 }]}>
+          <View style={[S.trLast, { minHeight: 140 }]}>
             <View style={[S.td, { width: 135 }]}>
               {riskTypes.map(item => (
                 <View key={item.key} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5 }}>
@@ -389,9 +391,9 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
           </View>
           {riskRows.map((row, idx) => (
             <View key={idx} style={idx === riskRows.length - 1 ? S.trLast : S.tr}>
-              <Text style={[S.td, { flex: 3, minHeight: 24 }]}>{row.riskFactor || ""}</Text>
-              <Text style={[S.td, { flex: 3, minHeight: 24 }]}>{row.improvement || ""}</Text>
-              <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 24 }]}>{row.disasterType || ""}</Text>
+              <Text style={[S.td, { flex: 3, minHeight: 28 }]}>{row.riskFactor || ""}</Text>
+              <Text style={[S.td, { flex: 3, minHeight: 28 }]}>{row.improvement || ""}</Text>
+              <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 28 }]}>{row.disasterType || ""}</Text>
             </View>
           ))}
         </View>
@@ -403,8 +405,8 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
             <Text style={[S.th, { flex: 1, borderRight: 0 }]}>조치결과</Text>
           </View>
           <View style={S.tr}>
-            <Text style={[S.td, { flex: 1, minHeight: 38 }]}>{fd.reviewOpinion || ""}</Text>
-            <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 38 }]}>{fd.reviewResult || ""}</Text>
+            <Text style={[S.td, { flex: 1, minHeight: 50 }]}>{fd.reviewOpinion || ""}</Text>
+            <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 50 }]}>{fd.reviewResult || ""}</Text>
           </View>
           <View style={S.tr}>
             <Text style={[S.il, { width: 78 }]}>최종 검토자</Text>
@@ -477,11 +479,11 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
           ].map((row, i, arr) => (
             <View key={i} style={i === arr.length - 1 ? S.trLast : S.tr}>
               <Text style={[S.il, { width: 100 }]}>{row.label}</Text>
-              <Text style={[S.iv, { borderRight: 0, minHeight: 22 }]}>{row.val}</Text>
+              <Text style={[S.iv, { borderRight: 0, minHeight: 26 }]}>{row.val}</Text>
             </View>
           ))}
         </View>
-        <Text style={{ fontSize: 9, textAlign: "center", marginBottom: 3 }}>※ 작업관계자는 아래의 조건사항을 이행하여야 합니다</Text>
+        <Text style={{ fontSize: 9, textAlign: "center", marginBottom: 3 }}>위 작업을 다음의 조건하에서만 허가함.</Text>
         <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "5 7", marginBottom: 2 }}>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Text style={{ fontSize: 10, fontWeight: "bold" }}>1. 화기작업 허가 필요여부 :   </Text>
@@ -505,9 +507,9 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
           </View>
           {checks.map((item, idx) => (
             <View key={idx} style={idx === checks.length - 1 ? S.trLast : S.tr}>
-              <Text style={[S.td, { flex: 4, minHeight: 22, backgroundColor: idx % 2 === 1 ? C.rowEven : C.white }]}>{`▶ ${item.label}`}</Text>
-              <Text style={[S.tdc, { flex: 1, minHeight: 22, backgroundColor: item.applicable === "해당" ? "#dce6f0" : C.white }]}>{item.applicable || ""}</Text>
-              <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 22, backgroundColor: item.result ? "#ebf3e8" : C.white }]}>{item.result || ""}</Text>
+              <Text style={[S.td, { flex: 4, minHeight: 26, backgroundColor: idx % 2 === 1 ? C.rowEven : C.white }]}>{`▶ ${item.label}`}</Text>
+              <Text style={[S.tdc, { flex: 1, minHeight: 26, backgroundColor: item.applicable === "해당" ? "#dce6f0" : C.white }]}>{item.applicable || ""}</Text>
+              <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 26, backgroundColor: item.result ? "#ebf3e8" : C.white }]}>{item.result || ""}</Text>
             </View>
           ))}
         </View>
@@ -583,9 +585,9 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
           </View>
           {participants.map((p, idx) => (
             <View key={idx} style={idx === participants.length - 1 ? S.trLast : S.tr}>
-              <Text style={[S.td, { flex: 2, minHeight: 22 }]}>{p.role || ""}</Text>
-              <Text style={[S.td, { flex: 2, minHeight: 22 }]}>{p.name || ""}</Text>
-              <Text style={[S.td, { flex: 2, borderRight: 0, minHeight: 22 }]}>{p.phone || ""}</Text>
+              <Text style={[S.td, { flex: 2, minHeight: 26 }]}>{p.role || ""}</Text>
+              <Text style={[S.td, { flex: 2, minHeight: 26 }]}>{p.name || ""}</Text>
+              <Text style={[S.td, { flex: 2, borderRight: 0, minHeight: 26 }]}>{p.phone || ""}</Text>
             </View>
           ))}
         </View>
@@ -653,11 +655,11 @@ export function PowerOutagePDF({ formData: fd, approvalLines, documentId, create
           ].map((row, i, arr) => (
             <View key={i} style={i === arr.length - 1 ? S.trLast : S.tr}>
               <Text style={[S.il, { width: 102 }]}>{row.label}</Text>
-              <Text style={[S.iv, { borderRight: 0, minHeight: 22 }]}>{row.val}</Text>
+              <Text style={[S.iv, { borderRight: 0, minHeight: 26 }]}>{row.val}</Text>
             </View>
           ))}
         </View>
-        <Text style={{ fontSize: 10, textAlign: "center", marginBottom: 4 }}>※ 작업관계자는 아래의 조건사항을 이행하여야 합니다</Text>
+        <Text style={{ fontSize: 10, textAlign: "center", marginBottom: 4 }}>위 작업을 다음의 조건하에서만 허가함.</Text>
         <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "5 7", marginBottom: 2 }}>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Text style={{ fontSize: 10, fontWeight: "bold" }}>1. 밀폐공간작업 허가 필요여부 :   </Text>
@@ -681,9 +683,9 @@ export function PowerOutagePDF({ formData: fd, approvalLines, documentId, create
           </View>
           {checks.map((item, idx) => (
             <View key={idx} style={idx === checks.length - 1 ? S.trLast : S.tr}>
-              <Text style={[S.td, { flex: 4, minHeight: 24, backgroundColor: idx % 2 === 1 ? C.rowEven : C.white }]}>{`▶ ${item.label}`}</Text>
-              <Text style={[S.tdc, { flex: 1, minHeight: 24, backgroundColor: item.applicable === "해당" ? "#dce6f0" : C.white }]}>{item.applicable || ""}</Text>
-              <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 24, backgroundColor: item.result ? "#ebf3e8" : C.white }]}>{item.result || ""}</Text>
+              <Text style={[S.td, { flex: 4, minHeight: 28, backgroundColor: idx % 2 === 1 ? C.rowEven : C.white }]}>{`▶ ${item.label}`}</Text>
+              <Text style={[S.tdc, { flex: 1, minHeight: 28, backgroundColor: item.applicable === "해당" ? "#dce6f0" : C.white }]}>{item.applicable || ""}</Text>
+              <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 28, backgroundColor: item.result ? "#ebf3e8" : C.white }]}>{item.result || ""}</Text>
             </View>
           ))}
         </View>
@@ -697,10 +699,10 @@ export function PowerOutagePDF({ formData: fd, approvalLines, documentId, create
           </View>
           {inspRows.map((item, idx) => (
             <View key={idx} style={idx === inspRows.length - 1 ? S.trLast : S.tr}>
-              <Text style={[S.td, { flex: 1, minHeight: 24 }]}>{item.equipment || ""}</Text>
-              <Text style={[S.td, { flex: 1, minHeight: 24 }]}>{item.cutoffConfirmer || ""}</Text>
-              <Text style={[S.td, { flex: 1, minHeight: 24 }]}>{item.electrician || ""}</Text>
-              <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 24 }]}>{item.siteRepair || ""}</Text>
+              <Text style={[S.td, { flex: 1, minHeight: 28 }]}>{item.equipment || ""}</Text>
+              <Text style={[S.td, { flex: 1, minHeight: 28 }]}>{item.cutoffConfirmer || ""}</Text>
+              <Text style={[S.td, { flex: 1, minHeight: 28 }]}>{item.electrician || ""}</Text>
+              <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 28 }]}>{item.siteRepair || ""}</Text>
             </View>
           ))}
         </View>
