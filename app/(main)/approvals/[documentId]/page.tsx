@@ -1023,8 +1023,26 @@ export default function ApprovalDetailPage() {
       {isMyTurn && (
         <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-3 pb-4">
           <div className="flex gap-3">
-            <button onClick={() => setShowRejectConfirm(true)} className="flex-1 py-3 rounded-xl border-2 border-red-200 text-sm font-medium text-red-600">반려</button>
-            <button onClick={() => setShowApproveConfirm(true)} className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#16a34a" }}>
+            <button onClick={() => {
+                // ✅ 모달 열기 전 textarea 값 먼저 저장
+                const opinion = (reviewOpinionRef.current?.value ?? "").trim();
+                const result = (reviewResultRef.current?.value ?? "").trim();
+                setPendingOpinion(opinion);
+                setPendingResult(result);
+                setReviewOpinion(opinion);
+                setReviewResult(result);
+                setShowRejectConfirm(true);
+              }} className="flex-1 py-3 rounded-xl border-2 border-red-200 text-sm font-medium text-red-600">반려</button>
+            <button onClick={() => {
+                // ✅ 모달 열기 전 textarea 값 먼저 저장
+                const opinion = (reviewOpinionRef.current?.value ?? "").trim();
+                const result = (reviewResultRef.current?.value ?? "").trim();
+                setPendingOpinion(opinion);
+                setPendingResult(result);
+                setReviewOpinion(opinion);
+                setReviewResult(result);
+                setShowApproveConfirm(true);
+              }} className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#16a34a" }}>
               {doc.currentApprovalOrder === 1 ? "검토완료" : "최종 승인"}
             </button>
           </div>
