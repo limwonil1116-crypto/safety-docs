@@ -895,30 +895,38 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
 
 // ===== 붙임2/3/4 Forms =====
 const CONFINED_CHECKS: SafetyCheckItem[] = [
-  { label: "안전담당자 지정 및 감독자 배치 여부", applicable: "", result: "" },
-  { label: "환기설비, 환기팬, 산소농도, 유해물질 점검완료", applicable: "", result: "" },
-  { label: "관련기관의 안전정보 확인", applicable: "", result: "" },
-  { label: "배수로확인 및 잠금밸브 점검", applicable: "", result: "" },
-  { label: "구명로프 설치", applicable: "", result: "" },
-  { label: "안전모 및 안전장비 이용", applicable: "", result: "" },
-  { label: "작업중간에 전기안전장치 사용", applicable: "", result: "" },
-  { label: "긴급연락처 공지", applicable: "", result: "" },
-  { label: "대피장소 및 대피경로 여부 확인", applicable: "", result: "" },
-  { label: "긴급대응팀 비상대기 및 긴급서명 설치", applicable: "", result: "" },
-  { label: "환기장치 및 안전교육 실시", applicable: "", result: "" },
-  { label: "작업 전 안전교육실시 (TBM 등)", applicable: "", result: "" },
-  { label: "작업복장 이용", applicable: "", result: "" },
+  { label: "안전담당자지정 및 감시인 배치", applicable: "", result: "" },
+  { label: "밸브차단, 맹판설치, 불활성가스 치환, 용기세정", applicable: "", result: "" },
+  { label: "●측정자의 자격조건 확인", applicable: "", result: "" },
+  { label: "산소농도 및 유해가스농도 (계속)측정", applicable: "", result: "" },
+  { label: "환기시설 설치", applicable: "", result: "" },
+  { label: "전화 및 무선기기 구비", applicable: "", result: "" },
+  { label: "방폭형 전기기계기구의 사용", applicable: "", result: "" },
+  { label: "소화기 비치", applicable: "", result: "" },
+  { label: "●관계자외 출입차단 금지 조치", applicable: "", result: "" },
+  { label: "공기공급식 호흡용보호구, 보호복, 보호장갑 등 비치", applicable: "", result: "" },
+  { label: "대피용 기구 및 응급구조장비 구비", applicable: "", result: "" },
+  { label: "작업 전 안전교육 실시(TBM 등)", applicable: "", result: "" },
+  { label: "●특별교육 이수", applicable: "", result: "" },
 ];
+interface GasMeasureRow { time: string; substances: string; measurer: string; entryCount: string; exitCount: string; }
 interface Form2 {
   requestDate: string; workStartDate: string; workEndDate: string; workStartTime: string; workEndTime: string;
   serviceName: string; applicantCompany: string; applicantTitle: string; applicantName: string;
   workLocation: string; workContent: string; entryList: string;
-  needFireWork: string; useInternalEngine: string; safetyChecks: SafetyCheckItem[]; specialMeasures: string;
+  needFireWork: string; useInternalEngine: string; safetyChecks: SafetyCheckItem[];
+  gasMeasureRows: GasMeasureRow[]; specialMeasures: string;
 }
+const defaultGasMeasureRows: GasMeasureRow[] = [
+  { time: "전", substances: "", measurer: "", entryCount: "", exitCount: "" },
+  { time: "중", substances: "", measurer: "", entryCount: "", exitCount: "" },
+  { time: "후", substances: "", measurer: "", entryCount: "", exitCount: "" },
+];
 const defaultForm2: Form2 = {
   requestDate: new Date().toISOString().split("T")[0], workStartDate: "", workEndDate: "", workStartTime: "09:00", workEndTime: "18:00",
   serviceName: "", applicantCompany: "", applicantTitle: "", applicantName: "", workLocation: "", workContent: "", entryList: "",
-  needFireWork: "", useInternalEngine: "", safetyChecks: CONFINED_CHECKS.map(c => ({ ...c })), specialMeasures: "",
+  needFireWork: "", useInternalEngine: "", safetyChecks: CONFINED_CHECKS.map(c => ({ ...c })),
+  gasMeasureRows: defaultGasMeasureRows.map(r => ({ ...r })), specialMeasures: "",
 };
 function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation, onClearLocation, taskName, documentId }: {
   form: Form2; onChange: (k: string, v: unknown) => void;
@@ -945,7 +953,7 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             <LocationField workLatitude={workLatitude} workAddress={workAddress} onOpenLocation={onOpenLocation} onClearLocation={onClearLocation} />
           </FormInput>
           <FormInput label="작업 내용" required><textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} /></FormInput>
-          <FormInput label="입장자 명단"><textarea value={form.entryList} onChange={e => onChange("entryList", e.target.value)} rows={2} className={textareaClass} /></FormInput>
+          <FormInput label="출입자 명단"><textarea value={form.entryList} onChange={e => onChange("entryList", e.target.value)} rows={2} className={textareaClass} /></FormInput>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -972,11 +980,57 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={3} title="안전조치 이행사항" />
+        <SectionHeader num={3} title="안전조치 요구사항" />
         <SafetyCheckTable items={form.safetyChecks} onChange={updated => onChange("safetyChecks", updated)} />
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={4} title="특별조치 필요사항" />
+        <SectionHeader num={4} title="산소 및 유해가스 농도 측정결과" />
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-gray-300 px-2 py-2 text-center" colSpan={2}>측정시간</th>
+                <th className="border border-gray-300 px-2 py-2 text-center">측정물질명 및 농도</th>
+                <th className="border border-gray-300 px-2 py-2 text-center">측정자</th>
+                <th className="border border-gray-300 px-2 py-2 text-center" colSpan={2}>인원 확인(감시인)</th>
+              </tr>
+              <tr className="bg-gray-50">
+                <th className="border border-gray-300 px-2 py-1 text-center" colSpan={2}></th>
+                <th className="border border-gray-300 px-2 py-1 text-center"></th>
+                <th className="border border-gray-300 px-2 py-1 text-center"></th>
+                <th className="border border-gray-300 px-2 py-1 text-center">입</th>
+                <th className="border border-gray-300 px-2 py-1 text-center">출</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(form.gasMeasureRows || defaultGasMeasureRows).map((row, idx) => (
+                <tr key={idx}>
+                  <td className="border border-gray-300 px-2 py-2 text-center font-medium w-8">{row.time}</td>
+                  <td className="border border-gray-300 px-1 py-1 text-center w-12">
+                    <div className="flex flex-col gap-0.5 text-xs text-gray-500">
+                      <span>시</span><span>분</span>
+                    </div>
+                  </td>
+                  <td className="border border-gray-300 px-1 py-1">
+                    <input type="text" value={row.substances} onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,substances:e.target.value}:r); onChange("gasMeasureRows", rows); }} className="w-full px-1 py-1 text-xs border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded" />
+                  </td>
+                  <td className="border border-gray-300 px-1 py-1">
+                    <input type="text" value={row.measurer} onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,measurer:e.target.value}:r); onChange("gasMeasureRows", rows); }} className="w-full px-1 py-1 text-xs border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded" />
+                  </td>
+                  <td className="border border-gray-300 px-1 py-1">
+                    <input type="text" value={row.entryCount} onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,entryCount:e.target.value}:r); onChange("gasMeasureRows", rows); }} className="w-full px-1 py-1 text-xs border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded text-center" />
+                  </td>
+                  <td className="border border-gray-300 px-1 py-1">
+                    <input type="text" value={row.exitCount} onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,exitCount:e.target.value}:r); onChange("gasMeasureRows", rows); }} className="w-full px-1 py-1 text-xs border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded text-center" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <SectionHeader num={5} title="특별조치 필요사항" />
         <textarea value={form.specialMeasures} onChange={e => onChange("specialMeasures", e.target.value)} rows={3} className={textareaClass} />
       </div>
       <PhotoAttachSection documentId={documentId} canAdd={true} />
