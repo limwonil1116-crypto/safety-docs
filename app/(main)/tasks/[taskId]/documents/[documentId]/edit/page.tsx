@@ -1214,6 +1214,7 @@ export default function DocumentEditPage() {
   const taskId = params.taskId as string;
   const documentId = params.documentId as string;
   const [taskName, setTaskName] = useState("");
+  const [taskInfo, setTaskInfo] = useState<{startDate?:string;endDate?:string}>({});
   const [documentType, setDocumentType] = useState("SAFETY_WORK_PERMIT");
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
