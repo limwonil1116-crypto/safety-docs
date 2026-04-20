@@ -20,7 +20,7 @@ const C = {
 
 // ✅ 1번: 여백 최소화 + 폰트/표 크기 확대
 const S = StyleSheet.create({
-  page: { fontFamily: "NanumGothic", fontSize: 10, paddingTop: 6, paddingBottom: 18, paddingHorizontal: 10, color: "#000" },
+  page: { fontFamily: "NanumGothic", fontSize: 9.5, paddingTop: 5, paddingBottom: 16, paddingHorizontal: 10, color: "#000" },
   titleBox: { border: "1.5px solid " + C.black, paddingVertical: 13, marginBottom: 3 },
   titleMain: { fontSize: 20, fontWeight: "bold", textAlign: "center", letterSpacing: 3 },
   secHeader: { backgroundColor: C.sectionBg, border: "0.8px solid " + C.border, padding: "5 6", fontSize: 10, fontWeight: "bold", marginBottom: 0 },
@@ -340,7 +340,7 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
           </View>
           <View style={S.trLast}>
             <Text style={[S.il, { width: 58 }]}>작업참여자</Text>
-            <Text style={[S.iv, { borderRight: 0, minHeight: 28 }]}>{fd.participants || ""}</Text>
+            <Text style={[S.iv, { borderRight: 0, minHeight: 22 }]}>{fd.participants || ""}</Text>
           </View>
         </View>
 
@@ -353,7 +353,7 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
             <Text style={[S.th, { flex: 1 }]}>관련작업(장소)</Text>
             <Text style={[S.th, { flex: 1, borderRight: 0 }]}>발생하는 위험요소</Text>
           </View>
-          <View style={[S.trLast, { minHeight: 140 }]}>
+          <View style={[S.trLast, { minHeight: 100 }]}>
             <View style={[S.td, { width: 135 }]}>
               {riskTypes.map(item => (
                 <View key={item.key} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 5 }}>
@@ -391,9 +391,9 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
           </View>
           {riskRows.map((row, idx) => (
             <View key={idx} style={idx === riskRows.length - 1 ? S.trLast : S.tr}>
-              <Text style={[S.td, { flex: 3, minHeight: 28 }]}>{row.riskFactor || ""}</Text>
-              <Text style={[S.td, { flex: 3, minHeight: 28 }]}>{row.improvement || ""}</Text>
-              <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 28 }]}>{row.disasterType || ""}</Text>
+              <Text style={[S.td, { flex: 3, minHeight: 22 }]}>{row.riskFactor || ""}</Text>
+              <Text style={[S.td, { flex: 3, minHeight: 22 }]}>{row.improvement || ""}</Text>
+              <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 22 }]}>{row.disasterType || ""}</Text>
             </View>
           ))}
         </View>
@@ -405,8 +405,8 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
             <Text style={[S.th, { flex: 1, borderRight: 0 }]}>조치결과</Text>
           </View>
           <View style={S.tr}>
-            <Text style={[S.td, { flex: 1, minHeight: 50 }]}>{fd.reviewOpinion || ""}</Text>
-            <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 50 }]}>{fd.reviewResult || ""}</Text>
+            <Text style={[S.td, { flex: 1, minHeight: 30 }]}>{fd.reviewOpinion || ""}</Text>
+            <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 30 }]}>{fd.reviewResult || ""}</Text>
           </View>
           <View style={S.tr}>
             <Text style={[S.il, { width: 78 }]}>최종 검토자</Text>
@@ -479,7 +479,7 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
           ].map((row, i, arr) => (
             <View key={i} style={i === arr.length - 1 ? S.trLast : S.tr}>
               <Text style={[S.il, { width: 100 }]}>{row.label}</Text>
-              <Text style={[S.iv, { borderRight: 0, minHeight: 26 }]}>{row.val}</Text>
+              <Text style={[S.iv, { borderRight: 0, minHeight: 20 }]}>{row.val}</Text>
             </View>
           ))}
         </View>
@@ -507,18 +507,18 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
           </View>
           {checks.map((item, idx) => (
             <View key={idx} style={idx === checks.length - 1 ? S.trLast : S.tr}>
-              <Text style={[S.td, { flex: 4, minHeight: 26, backgroundColor: idx % 2 === 1 ? C.rowEven : C.white }]}>{`▶ ${item.label}`}</Text>
-              <Text style={[S.tdc, { flex: 1, minHeight: 26, backgroundColor: item.applicable === "해당" ? "#dce6f0" : C.white }]}>{item.applicable || ""}</Text>
-              <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 26, backgroundColor: item.result ? "#ebf3e8" : C.white }]}>{item.result || ""}</Text>
+              <Text style={[S.td, { flex: 4, minHeight: 20, backgroundColor: idx % 2 === 1 ? C.rowEven : C.white }]}>{`▶ ${item.label}`}</Text>
+              <Text style={[S.tdc, { flex: 1, minHeight: 20, backgroundColor: item.applicable === "해당" ? "#dce6f0" : C.white }]}>{item.applicable || ""}</Text>
+              <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 20, backgroundColor: item.result ? "#ebf3e8" : C.white }]}>{item.result || ""}</Text>
             </View>
           ))}
         </View>
         <Text style={S.secHeader}>5. 특별조치 필요사항</Text>
         <View style={[S.table, { marginBottom: 5 }]}>
-          <Text style={[S.td, { borderRight: 0, minHeight: 50 }]}>{fd.specialMeasures || ""}</Text>
+          <Text style={[S.td, { borderRight: 0, minHeight: 30 }]}>{fd.specialMeasures || ""}</Text>
         </View>
         <ApproverSection entries={[
-          { roleLabel: "(현장확인) 허가자", name: a1?.approverName, signatureData: a1?.signatureData },
+          { roleLabel: "(계획확인) 허가자", name: a1?.approverName, signatureData: a1?.signatureData },
           { roleLabel: "(이행확인) 확인자", name: a2?.approverName, signatureData: a2?.signatureData },
         ]} />
         <Footer documentId={documentId} createdAt={createdAt} />
@@ -585,9 +585,9 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
           </View>
           {participants.map((p, idx) => (
             <View key={idx} style={idx === participants.length - 1 ? S.trLast : S.tr}>
-              <Text style={[S.td, { flex: 2, minHeight: 26 }]}>{p.role || ""}</Text>
-              <Text style={[S.td, { flex: 2, minHeight: 26 }]}>{p.name || ""}</Text>
-              <Text style={[S.td, { flex: 2, borderRight: 0, minHeight: 26 }]}>{p.phone || ""}</Text>
+              <Text style={[S.td, { flex: 2, minHeight: 20 }]}>{p.role || ""}</Text>
+              <Text style={[S.td, { flex: 2, minHeight: 20 }]}>{p.name || ""}</Text>
+              <Text style={[S.td, { flex: 2, borderRight: 0, minHeight: 20 }]}>{p.phone || ""}</Text>
             </View>
           ))}
         </View>
@@ -655,7 +655,7 @@ export function PowerOutagePDF({ formData: fd, approvalLines, documentId, create
           ].map((row, i, arr) => (
             <View key={i} style={i === arr.length - 1 ? S.trLast : S.tr}>
               <Text style={[S.il, { width: 102 }]}>{row.label}</Text>
-              <Text style={[S.iv, { borderRight: 0, minHeight: 26 }]}>{row.val}</Text>
+              <Text style={[S.iv, { borderRight: 0, minHeight: 20 }]}>{row.val}</Text>
             </View>
           ))}
         </View>
@@ -683,35 +683,35 @@ export function PowerOutagePDF({ formData: fd, approvalLines, documentId, create
           </View>
           {checks.map((item, idx) => (
             <View key={idx} style={idx === checks.length - 1 ? S.trLast : S.tr}>
-              <Text style={[S.td, { flex: 4, minHeight: 28, backgroundColor: idx % 2 === 1 ? C.rowEven : C.white }]}>{`▶ ${item.label}`}</Text>
-              <Text style={[S.tdc, { flex: 1, minHeight: 28, backgroundColor: item.applicable === "해당" ? "#dce6f0" : C.white }]}>{item.applicable || ""}</Text>
-              <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 28, backgroundColor: item.result ? "#ebf3e8" : C.white }]}>{item.result || ""}</Text>
+              <Text style={[S.td, { flex: 4, minHeight: 22, backgroundColor: idx % 2 === 1 ? C.rowEven : C.white }]}>{`▶ ${item.label}`}</Text>
+              <Text style={[S.tdc, { flex: 1, minHeight: 22, backgroundColor: item.applicable === "해당" ? "#dce6f0" : C.white }]}>{item.applicable || ""}</Text>
+              <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 22, backgroundColor: item.result ? "#ebf3e8" : C.white }]}>{item.result || ""}</Text>
             </View>
           ))}
         </View>
         <Text style={S.secHeader}>4. 기기 확인 결과</Text>
         <View style={S.table}>
           <View style={S.tr}>
-            <Text style={[S.th, { flex: 1 }]}>기기기관</Text>
+            <Text style={[S.th, { flex: 1 }]}>점검기기</Text>
             <Text style={[S.th, { flex: 1 }]}>차단확인자</Text>
             <Text style={[S.th, { flex: 1 }]}>전기담당자</Text>
-            <Text style={[S.th, { flex: 1, borderRight: 0 }]}>현장수리</Text>
+            <Text style={[S.th, { flex: 1, borderRight: 0 }]}>현장정비</Text>
           </View>
           {inspRows.map((item, idx) => (
             <View key={idx} style={idx === inspRows.length - 1 ? S.trLast : S.tr}>
-              <Text style={[S.td, { flex: 1, minHeight: 28 }]}>{item.equipment || ""}</Text>
-              <Text style={[S.td, { flex: 1, minHeight: 28 }]}>{item.cutoffConfirmer || ""}</Text>
-              <Text style={[S.td, { flex: 1, minHeight: 28 }]}>{item.electrician || ""}</Text>
-              <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 28 }]}>{item.siteRepair || ""}</Text>
+              <Text style={[S.td, { flex: 1, minHeight: 22 }]}>{item.equipment || ""}</Text>
+              <Text style={[S.td, { flex: 1, minHeight: 22 }]}>{item.cutoffConfirmer || ""}</Text>
+              <Text style={[S.td, { flex: 1, minHeight: 22 }]}>{item.electrician || ""}</Text>
+              <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 22 }]}>{item.siteRepair || ""}</Text>
             </View>
           ))}
         </View>
         <Text style={S.secHeader}>5. 특별조치 필요사항</Text>
         <View style={[S.table, { marginBottom: 5 }]}>
-          <Text style={[S.td, { borderRight: 0, minHeight: 60 }]}>{fd.specialMeasures || ""}</Text>
+          <Text style={[S.td, { borderRight: 0, minHeight: 35 }]}>{fd.specialMeasures || ""}</Text>
         </View>
         <ApproverSection entries={[
-          { roleLabel: "(현장확인) 허가자", name: a1?.approverName, signatureData: a1?.signatureData },
+          { roleLabel: "(계획확인) 허가자", name: a1?.approverName, signatureData: a1?.signatureData },
           { roleLabel: "(이행확인) 확인자", name: a2?.approverName, signatureData: a2?.signatureData },
         ]} />
         <Footer documentId={documentId} createdAt={createdAt} />

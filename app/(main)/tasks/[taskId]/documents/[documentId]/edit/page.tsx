@@ -336,7 +336,8 @@ interface SafetyCheckItem { label: string; applicable: string; result: string; }
 function SafetyCheckTable({ items, onChange }: { items: SafetyCheckItem[]; onChange: (updated: SafetyCheckItem[]) => void }) {
   const update = (idx: number, field: keyof SafetyCheckItem, value: string) =>
     onChange(items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
-  const OPTS = ["점검않음", "조치완료", "해당없음"];
+  // ✅ 1번: '해당' 선택시 옵션 - 점검없음/해당없음 제거
+  const OPTS = ["조치완료"];
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-12 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg">
@@ -359,12 +360,19 @@ function SafetyCheckTable({ items, onChange }: { items: SafetyCheckItem[]; onCha
           <div className="col-span-4">
             {item.applicable === "해당" ? (
               <select value={OPTS.includes(item.result) ? item.result : (item.result ? "직접입력" : "")}
-                onChange={e => { if (e.target.value !== "직접입력") update(idx, "result", e.target.value); else update(idx, "result", ""); }}
+                onChange={e => { if (e.target.value !== "직접입력") update(idx, "result", e.target.value); else update(idx, "result", "__직접입력__"); }}
                 className="w-full px-2 py-1 border border-gray-200 rounded-lg text-xs text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
                 <option value="">선택</option>
                 {OPTS.map(o => <option key={o} value={o}>{o}</option>)}
                 <option value="직접입력">직접입력</option>
               </select>
+              {(item.result === "__직접입력__" || (!OPTS.includes(item.result) && item.result && item.result !== "__직접입력__" ? true : false)) && item.applicable === "해당" && (
+                <input type="text"
+                  value={item.result === "__직접입력__" ? "" : item.result}
+                  onChange={e => update(idx, "result", e.target.value)}
+                  placeholder="직접 입력"
+                  className="w-full mt-1 px-2 py-1 border border-blue-300 rounded-lg text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+              )}
             ) : <div className="text-xs text-gray-300 text-center">-</div>}
           </div>
         </div>
@@ -422,15 +430,28 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
   useEffect(() => { setAddressRef.current = setAddress; setLatRef.current = setLat; setLngRef.current = setLng; });
 
   useEffect(() => {
-    const initMap = () => { window.kakao.maps.load(() => setMapLoaded(true)); };
+    // ✅ 카카오맵 SDK 초기화 - services 라이브러리 포함
+    const initKakaoMap = () => {
+      window.kakao.maps.load(() => setMapLoaded(true));
+    };
+    // 이미 완전히 로드된 경우
     if (window.kakao?.maps?.services) { setMapLoaded(true); return; }
-    if (window.kakao?.maps) { initMap(); return; }
+    // kakao.maps 있지만 services 없으면 load() 재호출
+    if (window.kakao?.maps) { initKakaoMap(); return; }
+    // 스크립트 로딩 중인 경우
     const existing = document.getElementById("kakao-map-script");
-    if (existing) { const check = setInterval(() => { if (window.kakao?.maps?.services) { setMapLoaded(true); clearInterval(check); } else if (window.kakao?.maps) { initMap(); clearInterval(check); } }, 200); return; }
+    if (existing) {
+      const check = setInterval(() => {
+        if (window.kakao?.maps) { initKakaoMap(); clearInterval(check); }
+      }, 100);
+      return;
+    }
+    // 새로 로드
     const script = document.createElement("script");
     script.id = "kakao-map-script";
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false&libraries=services`;
-    script.onload = initMap; document.head.appendChild(script);
+    script.onload = initKakaoMap;
+    document.head.appendChild(script);
   }, []);
 
   useEffect(() => {
@@ -451,14 +472,19 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
         map.setCenter(ll); map.setLevel(3); marker.setPosition(ll); // GPS 위치 확대
         if (window.kakao.maps.services) {
           const geocoder = new window.kakao.maps.services.Geocoder();
-          geocoder.coord2Address(gLng, gLat, (result: any, status: any) => {
-            if (status === window.kakao.maps.services.Status.OK) {
-              const addr = result[0].road_address
-                ? result[0].road_address.address_name
-                : result[0].address.address_name;
-              setAddressRef.current(addr);
+          // ✅ REST API로 역지오코딩
+          fetch(`https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${gLng}&y=${gLat}`, {
+            headers: { Authorization: `KakaoAK ${process.env.NEXT_PUBLIC_KAKAO_REST_KEY}` }
+          })
+          .then(r => r.json())
+          .then(data => {
+            const doc = data.documents?.[0];
+            if (doc) {
+              const addr = doc.road_address?.address_name || doc.address?.address_name || "";
+              if (addr) setAddressRef.current(addr);
             }
-          });
+          })
+          .catch(() => {});
         }
         setGpsLoading(false);
       }, (err) => { setGpsLoading(false); console.warn("GPS 실패:", err.message); }, { timeout: 8000, enableHighAccuracy: true });
@@ -466,17 +492,29 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
     window.kakao.maps.event.addListener(map, "click", (mouseEvent: any) => {
       const latlng = mouseEvent.latLng; marker.setPosition(latlng);
       const newLat = latlng.getLat(); const newLng = latlng.getLng();
-      // ✅ ref 사용으로 클로저 문제 해결
       setLatRef.current(newLat); setLngRef.current(newLng);
-      if (!window.kakao.maps.services) { return; }
-      const geocoder = new window.kakao.maps.services.Geocoder();
-      geocoder.coord2Address(newLng, newLat, (result: any, status: any) => {
-        if (status === window.kakao.maps.services.Status.OK) {
-          const addr = result[0].road_address
-            ? result[0].road_address.address_name
-            : result[0].address.address_name;
-          // ✅ ref로 최신 setter 호출 → 상단 input 주소 업데이트
-          setAddressRef.current(addr);
+      // ✅ REST API로 역지오코딩 (services 라이브러리 불필요)
+      fetch(`https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${newLng}&y=${newLat}`, {
+        headers: { Authorization: `KakaoAK ${process.env.NEXT_PUBLIC_KAKAO_REST_KEY}` }
+      })
+      .then(r => r.json())
+      .then(data => {
+        const doc = data.documents?.[0];
+        if (doc) {
+          const addr = doc.road_address?.address_name || doc.address?.address_name || "";
+          if (addr) setAddressRef.current(addr);
+        }
+      })
+      .catch(() => {
+        // REST API 실패 시 services 방식 fallback
+        if (window.kakao?.maps?.services) {
+          const geocoder = new window.kakao.maps.services.Geocoder();
+          geocoder.coord2Address(newLng, newLat, (result: any, status: any) => {
+            if (status === window.kakao.maps.services.Status.OK) {
+              const addr = result[0].road_address?.address_name || result[0].address?.address_name;
+              if (addr) setAddressRef.current(addr);
+            }
+          });
         }
       });
     });
@@ -1168,7 +1206,7 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={4} title="기기 확인 결과" />
         <div className="grid grid-cols-4 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg mb-2">
-          {["기기기관", "차단확인자", "전기담당자", "현장수리"].map(h => (
+          {["점검기기", "차단확인자", "전기담당자", "현장정비"].map(h => (
             <div key={h} className="text-xs font-medium text-gray-600 text-center">{h}</div>
           ))}
         </div>
