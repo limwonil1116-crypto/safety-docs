@@ -521,7 +521,7 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
             <LocationMapPreview lat={doc.workLatitude} lng={doc.workLongitude} address={doc.workAddress || workLocation} />
           )}
           <Field label="작업내용" value={(fd.workContent ?? fd.workContents) as string} />
-          <Field label="작업참여자" value={fd.participants as string} />
+          {!Array.isArray(fd.participants) && fd.participants && <Field label="작업참여자" value={fd.participants as string} />}
           <Field label="입장자 명단" value={fd.entryList as string} />
           {/* 붙임3 전용 */}
           {isForm3 && <Field label="시설물명" value={fd.facilityName as string} />}
