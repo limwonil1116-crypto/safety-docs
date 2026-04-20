@@ -255,7 +255,7 @@ export function AttachmentPagesPDF({ riskAssessFiles, safetyCheckPhotos, safetyC
 // ===== 붙임1: 안전작업허가서 =====
 export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress }: {
   formData: Record<string, any>;
-  approvalLines: Array<{ approverName?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+  approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
   workAddress?: string | null; attachments?: AttachmentInfo[];
 }) {
@@ -452,7 +452,7 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
 // ===== 붙임2: 밀폐공간작업허가서 =====
 export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress }: {
   formData: Record<string, any>;
-  approvalLines: Array<{ approverName?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+  approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
   workAddress?: string | null; attachments?: AttachmentInfo[];
 }) {
@@ -530,7 +530,7 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
 // ===== 붙임3: 휴일작업신청서 =====
 export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress }: {
   formData: Record<string, any>;
-  approvalLines: Array<{ approverName?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+  approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
   workAddress?: string | null; attachments?: AttachmentInfo[];
 }) {
@@ -545,17 +545,17 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
       <Page size="A4" style={S.page}>
         <View style={S.titleBox}><Text style={S.titleMain}>안전관리 휴일작업 신청서</Text></View>
         <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
-          <Text style={{ fontSize: 10 }}>{`작업일시: ${periodText}`}</Text>
+          <Text style={{ fontSize: 10.5 }}>{`작업일시: ${periodText}`}</Text>
           <Text style={{ fontSize: 10 }}>{`신고일시: ${fd.requestDate || ""}`}</Text>
         </View>
-        <Text style={S.secHeader}>1. 용역 개요</Text>
+        <Text style={[S.secHeader, { marginTop: 4 }]}>1. 용역 개요</Text>
         <View style={S.table}>
           <View style={S.tr}><Text style={[S.il, { width: 58 }]}>용역명</Text><Text style={[S.iv, { borderRight: 0 }]}>{taskName || fd.serviceName || ""}</Text></View>
           <View style={S.trLast}>
-            <Text style={[S.il, { width: 58 }]}>시공사명</Text>
+            <Text style={[S.il, { width: 58 }]}>수급인</Text>
             <Text style={[S.iv, { flex: 1, borderRight: "0.5px solid " + C.border }]}>{fd.contractorCompany || ""}</Text>
             <Text style={[S.il, { width: 55 }]}>용역기간</Text>
-            <Text style={[S.iv, { flex: 1, borderRight: 0 }]}>{`${fd.contractPeriodStart || ""} ~ ${fd.contractPeriodEnd || ""}`}</Text>
+            <Text style={[S.iv, { flex: 1, borderRight: 0 }]}>{`${fd.contractPeriodStart || fd.workStartDate || ""} ~ ${fd.contractPeriodEnd || fd.workEndDate || ""}`}</Text>
           </View>
         </View>
         <Text style={S.secHeader}>2. 휴일작업 개요</Text>
@@ -585,9 +585,9 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
           </View>
           {participants.map((p, idx) => (
             <View key={idx} style={idx === participants.length - 1 ? S.trLast : S.tr}>
-              <Text style={[S.td, { flex: 2, minHeight: 20 }]}>{p.role || ""}</Text>
-              <Text style={[S.td, { flex: 2, minHeight: 20 }]}>{p.name || ""}</Text>
-              <Text style={[S.td, { flex: 2, borderRight: 0, minHeight: 20 }]}>{p.phone || ""}</Text>
+              <Text style={[S.td, { flex: 2, minHeight: 24 }]}>{p.role || ""}</Text>
+              <Text style={[S.td, { flex: 2, minHeight: 24 }]}>{p.name || ""}</Text>
+              <Text style={[S.td, { flex: 2, borderRight: 0, minHeight: 24 }]}>{p.phone || ""}</Text>
             </View>
           ))}
         </View>
@@ -598,19 +598,41 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
             <Text style={[S.th, { flex: 1, borderRight: 0 }]}>조치결과</Text>
           </View>
           <View style={S.trLast}>
-            <Text style={[S.td, { flex: 1, minHeight: 40 }]}>{fd.reviewOpinion || ""}</Text>
-            <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 40 }]}>{fd.reviewResult || ""}</Text>
+            <Text style={[S.td, { flex: 1, minHeight: 50 }]}>{fd.reviewOpinion || ""}</Text>
+            <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 50 }]}>{fd.reviewResult || ""}</Text>
           </View>
         </View>
         <Text style={{ fontSize: 10, textAlign: "center", marginVertical: 4 }}>위와 같이 휴일작업을 신청하오니 검토하여 승인하여 주시기 바랍니다.</Text>
         <View style={{ border: "0.8px solid " + C.border, marginBottom: 3 }}>
-          <ApproverRow roleLabel="신청자" deptLabel={`소속: ${fd.applicantOrg || ""}`} name={fd.applicantName} signatureData={applicantSignature} borderBottom={false} />
+          {/* 신청자 행 */}
+          <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 36 }}>
+            <Text style={{ fontSize: 9, width: 55, color: C.label }}>신청자</Text>
+            <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${fd.applicantOrg || ""}  (안전보건관리책임자) ${fd.applicantName || ""}`}</Text>
+            <Text style={{ fontSize: 9, width: 30, color: C.label, textAlign: "center" }}>(서명)</Text>
+            {applicantSignature
+              ? <Image src={applicantSignature} style={{ width: 50, height: 28, objectFit: "contain" }} />
+              : <View style={{ width: 50, height: 28 }} />}
+          </View>
+          {/* 검토자 행 */}
+          <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 36, borderTop: "0.5px solid " + C.border }}>
+            <Text style={{ fontSize: 9, width: 55, color: C.label }}>검토자</Text>
+            <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${a1?.approverOrg || ""}  (용역감독원) ${a1?.approverName || ""}`}</Text>
+            <Text style={{ fontSize: 9, width: 30, color: C.label, textAlign: "center" }}>(서명)</Text>
+            {a1?.signatureData
+              ? <Image src={a1.signatureData} style={{ width: 50, height: 28, objectFit: "contain" }} />
+              : <View style={{ width: 50, height: 28 }} />}
+          </View>
+          {/* 승인자 행 */}
+          <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 36, borderTop: "0.5px solid " + C.border }}>
+            <Text style={{ fontSize: 9, width: 55, color: C.label }}>승인자</Text>
+            <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${a2?.approverOrg || ""}  (관리감독자) ${a2?.approverName || ""}`}</Text>
+            <Text style={{ fontSize: 9, width: 30, color: C.label, textAlign: "center" }}>(서명)</Text>
+            {a2?.signatureData
+              ? <Image src={a2.signatureData} style={{ width: 50, height: 28, objectFit: "contain" }} />
+              : <View style={{ width: 50, height: 28 }} />}
+          </View>
         </View>
-        <ApproverSection entries={[
-          { roleLabel: "검토자 (안전관리자)", name: a1?.approverName, signatureData: a1?.signatureData },
-          { roleLabel: "승인자(현장관리자)", name: a2?.approverName, signatureData: a2?.signatureData },
-        ]} />
-        <Text style={{ fontSize: 10, fontWeight: "bold", textAlign: "center", marginTop: 5 }}>한국농어촌공사 안전기술본부 귀중</Text>
+        <Text style={{ fontSize: 13, fontWeight: "bold", textAlign: "center", marginTop: 6 }}>한국농어촌공사 안전기술본부 귀하</Text>
         <Footer documentId={documentId} createdAt={createdAt} />
       </Page>
     </Document>
@@ -620,7 +642,7 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
 // ===== 붙임4: 정전작업허가서 =====
 export function PowerOutagePDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress }: {
   formData: Record<string, any>;
-  approvalLines: Array<{ approverName?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+  approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
   workAddress?: string | null; attachments?: AttachmentInfo[];
 }) {
