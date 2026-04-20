@@ -440,10 +440,14 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
     }
     const script = document.createElement("script");
     script.id = "kakao-map-script";
-    // ✅ autoload=false 제거 → SDK가 services 포함 자동 로드 후 load() 콜백
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&libraries=services`;
+    // ✅ autoload=false 필수 (Next.js에서 document.write 차단)
+    // libraries=services 포함하여 역지오코딩 사용 가능
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false&libraries=services`;
     script.onload = () => {
-      window.kakao.maps.load(() => setMapLoaded(true));
+      // kakao.maps.load() 콜백 안에서만 services 사용 가능
+      window.kakao.maps.load(() => {
+        setMapLoaded(true);
+      });
     };
     document.head.appendChild(script);
   }, []);
