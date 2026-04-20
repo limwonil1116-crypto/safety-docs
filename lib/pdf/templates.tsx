@@ -457,11 +457,11 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
   workAddress?: string | null; attachments?: AttachmentInfo[];
 }) {
   const checks: Array<{ label: string; applicable: string; result: string }> = fd.safetyChecks ?? [];
-  const gasMeasureRows: Array<{ time: string; substances: string; measurer: string; entryCount: string; exitCount: string }> =
+  const gasMeasureRows: Array<{ time: string; hour?: string; minute?: string; substances: string; measurer: string; entryCount: string; exitCount: string }> =
     fd.gasMeasureRows ?? [
-      { time: "전", substances: "", measurer: "", entryCount: "", exitCount: "" },
-      { time: "중", substances: "", measurer: "", entryCount: "", exitCount: "" },
-      { time: "후", substances: "", measurer: "", entryCount: "", exitCount: "" },
+      { time: "전", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
+      { time: "중", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
+      { time: "후", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
     ];
   const a1 = approvalLines.find(l => l.approvalOrder === 1);
   const a2 = approvalLines.find(l => l.approvalOrder === 2);
