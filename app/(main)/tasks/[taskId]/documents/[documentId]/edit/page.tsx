@@ -1245,6 +1245,8 @@ export default function DocumentEditPage() {
       const docData = await docRes.json();
       const taskData = await taskRes.json();
       if (taskRes.ok) setTaskName(taskData.task?.name ?? "");
+        const fmt=(d:string)=>d?d.split("T")[0]:"";
+        setTaskInfo({startDate:fmt(taskData.task?.startDate??""),endDate:fmt(taskData.task?.endDate??"")});
       if (docRes.ok) {
         const doc = docData.document;
         setDocumentType(doc.documentType);
@@ -1350,7 +1352,7 @@ export default function DocumentEditPage() {
       <div className="p-4 space-y-4">
         {documentType === "SAFETY_WORK_PERMIT" && <Form1Fields form={form1} onChange={handleChange1} {...locProps} taskName={taskName} documentId={documentId} />}
         {documentType === "CONFINED_SPACE"     && <Form2Fields form={form2} onChange={handleChange2} {...locProps} taskName={taskName} documentId={documentId} />}
-        {documentType === "HOLIDAY_WORK"       && <Form3Fields form={form3} onChange={handleChange3} {...locProps} taskName={taskName} documentId={documentId} />}
+        {documentType === "HOLIDAY_WORK"       && <Form3Fields form={form3} onChange={handleChange3} {...locProps} taskName={taskName} documentId={documentId} taskStartDate={taskInfo?.startDate} taskEndDate={taskInfo?.endDate} />}
         {documentType === "POWER_OUTAGE"       && <Form4Fields form={form4} onChange={handleChange4} {...locProps} taskName={taskName} documentId={documentId} />}
       </div>
 
