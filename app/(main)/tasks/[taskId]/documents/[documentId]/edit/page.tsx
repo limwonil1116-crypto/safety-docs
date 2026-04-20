@@ -422,47 +422,27 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
   useEffect(() => { setAddressRef.current = setAddress; setLatRef.current = setLat; setLngRef.current = setLng; });
 
   useEffect(() => {
-    // 이미 services 포함 로드된 경우
+    // ✅ 카카오맵 SDK 초기화 - services 라이브러리 포함
+    const initKakaoMap = () => {
+      window.kakao.maps.load(() => setMapLoaded(true));
+    };
+    // 이미 완전히 로드된 경우
     if (window.kakao?.maps?.services) { setMapLoaded(true); return; }
-    // kakao.maps는 있지만 services가 없는 경우 → load()로 services 강제 로드
-    if (window.kakao?.maps) {
-      window.kakao.maps.load(() => {
-        if (window.kakao?.maps?.services) {
-          setMapLoaded(true);
-        } else {
-          // services 없으면 기존 스크립트 제거 후 재로드
-          const old = document.getElementById("kakao-map-script");
-          if (old) old.remove();
-          const s = document.createElement("script");
-          s.id = "kakao-map-script";
-          s.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false&libraries=services`;
-          s.onload = () => window.kakao.maps.load(() => setMapLoaded(true));
-          document.head.appendChild(s);
-        }
-      });
+    // kakao.maps 있지만 services 없으면 load() 재호출
+    if (window.kakao?.maps) { initKakaoMap(); return; }
+    // 스크립트 로딩 중인 경우
+    const existing = document.getElementById("kakao-map-script");
+    if (existing) {
+      const check = setInterval(() => {
+        if (window.kakao?.maps) { initKakaoMap(); clearInterval(check); }
+      }, 100);
       return;
     }
-    const existing = document.getElementById("kakao-map-script");
-    if (existing) { 
-      const check = setInterval(() => { 
-        if (window.kakao?.maps?.services) { setMapLoaded(true); clearInterval(check); } 
-        else if (window.kakao?.maps) { 
-          window.kakao.maps.load(() => { setMapLoaded(true); clearInterval(check); }); 
-        } 
-      }, 200); 
-      return; 
-    }
+    // 새로 로드
     const script = document.createElement("script");
     script.id = "kakao-map-script";
-    // ✅ autoload=false 필수 (Next.js에서 document.write 차단)
-    // libraries=services 포함하여 역지오코딩 사용 가능
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false&libraries=services`;
-    script.onload = () => {
-      // kakao.maps.load() 콜백 안에서만 services 사용 가능
-      window.kakao.maps.load(() => {
-        setMapLoaded(true);
-      });
-    };
+    script.onload = initKakaoMap;
     document.head.appendChild(script);
   }, []);
 
