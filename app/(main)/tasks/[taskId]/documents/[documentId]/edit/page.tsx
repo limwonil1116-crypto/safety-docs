@@ -1127,6 +1127,31 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
   );
 }
 
+const POWER_CHECKS: SafetyCheckItem[] = [
+  { label: "전로차단 안전장치 확인", applicable: "", result: "" },
+  { label: "변압기차단기 확인", applicable: "", result: "" },
+  { label: "잠금조치", applicable: "", result: "" },
+  { label: "검지설비 차단", applicable: "", result: "" },
+  { label: "차단여부 감시", applicable: "", result: "" },
+  { label: "잔류전기 방전", applicable: "", result: "" },
+  { label: "검전기로 방전여부 확인", applicable: "", result: "" },
+  { label: "활선작업 규정대로 설치", applicable: "", result: "" },
+  { label: "현장 안전장치 확인", applicable: "", result: "" },
+];
+interface InspectionItem { equipment: string; cutoffConfirmer: string; electrician: string; siteRepair: string; }
+interface Form4 {
+  requestDate: string; workStartDate: string; workEndDate: string; workStartTime: string; workEndTime: string;
+  serviceName: string; applicantCompany: string; applicantTitle: string; applicantName: string;
+  workLocation: string; workContent: string; entryList: string;
+  needConfinedSpace: string; needFireWork: string; safetyChecks: SafetyCheckItem[];
+  inspectionItems: InspectionItem[]; specialMeasures: string;
+}
+const defaultForm4: Form4 = {
+  requestDate: new Date().toISOString().split("T")[0], workStartDate: "", workEndDate: "", workStartTime: "09:00", workEndTime: "18:00",
+  serviceName: "", applicantCompany: "", applicantTitle: "", applicantName: "", workLocation: "", workContent: "", entryList: "",
+  needConfinedSpace: "", needFireWork: "", safetyChecks: POWER_CHECKS.map(c => ({ ...c })),
+  inspectionItems: [{ equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" }], specialMeasures: "",
+};
 
 function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation, onClearLocation, taskName, documentId }: {
   form: Form4; onChange: (k: string, v: unknown) => void;
