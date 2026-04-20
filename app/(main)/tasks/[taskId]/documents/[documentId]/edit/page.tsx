@@ -1001,13 +1001,16 @@ const defaultForm3: Form3 = {
   participants: [{ role: "안전보건관리책임자", name: "", phone: "" }, { role: "현장참여직원", name: "", phone: "" }, { role: "시설관리자", name: "", phone: "" }],
   riskFactors: "", improvementMeasures: "", reviewOpinion: "", reviewResult: "", applicantName: "", applicantOrg: "",
 };
-function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation, onClearLocation, taskName, documentId }: {
+function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation, onClearLocation, taskName, documentId, taskStartDate, taskEndDate }: {
   form: Form3; onChange: (k: string, v: unknown) => void;
   workLatitude: number | null; workAddress: string; onOpenLocation: () => void; onClearLocation: () => void;
   taskName: string; documentId: string;
+  taskStartDate?: string; taskEndDate?: string;
 }) {
   const updateP = (idx: number, f: keyof Participant3, v: string) =>
     onChange("participants", form.participants.map((p, i) => i === idx ? { ...p, [f]: v } : p));
+  const contractStart = form.contractPeriodStart || taskStartDate || "";
+  const contractEnd = form.contractPeriodEnd || taskEndDate || "";
   return (
     <>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -1018,27 +1021,26 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             onChangeStartDate={v => onChange("workStartDate", v)} onChangeEndDate={v => onChange("workEndDate", v)}
             onChangeStartTime={v => onChange("workStartTime", v)} onChangeEndTime={v => onChange("workEndTime", v)} />
           <FormInput label="용역명" required><input type="text" value={taskName} readOnly className="w-full px-3 py-3 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
-          <FormInput label="시공사업체명"><input type="text" value={form.contractorCompany} onChange={e => onChange("contractorCompany", e.target.value)} className={inputClass} /></FormInput>
+          <FormInput label="시공사업체명"><input type="text" value={form.contractorCompany} onChange={e => onChange("contractorCompany", e.target.value)} placeholder="예) (주)한국안전엔지니어링" className={inputClass} /></FormInput>
           <div className="grid grid-cols-2 gap-3">
-            <FormInput label="용역기간 시작"><input type="date" value={form.contractPeriodStart} onChange={e => onChange("contractPeriodStart", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
-            <FormInput label="용역기간 종료"><input type="date" value={form.contractPeriodEnd} onChange={e => onChange("contractPeriodEnd", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
+            <FormInput label="용역기간 시작"><input type="date" value={contractStart} onChange={e => onChange("contractPeriodStart", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
+            <FormInput label="용역기간 종료"><input type="date" value={contractEnd} onChange={e => onChange("contractPeriodEnd", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
           </div>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={2} title="휴일작업 개요" />
         <div className="space-y-3">
-          <FormInput label="작업대상 시설물" required><input type="text" value={form.facilityName} onChange={e => onChange("facilityName", e.target.value)} className={inputClass} /></FormInput>
-          <FormInput label="시설물 위치">
-            <input type="text" value={form.facilityLocation} onChange={e => onChange("facilityLocation", e.target.value)} className={inputClass + " mb-1.5"} />
+          <FormInput label="작업대상 시설물" required>
+            <input type="text" value={form.facilityName} onChange={e => onChange("facilityName", e.target.value)} placeholder="예) 예당저수지 복통 양수장" className={inputClass + " mb-1.5"} />
+            <input type="text" value={form.facilityLocation} onChange={e => onChange("facilityLocation", e.target.value)} placeholder="지도에서 선택하거나 직접 입력" className={inputClass + " mb-1.5"} />
             <LocationField workLatitude={workLatitude} workAddress={workAddress} onOpenLocation={onOpenLocation} onClearLocation={onClearLocation} />
           </FormInput>
-          <div className="grid grid-cols-2 gap-3">
-            <FormInput label="시설 관리자"><input type="text" value={form.facilityManager} onChange={e => onChange("facilityManager", e.target.value)} className={inputClass} /></FormInput>
-            <FormInput label="관리자 직급"><input type="text" value={form.facilityManagerGrade} onChange={e => onChange("facilityManagerGrade", e.target.value)} className={inputClass} /></FormInput>
-          </div>
-          <FormInput label="작업위치"><input type="text" value={form.workPosition} onChange={e => onChange("workPosition", e.target.value)} className={inputClass} /></FormInput>
-          <FormInput label="작업공종"><textarea value={form.workContents} onChange={e => onChange("workContents", e.target.value)} rows={3} className={textareaClass} /></FormInput>
+          <FormInput label="작업위치"><input type="text" value={form.workPosition} onChange={e => onChange("workPosition", e.target.value)} placeholder="예) 여수로" className={inputClass} /></FormInput>
+          <FormInput label="작업공종"><textarea value={form.workContents} onChange={e => onChange("workContents", e.target.value)} rows={2} placeholder="예) 방수로 옹벽 재료조사" className={textareaClass} /></FormInput>
+          <FormInput label="위험요소"><textarea value={form.riskFactors} onChange={e => onChange("riskFactors", e.target.value)} rows={2} placeholder="예) 그물부 조사시 미끄러짐" className={textareaClass} /></FormInput>
+          <FormInput label="개선대책"><textarea value={form.improvementMeasures} onChange={e => onChange("improvementMeasures", e.target.value)} rows={2} placeholder="예) 안전난간에 안전로프 설치" className={textareaClass} /></FormInput>
+          <FormInput label="시설 관리자"><input type="text" value={form.facilityManager} onChange={e => onChange("facilityManager", e.target.value)} placeholder="예) 00지사 0급 홍길동" className={inputClass} /></FormInput>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -1047,42 +1049,38 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
           {form.participants.map((p, idx) => (
             <div key={idx} className="border border-gray-200 rounded-xl p-3">
               <div className="flex items-center justify-between mb-2">
-                <select value={p.role} onChange={e => updateP(idx, "role", e.target.value)} className="text-xs px-2 py-1 border border-gray-200 rounded-lg text-gray-700 bg-white focus:outline-none">
-                  <option>안전보건관리책임자</option><option>현장참여직원</option><option>시설관리자</option>
+                <select value={["안전보건관리책임자","참여기술인","현장인부","기타"].includes(p.role) ? p.role : "기타"}
+                  onChange={e => updateP(idx, "role", e.target.value)} className="text-xs px-2 py-1 border border-gray-200 rounded-lg text-gray-700 bg-white focus:outline-none">
+                  <option>안전보건관리책임자</option><option>참여기술인</option><option>현장인부</option><option>기타</option>
                 </select>
                 {idx >= 1 && <button onClick={() => onChange("participants", form.participants.filter((_, i) => i !== idx))} className="text-gray-400 hover:text-red-500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
               </div>
+              {p.role === "기타" && (
+                <input type="text" onChange={e => updateP(idx, "role", e.target.value)} placeholder="역할 직접 입력" className={"mb-2 " + inputClass} />
+              )}
               <div className="grid grid-cols-2 gap-2">
-                <FormInput label="성명"><input type="text" value={p.name} onChange={e => updateP(idx, "name", e.target.value)} className={inputClass} /></FormInput>
+                <FormInput label="성명"><input type="text" value={p.name} onChange={e => updateP(idx, "name", e.target.value)} placeholder="홍길동" className={inputClass} /></FormInput>
                 <FormInput label="연락처"><input type="tel" value={p.phone} onChange={e => updateP(idx, "phone", e.target.value)} placeholder="010-0000-0000" className={inputClass} /></FormInput>
               </div>
             </div>
           ))}
         </div>
-        <button onClick={() => onChange("participants", [...form.participants, { role: "현장참여직원", name: "", phone: "" }])}
+        <button onClick={() => onChange("participants", [...form.participants, { role: "참여기술인", name: "", phone: "" }])}
           className="w-full py-2 rounded-xl border border-dashed border-gray-300 text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 flex items-center justify-center gap-1">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>참여자 추가
         </button>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={4} title="위험요소 및 개선대책" />
-        <div className="space-y-3">
-          <FormInput label="위험요소"><textarea value={form.riskFactors} onChange={e => onChange("riskFactors", e.target.value)} rows={2} className={textareaClass} /></FormInput>
-          <FormInput label="개선대책"><textarea value={form.improvementMeasures} onChange={e => onChange("improvementMeasures", e.target.value)} rows={2} className={textareaClass} /></FormInput>
-        </div>
-      </div>
-      <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={5} title="신청자 정보" />
+        <SectionHeader num={4} title="신청자 정보" />
         <div className="grid grid-cols-2 gap-3">
-          <FormInput label="신청자 성명" required><input type="text" value={form.applicantName} onChange={e => onChange("applicantName", e.target.value)} className={inputClass} /></FormInput>
-          <FormInput label="소속"><input type="text" value={form.applicantOrg} onChange={e => onChange("applicantOrg", e.target.value)} className={inputClass} /></FormInput>
+          <FormInput label="소속"><input type="text" value={form.applicantOrg} onChange={e => onChange("applicantOrg", e.target.value)} placeholder="한국농어촌공사 내포지사" className={inputClass} /></FormInput>
+          <FormInput label="신청자 성명" required><input type="text" value={form.applicantName} onChange={e => onChange("applicantName", e.target.value)} placeholder="홍길동" className={inputClass} /></FormInput>
         </div>
       </div>
       <PhotoAttachSection documentId={documentId} canAdd={true} />
     </>
   );
 }
-
 const POWER_CHECKS: SafetyCheckItem[] = [
   { label: "전로차단 안전장치 확인", applicable: "", result: "" },
   { label: "변압기차단기 확인", applicable: "", result: "" },
