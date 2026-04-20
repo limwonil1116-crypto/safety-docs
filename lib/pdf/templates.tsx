@@ -606,27 +606,27 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
         <View style={{ border: "0.8px solid " + C.border, marginBottom: 3 }}>
           {/* 신청자 행 */}
           <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 36 }}>
-            <Text style={{ fontSize: 9, width: 55, color: C.label }}>신청자</Text>
+            <Text style={{ fontSize: 9, width: 55, color: C.black }}>신청자</Text>
             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${fd.applicantOrg || ""}  (안전보건관리책임자) ${fd.applicantName || ""}`}</Text>
-            <Text style={{ fontSize: 9, width: 30, color: C.label, textAlign: "center" }}>(서명)</Text>
+            <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
             {applicantSignature
               ? <Image src={applicantSignature} style={{ width: 50, height: 28, objectFit: "contain" }} />
               : <View style={{ width: 50, height: 28 }} />}
           </View>
           {/* 검토자 행 */}
           <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 36, borderTop: "0.5px solid " + C.border }}>
-            <Text style={{ fontSize: 9, width: 55, color: C.label }}>검토자</Text>
+            <Text style={{ fontSize: 9, width: 55, color: C.black }}>검토자</Text>
             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${a1?.approverOrg || ""}  (용역감독원) ${a1?.approverName || ""}`}</Text>
-            <Text style={{ fontSize: 9, width: 30, color: C.label, textAlign: "center" }}>(서명)</Text>
+            <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
             {a1?.signatureData
               ? <Image src={a1.signatureData} style={{ width: 50, height: 28, objectFit: "contain" }} />
               : <View style={{ width: 50, height: 28 }} />}
           </View>
           {/* 승인자 행 */}
           <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 36, borderTop: "0.5px solid " + C.border }}>
-            <Text style={{ fontSize: 9, width: 55, color: C.label }}>승인자</Text>
+            <Text style={{ fontSize: 9, width: 55, color: C.black }}>승인자</Text>
             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${a2?.approverOrg || ""}  (관리감독자) ${a2?.approverName || ""}`}</Text>
-            <Text style={{ fontSize: 9, width: 30, color: C.label, textAlign: "center" }}>(서명)</Text>
+            <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
             {a2?.signatureData
               ? <Image src={a2.signatureData} style={{ width: 50, height: 28, objectFit: "contain" }} />
               : <View style={{ width: 50, height: 28 }} />}
