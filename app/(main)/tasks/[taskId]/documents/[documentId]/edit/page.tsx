@@ -422,28 +422,15 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
   useEffect(() => { setAddressRef.current = setAddress; setLatRef.current = setLat; setLngRef.current = setLng; });
 
   useEffect(() => {
-    // ✅ 카카오맵 SDK 초기화 - services 라이브러리 포함
-    const initKakaoMap = () => {
-      window.kakao.maps.load(() => setMapLoaded(true));
-    };
-    // 이미 완전히 로드된 경우
+    const initMap = () => { window.kakao.maps.load(() => setMapLoaded(true)); };
     if (window.kakao?.maps?.services) { setMapLoaded(true); return; }
-    // kakao.maps 있지만 services 없으면 load() 재호출
-    if (window.kakao?.maps) { initKakaoMap(); return; }
-    // 스크립트 로딩 중인 경우
+    if (window.kakao?.maps) { initMap(); return; }
     const existing = document.getElementById("kakao-map-script");
-    if (existing) {
-      const check = setInterval(() => {
-        if (window.kakao?.maps) { initKakaoMap(); clearInterval(check); }
-      }, 100);
-      return;
-    }
-    // 새로 로드
+    if (existing) { const check = setInterval(() => { if (window.kakao?.maps?.services) { setMapLoaded(true); clearInterval(check); } else if (window.kakao?.maps) { initMap(); clearInterval(check); } }, 200); return; }
     const script = document.createElement("script");
     script.id = "kakao-map-script";
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false&libraries=services`;
-    script.onload = initKakaoMap;
-    document.head.appendChild(script);
+    script.onload = initMap; document.head.appendChild(script);
   }, []);
 
   useEffect(() => {
@@ -464,19 +451,14 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
         map.setCenter(ll); map.setLevel(3); marker.setPosition(ll); // GPS 위치 확대
         if (window.kakao.maps.services) {
           const geocoder = new window.kakao.maps.services.Geocoder();
-          // ✅ REST API로 역지오코딩
-          fetch(`https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${gLng}&y=${gLat}`, {
-            headers: { Authorization: `KakaoAK ${process.env.NEXT_PUBLIC_KAKAO_REST_KEY}` }
-          })
-          .then(r => r.json())
-          .then(data => {
-            const doc = data.documents?.[0];
-            if (doc) {
-              const addr = doc.road_address?.address_name || doc.address?.address_name || "";
-              if (addr) setAddressRef.current(addr);
+          geocoder.coord2Address(gLng, gLat, (result: any, status: any) => {
+            if (status === window.kakao.maps.services.Status.OK) {
+              const addr = result[0].road_address
+                ? result[0].road_address.address_name
+                : result[0].address.address_name;
+              setAddressRef.current(addr);
             }
-          })
-          .catch(() => {});
+          });
         }
         setGpsLoading(false);
       }, (err) => { setGpsLoading(false); console.warn("GPS 실패:", err.message); }, { timeout: 8000, enableHighAccuracy: true });
@@ -484,29 +466,17 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
     window.kakao.maps.event.addListener(map, "click", (mouseEvent: any) => {
       const latlng = mouseEvent.latLng; marker.setPosition(latlng);
       const newLat = latlng.getLat(); const newLng = latlng.getLng();
+      // ✅ ref 사용으로 클로저 문제 해결
       setLatRef.current(newLat); setLngRef.current(newLng);
-      // ✅ REST API로 역지오코딩 (services 라이브러리 불필요)
-      fetch(`https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${newLng}&y=${newLat}`, {
-        headers: { Authorization: `KakaoAK ${process.env.NEXT_PUBLIC_KAKAO_REST_KEY}` }
-      })
-      .then(r => r.json())
-      .then(data => {
-        const doc = data.documents?.[0];
-        if (doc) {
-          const addr = doc.road_address?.address_name || doc.address?.address_name || "";
-          if (addr) setAddressRef.current(addr);
-        }
-      })
-      .catch(() => {
-        // REST API 실패 시 services 방식 fallback
-        if (window.kakao?.maps?.services) {
-          const geocoder = new window.kakao.maps.services.Geocoder();
-          geocoder.coord2Address(newLng, newLat, (result: any, status: any) => {
-            if (status === window.kakao.maps.services.Status.OK) {
-              const addr = result[0].road_address?.address_name || result[0].address?.address_name;
-              if (addr) setAddressRef.current(addr);
-            }
-          });
+      if (!window.kakao.maps.services) { return; }
+      const geocoder = new window.kakao.maps.services.Geocoder();
+      geocoder.coord2Address(newLng, newLat, (result: any, status: any) => {
+        if (status === window.kakao.maps.services.Status.OK) {
+          const addr = result[0].road_address
+            ? result[0].road_address.address_name
+            : result[0].address.address_name;
+          // ✅ ref로 최신 setter 호출 → 상단 input 주소 업데이트
+          setAddressRef.current(addr);
         }
       });
     });
