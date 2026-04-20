@@ -432,28 +432,15 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
   useEffect(() => { setAddressRef.current = setAddress; setLatRef.current = setLat; setLngRef.current = setLng; });
 
   useEffect(() => {
-    // ✅ 카카오맵 SDK 초기화 - services 라이브러리 포함
-    const initKakaoMap = () => {
-      window.kakao.maps.load(() => setMapLoaded(true));
-    };
-    // 이미 완전히 로드된 경우
+    const initMap = () => { window.kakao.maps.load(() => setMapLoaded(true)); };
     if (window.kakao?.maps?.services) { setMapLoaded(true); return; }
-    // kakao.maps 있지만 services 없으면 load() 재호출
-    if (window.kakao?.maps) { initKakaoMap(); return; }
-    // 스크립트 로딩 중인 경우
+    if (window.kakao?.maps) { initMap(); return; }
     const existing = document.getElementById("kakao-map-script");
-    if (existing) {
-      const check = setInterval(() => {
-        if (window.kakao?.maps) { initKakaoMap(); clearInterval(check); }
-      }, 100);
-      return;
-    }
-    // 새로 로드
+    if (existing) { const check = setInterval(() => { if (window.kakao?.maps?.services) { setMapLoaded(true); clearInterval(check); } else if (window.kakao?.maps) { initMap(); clearInterval(check); } }, 200); return; }
     const script = document.createElement("script");
     script.id = "kakao-map-script";
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false&libraries=services`;
-    script.onload = initKakaoMap;
-    document.head.appendChild(script);
+    script.onload = initMap; document.head.appendChild(script);
   }, []);
 
   useEffect(() => {

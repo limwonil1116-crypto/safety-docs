@@ -586,13 +586,14 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3">안전조치 이행사항</h3>
           <div className="space-y-1.5">
-            {(fd.safetyChecks as any[]).filter(c => c.applicable === "해당").map((item, i) => (
-              <div key={i} className="flex items-start gap-2 text-xs">
-                <div className="w-4 h-4 rounded bg-blue-600 flex items-center justify-center shrink-0 mt-0.5">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+            {(fd.safetyChecks as any[]).map((item, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs py-1 border-b border-gray-50">
+                <div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 ${item.applicable === "해당" ? "bg-blue-600" : "bg-gray-200"}`}>
+                  {item.applicable === "해당" && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
                 </div>
-                <span className="text-gray-800">{item.label}</span>
-                {item.result && <span className="text-gray-500 ml-1">({item.result})</span>}
+                <span className={`flex-1 ${item.applicable === "해당" ? "text-gray-800 font-medium" : "text-gray-400"}`}>{item.label}</span>
+                {item.applicable && <span className={`text-xs px-1.5 py-0.5 rounded ${item.applicable === "해당" ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-400"}`}>{item.applicable}</span>}
+                {item.result && <span className="text-gray-500 text-xs">→ {item.result}</span>}
               </div>
             ))}
           </div>
@@ -607,10 +608,10 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-gray-50">
-                  <th className="text-left px-2 py-1.5 text-gray-600 font-medium">기기기관</th>
+                  <th className="text-left px-2 py-1.5 text-gray-600 font-medium">점검기기</th>
                   <th className="text-left px-2 py-1.5 text-gray-600 font-medium">차단확인자</th>
                   <th className="text-left px-2 py-1.5 text-gray-600 font-medium">전기담당자</th>
-                  <th className="text-left px-2 py-1.5 text-gray-600 font-medium">현장수리</th>
+                  <th className="text-left px-2 py-1.5 text-gray-600 font-medium">현장정비</th>
                 </tr>
               </thead>
               <tbody>
