@@ -359,20 +359,22 @@ function SafetyCheckTable({ items, onChange }: { items: SafetyCheckItem[]; onCha
           </div>
           <div className="col-span-4">
             {item.applicable === "해당" ? (
-              <select value={OPTS.includes(item.result) ? item.result : (item.result ? "직접입력" : "")}
-                onChange={e => { if (e.target.value !== "직접입력") update(idx, "result", e.target.value); else update(idx, "result", "__직접입력__"); }}
-                className="w-full px-2 py-1 border border-gray-200 rounded-lg text-xs text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
-                <option value="">선택</option>
-                {OPTS.map(o => <option key={o} value={o}>{o}</option>)}
-                <option value="직접입력">직접입력</option>
-              </select>
-              {(item.result === "__직접입력__" || (!OPTS.includes(item.result) && item.result && item.result !== "__직접입력__" ? true : false)) && item.applicable === "해당" && (
-                <input type="text"
-                  value={item.result === "__직접입력__" ? "" : item.result}
-                  onChange={e => update(idx, "result", e.target.value)}
-                  placeholder="직접 입력"
-                  className="w-full mt-1 px-2 py-1 border border-blue-300 rounded-lg text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-              )}
+              <div>
+                <select value={OPTS.includes(item.result) ? item.result : (item.result ? "직접입력" : "")}
+                  onChange={e => { if (e.target.value !== "직접입력") update(idx, "result", e.target.value); else update(idx, "result", ""); }}
+                  className="w-full px-2 py-1 border border-gray-200 rounded-lg text-xs text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                  <option value="">선택</option>
+                  {OPTS.map(o => <option key={o} value={o}>{o}</option>)}
+                  <option value="직접입력">직접입력</option>
+                </select>
+                {!OPTS.includes(item.result) && item.result !== "" && (
+                  <input type="text"
+                    value={item.result}
+                    onChange={e => update(idx, "result", e.target.value)}
+                    placeholder="직접 입력"
+                    className="w-full mt-1 px-2 py-1 border border-blue-300 rounded-lg text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                )}
+              </div>
             ) : <div className="text-xs text-gray-300 text-center">-</div>}
           </div>
         </div>
