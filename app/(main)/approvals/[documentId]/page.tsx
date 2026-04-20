@@ -747,18 +747,18 @@ export default function ApprovalDetailPage() {
   // ✅ IME 버그 해결: textarea ref로 직접 DOM 접근
   const reviewOpinionRef = useRef<HTMLTextAreaElement>(null);
   const reviewResultRef = useRef<HTMLTextAreaElement>(null);
+  // ✅ 데이터 로드 완료 후 textarea remount용 key
+  const [dataKey, setDataKey] = useState(0);
 
-  // ✅ state → ref DOM 동기화 (fetchData 완료 후 textarea에 값 반영)
+  // ✅ dataKey 변경 시 textarea remount 후 ref 초기화
   useEffect(() => {
-    if (reviewOpinionRef.current && reviewOpinion) {
+    if (dataKey > 0 && reviewOpinionRef.current) {
       reviewOpinionRef.current.value = reviewOpinion;
     }
-  }, [reviewOpinion]);
-  useEffect(() => {
-    if (reviewResultRef.current && reviewResult) {
+    if (dataKey > 0 && reviewResultRef.current) {
       reviewResultRef.current.value = reviewResult;
     }
-  }, [reviewResult]);
+  }, [dataKey]);
   const [step1ApproverName, setStep1ApproverName] = useState("");
   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
@@ -798,9 +798,8 @@ export default function ApprovalDetailPage() {
       const initialResult = (fd.reviewResult || "") as string;
       setReviewOpinion(initialOpinion);
       setReviewResult(initialResult);
-      // uncontrolled textarea ref 초기값도 설정
-      if (reviewOpinionRef.current) reviewOpinionRef.current.value = initialOpinion;
-      if (reviewResultRef.current) reviewResultRef.current.value = initialResult;
+      // ✅ dataKey를 바꿔서 textarea를 remount → defaultValue 재적용
+      setDataKey(prev => prev + 1);
       const taskRes = await fetch(`/api/tasks/${docObj.taskId}`);
       const taskData = await taskRes.json();
       if (taskRes.ok) setTaskName(taskData.task?.name ?? "");
@@ -934,6 +933,7 @@ export default function ApprovalDetailPage() {
             검토의견 {doc.currentApprovalOrder === 1 && <span className="text-red-500 text-xs">(반려 시 필수)</span>}
           </label>
           <textarea
+            key={`opinion-${dataKey}`}
             ref={reviewOpinionRef}
             defaultValue={reviewOpinion}
             placeholder="검토 의견을 입력해주세요 (반려 시 필수)"
@@ -943,6 +943,7 @@ export default function ApprovalDetailPage() {
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1.5">조치결과</label>
           <textarea
+            key={`result-${dataKey}`}
             ref={reviewResultRef}
             defaultValue={reviewResult}
             placeholder="조치결과를 입력해주세요"
