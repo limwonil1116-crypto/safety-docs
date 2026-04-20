@@ -551,7 +551,7 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
             <View key={idx} style={idx === gasMeasureRows.length - 1 ? S.trLast : S.tr}>
               <View style={{ width: 55, borderRight: "0.5px solid " + C.border, padding: "4 4", alignItems: "center", justifyContent: "center" }}>
                 <Text style={{ fontSize: 9.5, fontWeight: "bold" }}>{row.time}</Text>
-                <Text style={{ fontSize: 8, color: "#888" }}>시  분</Text>
+                <Text style={{ fontSize: 8.5 }}>{`${row.hour || "  "}시 ${row.minute || "  "}분`}</Text>
               </View>
               <Text style={[S.td, { flex: 3, minHeight: 24 }]}>{row.substances || ""}</Text>
               <Text style={[S.td, { flex: 1.5, minHeight: 24 }]}>{row.measurer || ""}</Text>

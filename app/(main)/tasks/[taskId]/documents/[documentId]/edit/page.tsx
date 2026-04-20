@@ -336,7 +336,7 @@ interface SafetyCheckItem { label: string; applicable: string; result: string; }
 function SafetyCheckTable({ items, onChange }: { items: SafetyCheckItem[]; onChange: (updated: SafetyCheckItem[]) => void }) {
   const update = (idx: number, field: keyof SafetyCheckItem, value: string) =>
     onChange(items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
-  const OPTS = ["점검않음", "조치완료", "해당없음"];
+  const OPTS = ["조치완료"];
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-12 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg">
@@ -344,31 +344,42 @@ function SafetyCheckTable({ items, onChange }: { items: SafetyCheckItem[]; onCha
         <div className="col-span-3 text-xs font-medium text-gray-600 text-center">해당여부</div>
         <div className="col-span-4 text-xs font-medium text-gray-600 text-center">확인결과</div>
       </div>
-      {items.map((item, idx) => (
-        <div key={idx} className="grid grid-cols-12 gap-1 items-center border border-gray-100 rounded-xl p-2">
-          <div className="col-span-5 text-xs text-gray-700 leading-tight">{item.label}</div>
-          <div className="col-span-3 flex flex-col gap-1 items-start pl-1">
-            {["해당", "해당없음"].map(opt => (
-              <label key={opt} className="flex items-center gap-1 cursor-pointer">
-                <input type="radio" name={`applicable_${idx}`} value={opt} checked={item.applicable === opt}
-                  onChange={() => update(idx, "applicable", opt)} className="w-3 h-3 text-blue-600" />
-                <span className="text-xs text-gray-600">{opt}</span>
-              </label>
-            ))}
+      {items.map((item, idx) => {
+        const isDirectInput = item.applicable === "해당" && !OPTS.includes(item.result) && item.result !== "" && item.result !== "선택";
+        return (
+          <div key={idx} className="grid grid-cols-12 gap-1 items-center border border-gray-100 rounded-xl p-2">
+            <div className="col-span-5 text-xs text-gray-700 leading-tight">{item.label}</div>
+            <div className="col-span-3 flex flex-col gap-1 items-start pl-1">
+              {["해당", "해당없음"].map(opt => (
+                <label key={opt} className="flex items-center gap-1 cursor-pointer">
+                  <input type="radio" name={`applicable_${idx}`} value={opt} checked={item.applicable === opt}
+                    onChange={() => update(idx, "applicable", opt)} className="w-3 h-3 text-blue-600" />
+                  <span className="text-xs text-gray-600">{opt}</span>
+                </label>
+              ))}
+            </div>
+            <div className="col-span-4 space-y-1">
+              {item.applicable === "해당" ? (
+                <>
+                  <select
+                    value={isDirectInput ? "직접입력" : (item.result || "")}
+                    onChange={e => { if (e.target.value !== "직접입력") update(idx, "result", e.target.value); else update(idx, "result", " "); }}
+                    className="w-full px-2 py-1 border border-gray-200 rounded-lg text-xs text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+                    <option value="">선택</option>
+                    {OPTS.map(o => <option key={o} value={o}>{o}</option>)}
+                    <option value="직접입력">직접입력</option>
+                  </select>
+                  {isDirectInput && (
+                    <input type="text" value={item.result.trim()} onChange={e => update(idx, "result", e.target.value)}
+                      placeholder="직접 입력" autoFocus
+                      className="w-full px-2 py-1 border border-blue-300 rounded-lg text-xs text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                  )}
+                </>
+              ) : <div className="text-xs text-gray-300 text-center">-</div>}
+            </div>
           </div>
-          <div className="col-span-4">
-            {item.applicable === "해당" ? (
-              <select value={OPTS.includes(item.result) ? item.result : (item.result ? "직접입력" : "")}
-                onChange={e => { if (e.target.value !== "직접입력") update(idx, "result", e.target.value); else update(idx, "result", ""); }}
-                className="w-full px-2 py-1 border border-gray-200 rounded-lg text-xs text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
-                <option value="">선택</option>
-                {OPTS.map(o => <option key={o} value={o}>{o}</option>)}
-                <option value="직접입력">직접입력</option>
-              </select>
-            ) : <div className="text-xs text-gray-300 text-center">-</div>}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -909,7 +920,7 @@ const CONFINED_CHECKS: SafetyCheckItem[] = [
   { label: "작업 전 안전교육 실시(TBM 등)", applicable: "", result: "" },
   { label: "●특별교육 이수", applicable: "", result: "" },
 ];
-interface GasMeasureRow { time: string; substances: string; measurer: string; entryCount: string; exitCount: string; }
+interface GasMeasureRow { time: string; hour: string; minute: string; substances: string; measurer: string; entryCount: string; exitCount: string; }
 interface Form2 {
   requestDate: string; workStartDate: string; workEndDate: string; workStartTime: string; workEndTime: string;
   serviceName: string; applicantCompany: string; applicantTitle: string; applicantName: string;
@@ -918,9 +929,9 @@ interface Form2 {
   gasMeasureRows: GasMeasureRow[]; specialMeasures: string;
 }
 const defaultGasMeasureRows: GasMeasureRow[] = [
-  { time: "전", substances: "", measurer: "", entryCount: "", exitCount: "" },
-  { time: "중", substances: "", measurer: "", entryCount: "", exitCount: "" },
-  { time: "후", substances: "", measurer: "", entryCount: "", exitCount: "" },
+  { time: "전", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
+  { time: "중", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
+  { time: "후", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
 ];
 const defaultForm2: Form2 = {
   requestDate: new Date().toISOString().split("T")[0], workStartDate: "", workEndDate: "", workStartTime: "09:00", workEndTime: "18:00",
@@ -1006,9 +1017,20 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
               {(form.gasMeasureRows || defaultGasMeasureRows).map((row, idx) => (
                 <tr key={idx}>
                   <td className="border border-gray-300 px-2 py-2 text-center font-medium w-8">{row.time}</td>
-                  <td className="border border-gray-300 px-1 py-1 text-center w-12">
-                    <div className="flex flex-col gap-0.5 text-xs text-gray-500">
-                      <span>시</span><span>분</span>
+                  <td className="border border-gray-300 px-1 py-1 text-center w-24">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-0.5">
+                        <input type="text" inputMode="numeric" maxLength={2} value={row.hour}
+                          onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,hour:e.target.value}:r); onChange("gasMeasureRows", rows); }}
+                          className="w-8 px-1 py-0.5 text-xs border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-400" placeholder="0" />
+                        <span className="text-xs text-gray-500">시</span>
+                      </div>
+                      <div className="flex items-center gap-0.5">
+                        <input type="text" inputMode="numeric" maxLength={2} value={row.minute}
+                          onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,minute:e.target.value}:r); onChange("gasMeasureRows", rows); }}
+                          className="w-8 px-1 py-0.5 text-xs border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-400" placeholder="0" />
+                        <span className="text-xs text-gray-500">분</span>
+                      </div>
                     </div>
                   </td>
                   <td className="border border-gray-300 px-1 py-1">
@@ -1055,16 +1077,13 @@ const defaultForm3: Form3 = {
   participants: [{ role: "안전보건관리책임자", name: "", phone: "" }, { role: "현장참여직원", name: "", phone: "" }, { role: "시설관리자", name: "", phone: "" }],
   riskFactors: "", improvementMeasures: "", reviewOpinion: "", reviewResult: "", applicantName: "", applicantOrg: "",
 };
-function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation, onClearLocation, taskName, documentId, taskStartDate, taskEndDate }: {
+function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation, onClearLocation, taskName, documentId }: {
   form: Form3; onChange: (k: string, v: unknown) => void;
   workLatitude: number | null; workAddress: string; onOpenLocation: () => void; onClearLocation: () => void;
   taskName: string; documentId: string;
-  taskStartDate?: string; taskEndDate?: string;
 }) {
   const updateP = (idx: number, f: keyof Participant3, v: string) =>
     onChange("participants", form.participants.map((p, i) => i === idx ? { ...p, [f]: v } : p));
-  const contractStart = form.contractPeriodStart || taskStartDate || "";
-  const contractEnd = form.contractPeriodEnd || taskEndDate || "";
   return (
     <>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -1075,26 +1094,27 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             onChangeStartDate={v => onChange("workStartDate", v)} onChangeEndDate={v => onChange("workEndDate", v)}
             onChangeStartTime={v => onChange("workStartTime", v)} onChangeEndTime={v => onChange("workEndTime", v)} />
           <FormInput label="용역명" required><input type="text" value={taskName} readOnly className="w-full px-3 py-3 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
-          <FormInput label="시공사업체명"><input type="text" value={form.contractorCompany} onChange={e => onChange("contractorCompany", e.target.value)} placeholder="예) (주)한국안전엔지니어링" className={inputClass} /></FormInput>
+          <FormInput label="시공사업체명"><input type="text" value={form.contractorCompany} onChange={e => onChange("contractorCompany", e.target.value)} className={inputClass} /></FormInput>
           <div className="grid grid-cols-2 gap-3">
-            <FormInput label="용역기간 시작"><input type="date" value={contractStart} onChange={e => onChange("contractPeriodStart", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
-            <FormInput label="용역기간 종료"><input type="date" value={contractEnd} onChange={e => onChange("contractPeriodEnd", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
+            <FormInput label="용역기간 시작"><input type="date" value={form.contractPeriodStart} onChange={e => onChange("contractPeriodStart", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
+            <FormInput label="용역기간 종료"><input type="date" value={form.contractPeriodEnd} onChange={e => onChange("contractPeriodEnd", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
           </div>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={2} title="휴일작업 개요" />
         <div className="space-y-3">
-          <FormInput label="작업대상 시설물" required>
-            <input type="text" value={form.facilityName} onChange={e => onChange("facilityName", e.target.value)} placeholder="예) 예당저수지 복통 양수장" className={inputClass + " mb-1.5"} />
-            <input type="text" value={form.facilityLocation} onChange={e => onChange("facilityLocation", e.target.value)} placeholder="지도에서 선택하거나 직접 입력" className={inputClass + " mb-1.5"} />
+          <FormInput label="작업대상 시설물" required><input type="text" value={form.facilityName} onChange={e => onChange("facilityName", e.target.value)} className={inputClass} /></FormInput>
+          <FormInput label="시설물 위치">
+            <input type="text" value={form.facilityLocation} onChange={e => onChange("facilityLocation", e.target.value)} className={inputClass + " mb-1.5"} />
             <LocationField workLatitude={workLatitude} workAddress={workAddress} onOpenLocation={onOpenLocation} onClearLocation={onClearLocation} />
           </FormInput>
-          <FormInput label="작업위치"><input type="text" value={form.workPosition} onChange={e => onChange("workPosition", e.target.value)} placeholder="예) 여수로" className={inputClass} /></FormInput>
-          <FormInput label="작업공종"><textarea value={form.workContents} onChange={e => onChange("workContents", e.target.value)} rows={2} placeholder="예) 방수로 옹벽 재료조사" className={textareaClass} /></FormInput>
-          <FormInput label="위험요소"><textarea value={form.riskFactors} onChange={e => onChange("riskFactors", e.target.value)} rows={2} placeholder="예) 그물부 조사시 미끄러짐" className={textareaClass} /></FormInput>
-          <FormInput label="개선대책"><textarea value={form.improvementMeasures} onChange={e => onChange("improvementMeasures", e.target.value)} rows={2} placeholder="예) 안전난간에 안전로프 설치" className={textareaClass} /></FormInput>
-          <FormInput label="시설 관리자"><input type="text" value={form.facilityManager} onChange={e => onChange("facilityManager", e.target.value)} placeholder="예) 00지사 0급 홍길동" className={inputClass} /></FormInput>
+          <div className="grid grid-cols-2 gap-3">
+            <FormInput label="시설 관리자"><input type="text" value={form.facilityManager} onChange={e => onChange("facilityManager", e.target.value)} className={inputClass} /></FormInput>
+            <FormInput label="관리자 직급"><input type="text" value={form.facilityManagerGrade} onChange={e => onChange("facilityManagerGrade", e.target.value)} className={inputClass} /></FormInput>
+          </div>
+          <FormInput label="작업위치"><input type="text" value={form.workPosition} onChange={e => onChange("workPosition", e.target.value)} className={inputClass} /></FormInput>
+          <FormInput label="작업공종"><textarea value={form.workContents} onChange={e => onChange("workContents", e.target.value)} rows={3} className={textareaClass} /></FormInput>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -1103,38 +1123,42 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
           {form.participants.map((p, idx) => (
             <div key={idx} className="border border-gray-200 rounded-xl p-3">
               <div className="flex items-center justify-between mb-2">
-                <select value={["안전보건관리책임자","참여기술인","현장인부","기타"].includes(p.role) ? p.role : "기타"}
-                  onChange={e => updateP(idx, "role", e.target.value)} className="text-xs px-2 py-1 border border-gray-200 rounded-lg text-gray-700 bg-white focus:outline-none">
-                  <option>안전보건관리책임자</option><option>참여기술인</option><option>현장인부</option><option>기타</option>
+                <select value={p.role} onChange={e => updateP(idx, "role", e.target.value)} className="text-xs px-2 py-1 border border-gray-200 rounded-lg text-gray-700 bg-white focus:outline-none">
+                  <option>안전보건관리책임자</option><option>현장참여직원</option><option>시설관리자</option>
                 </select>
                 {idx >= 1 && <button onClick={() => onChange("participants", form.participants.filter((_, i) => i !== idx))} className="text-gray-400 hover:text-red-500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
               </div>
-              {p.role === "기타" && (
-                <input type="text" onChange={e => updateP(idx, "role", e.target.value)} placeholder="역할 직접 입력" className={"mb-2 " + inputClass} />
-              )}
               <div className="grid grid-cols-2 gap-2">
-                <FormInput label="성명"><input type="text" value={p.name} onChange={e => updateP(idx, "name", e.target.value)} placeholder="홍길동" className={inputClass} /></FormInput>
+                <FormInput label="성명"><input type="text" value={p.name} onChange={e => updateP(idx, "name", e.target.value)} className={inputClass} /></FormInput>
                 <FormInput label="연락처"><input type="tel" value={p.phone} onChange={e => updateP(idx, "phone", e.target.value)} placeholder="010-0000-0000" className={inputClass} /></FormInput>
               </div>
             </div>
           ))}
         </div>
-        <button onClick={() => onChange("participants", [...form.participants, { role: "참여기술인", name: "", phone: "" }])}
+        <button onClick={() => onChange("participants", [...form.participants, { role: "현장참여직원", name: "", phone: "" }])}
           className="w-full py-2 rounded-xl border border-dashed border-gray-300 text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 flex items-center justify-center gap-1">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>참여자 추가
         </button>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={4} title="신청자 정보" />
+        <SectionHeader num={4} title="위험요소 및 개선대책" />
+        <div className="space-y-3">
+          <FormInput label="위험요소"><textarea value={form.riskFactors} onChange={e => onChange("riskFactors", e.target.value)} rows={2} className={textareaClass} /></FormInput>
+          <FormInput label="개선대책"><textarea value={form.improvementMeasures} onChange={e => onChange("improvementMeasures", e.target.value)} rows={2} className={textareaClass} /></FormInput>
+        </div>
+      </div>
+      <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <SectionHeader num={5} title="신청자 정보" />
         <div className="grid grid-cols-2 gap-3">
-          <FormInput label="소속"><input type="text" value={form.applicantOrg} onChange={e => onChange("applicantOrg", e.target.value)} placeholder="한국농어촌공사 내포지사" className={inputClass} /></FormInput>
-          <FormInput label="신청자 성명" required><input type="text" value={form.applicantName} onChange={e => onChange("applicantName", e.target.value)} placeholder="홍길동" className={inputClass} /></FormInput>
+          <FormInput label="신청자 성명" required><input type="text" value={form.applicantName} onChange={e => onChange("applicantName", e.target.value)} className={inputClass} /></FormInput>
+          <FormInput label="소속"><input type="text" value={form.applicantOrg} onChange={e => onChange("applicantOrg", e.target.value)} className={inputClass} /></FormInput>
         </div>
       </div>
       <PhotoAttachSection documentId={documentId} canAdd={true} />
     </>
   );
 }
+
 const POWER_CHECKS: SafetyCheckItem[] = [
   { label: "전로차단 안전장치 확인", applicable: "", result: "" },
   { label: "변압기차단기 확인", applicable: "", result: "" },
@@ -1268,7 +1292,6 @@ export default function DocumentEditPage() {
   const taskId = params.taskId as string;
   const documentId = params.documentId as string;
   const [taskName, setTaskName] = useState("");
-  const [taskInfo, setTaskInfo] = useState<{startDate?:string;endDate?:string}>({});
   const [documentType, setDocumentType] = useState("SAFETY_WORK_PERMIT");
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -1300,8 +1323,6 @@ export default function DocumentEditPage() {
       const docData = await docRes.json();
       const taskData = await taskRes.json();
       if (taskRes.ok) setTaskName(taskData.task?.name ?? "");
-        const fmt=(d:string)=>d?d.split("T")[0]:"";
-        setTaskInfo({startDate:fmt(taskData.task?.startDate??""),endDate:fmt(taskData.task?.endDate??"")});
       if (docRes.ok) {
         const doc = docData.document;
         setDocumentType(doc.documentType);
@@ -1407,7 +1428,7 @@ export default function DocumentEditPage() {
       <div className="p-4 space-y-4">
         {documentType === "SAFETY_WORK_PERMIT" && <Form1Fields form={form1} onChange={handleChange1} {...locProps} taskName={taskName} documentId={documentId} />}
         {documentType === "CONFINED_SPACE"     && <Form2Fields form={form2} onChange={handleChange2} {...locProps} taskName={taskName} documentId={documentId} />}
-        {documentType === "HOLIDAY_WORK"       && <Form3Fields form={form3} onChange={handleChange3} {...locProps} taskName={taskName} documentId={documentId} taskStartDate={taskInfo?.startDate} taskEndDate={taskInfo?.endDate} />}
+        {documentType === "HOLIDAY_WORK"       && <Form3Fields form={form3} onChange={handleChange3} {...locProps} taskName={taskName} documentId={documentId} />}
         {documentType === "POWER_OUTAGE"       && <Form4Fields form={form4} onChange={handleChange4} {...locProps} taskName={taskName} documentId={documentId} />}
       </div>
 
