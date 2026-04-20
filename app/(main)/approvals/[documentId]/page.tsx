@@ -767,6 +767,9 @@ export default function ApprovalDetailPage() {
   const [showSign, setShowSign] = useState(false);
   const [showFinalApprover, setShowFinalApprover] = useState(false);
   const [pendingAction, setPendingAction] = useState<"APPROVE" | "REJECT" | null>(null);
+  // ✅ 서명 모달 열기 전 textarea 값을 미리 저장 (ref는 모달 오픈 후 null 될 수 있음)
+  const [pendingOpinion, setPendingOpinion] = useState("");
+  const [pendingResult, setPendingResult] = useState("");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
   const signModalRef = useRef<HTMLDivElement>(null);
@@ -860,13 +863,17 @@ export default function ApprovalDetailPage() {
   const clearCanvas = () => { const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext("2d"); if (!ctx) return; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); };
 
   const handleAction = async (action: "APPROVE" | "REJECT") => {
-    // ✅ ref에서 최신 입력값 읽기 (uncontrolled textarea)
-    const currentOpinion = (reviewOpinionRef.current?.value ?? reviewOpinion).trim();
-    const currentResult = (reviewResultRef.current?.value ?? reviewResult).trim();
-    if (action === "REJECT" && !currentOpinion) { alert("반려 사유를 검토의견란에 입력해주세요."); return; }
-    // state도 동기화 (반려 확인 모달에서 사용)
-    if (currentOpinion) setReviewOpinion(currentOpinion);
-    if (currentResult) setReviewResult(currentResult);
+    // ✅ 서명 모달 열기 전에 ref에서 값을 읽어 별도 state에 저장
+    // (서명 모달이 열리면 ReviewInputSection이 가려져 ref가 null 될 수 있음)
+    const opinionVal = (reviewOpinionRef.current?.value ?? reviewOpinion).trim();
+    const resultVal = (reviewResultRef.current?.value ?? reviewResult).trim();
+    if (action === "REJECT" && !opinionVal) { 
+      alert("반려 사유를 검토의견란에 입력해주세요."); return; 
+    }
+    setPendingOpinion(opinionVal);
+    setPendingResult(resultVal);
+    setReviewOpinion(opinionVal);
+    setReviewResult(resultVal);
     setPendingAction(action); setShowRejectConfirm(false); setShowApproveConfirm(false);
     setShowSign(true); initCanvas();
   };
@@ -881,9 +888,9 @@ export default function ApprovalDetailPage() {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           action: pendingAction, 
-          // ✅ ref 우선 → state fallback (handleAction에서 state 동기화됨)
-          comment: (reviewOpinionRef.current?.value || reviewOpinion).trim() || null, 
-          reviewResult: (reviewResultRef.current?.value || reviewResult).trim() || null, 
+          // ✅ pendingOpinion/Result 사용 (handleAction에서 모달 열기 전에 저장한 값)
+          comment: pendingOpinion || null, 
+          reviewResult: pendingResult || null, 
           signatureData 
         }),
       });
