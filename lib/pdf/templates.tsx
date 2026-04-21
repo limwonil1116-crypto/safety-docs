@@ -470,8 +470,8 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
 
   return (
     <Document>
-      <Page size="A4" style={S.page}>
-        <View style={S.titleBox}>
+      <Page size="A4" style={[S.page, { paddingTop: 3 }]}>
+        <View style={[S.titleBox, { paddingVertical: 8, marginBottom: 2 }]}>
           <Text style={S.titleMain}>밀폐공간 작업 허가서<Text style={{ fontSize: 13, fontWeight: "normal" }}>(용역업체용)</Text></Text>
         </View>
         <View style={S.table}>
@@ -485,7 +485,7 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
           ].map((row, i, arr) => (
             <View key={i} style={i === arr.length - 1 ? S.trLast : S.tr}>
               <Text style={[S.il, { width: 100 }]}>{row.label}</Text>
-              <Text style={[S.iv, { borderRight: 0, minHeight: 20 }]}>{row.val}</Text>
+              <Text style={[S.iv, { borderRight: 0, minHeight: 16 }]}>{row.val}</Text>
             </View>
           ))}
         </View>
@@ -522,7 +522,7 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
             const displayLabel = item.label.replace(/^●/, "");
             return (
               <View key={idx} style={idx === checks.length - 1 ? S.trLast : S.tr}>
-                <Text style={[S.td, { flex: 4, minHeight: 20, fontWeight: isBold ? "bold" : "normal", backgroundColor: idx % 2 === 1 ? C.rowEven : C.white }]}>
+                <Text style={[S.td, { flex: 4, minHeight: 16, fontWeight: isBold ? "bold" : "normal", backgroundColor: idx % 2 === 1 ? C.rowEven : C.white }]}>
                   {`○ ${displayLabel}`}
                 </Text>
                 <Text style={[S.tdc, { flex: 1, minHeight: 20, backgroundColor: item.applicable === "해당" ? "#dce6f0" : C.white }]}>{item.applicable || ""}</Text>
@@ -553,10 +553,10 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
                 <Text style={{ fontSize: 9.5, fontWeight: "bold" }}>{row.time}</Text>
                 <Text style={{ fontSize: 8.5 }}>{`${row.hour || "  "}시 ${row.minute || "  "}분`}</Text>
               </View>
-              <Text style={[S.td, { flex: 3, minHeight: 24 }]}>{row.substances || ""}</Text>
-              <Text style={[S.td, { flex: 1.5, minHeight: 24 }]}>{row.measurer || ""}</Text>
-              <Text style={[S.tdc, { flex: 0.5, minHeight: 24 }]}>{row.entryCount || ""}</Text>
-              <Text style={[S.tdc, { flex: 0.5, borderRight: 0, minHeight: 24 }]}>{row.exitCount || ""}</Text>
+              <Text style={[S.td, { flex: 3, minHeight: 18 }]}>{row.substances || ""}</Text>
+              <Text style={[S.td, { flex: 1.5, minHeight: 18 }]}>{row.measurer || ""}</Text>
+              <Text style={[S.tdc, { flex: 0.5, minHeight: 18 }]}>{row.entryCount || ""}</Text>
+              <Text style={[S.tdc, { flex: 0.5, borderRight: 0, minHeight: 18 }]}>{row.exitCount || ""}</Text>
             </View>
           ))}
         </View>
@@ -564,7 +564,7 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
         {/* 5. 특별조치 필요사항 */}
         <Text style={S.secHeader}>5. 특별조치 필요사항</Text>
         <View style={[S.table, { marginBottom: 5 }]}>
-          <Text style={[S.td, { borderRight: 0, minHeight: 35 }]}>{fd.specialMeasures || ""}</Text>
+          <Text style={[S.td, { borderRight: 0, minHeight: 20 }]}>{fd.specialMeasures || ""}</Text>
         </View>
 
         <ApproverSection entries={[
@@ -780,7 +780,7 @@ export function PowerOutagePDF({ formData: fd, approvalLines, documentId, create
         </View>
         <Text style={S.secHeader}>5. 특별조치 필요사항</Text>
         <View style={[S.table, { marginBottom: 5 }]}>
-          <Text style={[S.td, { borderRight: 0, minHeight: 35 }]}>{fd.specialMeasures || ""}</Text>
+          <Text style={[S.td, { borderRight: 0, minHeight: 20 }]}>{fd.specialMeasures || ""}</Text>
         </View>
         <ApproverSection entries={[
           { roleLabel: "(계획확인) 허가자", name: a1?.approverName, signatureData: a1?.signatureData },

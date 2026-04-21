@@ -51,31 +51,31 @@ function CreateTaskModal({ onClose, onCreated }: { onClose: () => void; onCreate
             <label className="text-xs font-medium text-gray-700 mb-1 block">용역명 *</label>
             <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder="예) 예당저수지 복통 안전진단"
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
             <label className="text-xs font-medium text-gray-700 mb-1 block">수급업체명</label>
             <input value={form.contractorCompanyName} onChange={(e) => setForm({ ...form, contractorCompanyName: e.target.value })}
               placeholder="예) (주)한국안전엔지니어링"
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-gray-700 mb-1 block">시작일</label>
               <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div>
               <label className="text-xs font-medium text-gray-700 mb-1 block">종료일</label>
               <input type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
           </div>
           <div>
             <label className="text-xs font-medium text-gray-700 mb-1 block">설명</label>
             <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
               placeholder="용역에 대한 설명을 입력해주세요" rows={2}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
           </div>
           {error && <p className="text-xs text-red-500">{error}</p>}
         </div>
@@ -121,12 +121,12 @@ function EditTaskModal({ task, onClose, onUpdated }: { task: Task; onClose: () =
           <div>
             <label className="text-xs font-medium text-gray-700 mb-1 block">용역명 *</label>
             <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div>
             <label className="text-xs font-medium text-gray-700 mb-1 block">수급업체명</label>
             <input value={form.contractorCompanyName} onChange={(e) => setForm({ ...form, contractorCompanyName: e.target.value })}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           {error && <p className="text-xs text-red-500">{error}</p>}
         </div>
@@ -220,7 +220,7 @@ export default function TasksPage() {
         </div>
         <input value={search} onChange={(e) => setSearch(e.target.value)}
           placeholder="용역명 또는 업체명 검색"
-          className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
       </div>
 
       {/* 목록 */}

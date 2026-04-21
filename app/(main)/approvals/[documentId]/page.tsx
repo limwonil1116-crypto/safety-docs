@@ -287,7 +287,7 @@ function StepIcon({ type, status }: { type: "submit" | "review" | "approve"; sta
   );
 }
 
-function ApprovalFlow({ doc, approvalLines, writerName }: { doc: DocumentDetail; approvalLines: ApprovalLine[]; writerName: string }) {
+function ApprovalFlow({ doc, approvalLines, writerName, applicantSignature }: { doc: DocumentDetail; approvalLines: ApprovalLine[]; writerName: string; applicantSignature?: string }) {
   const isSubmitted = doc.status !== "DRAFT";
   const line1 = approvalLines.find(l => l.approvalOrder === 1);
   const line2 = approvalLines.find(l => l.approvalOrder === 2);
@@ -301,7 +301,7 @@ function ApprovalFlow({ doc, approvalLines, writerName }: { doc: DocumentDetail;
   const roleLabels = ROLE_LABELS[doc.documentType] ?? {};
   const finalLabel = FINAL_ROLE_LABELS[doc.documentType] ?? "최종 허가자";
   const steps = [
-    { icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />, label: "신청자", name: writerName, status: isSubmitted ? "done" : "active" },
+    { icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />, label: "신청자", name: writerName, signatureData: isSubmitted ? applicantSignature : undefined, status: isSubmitted ? "done" : "active" },
     ...(line1 ? [{ icon: <StepIcon type="review" status={getStepStatus(line1)} />, label: roleLabels[1] ?? "검토자", name: line1.approverName ?? "", comment: line1.comment, actedAt: line1.actedAt, signatureData: line1.signatureData, status: getStepStatus(line1) }] : []),
     ...(line2 ? [{ icon: <StepIcon type="approve" status={getStepStatus(line2)} />, label: line2.approvalRole === "FINAL_APPROVER" ? finalLabel : (roleLabels[2] ?? "허가자"), name: line2.approverName ?? "", comment: line2.comment, actedAt: line2.actedAt, signatureData: line2.signatureData, status: getStepStatus(line2) }] : []),
   ] as Array<{ icon: React.ReactNode; label: string; name: string; comment?: string; actedAt?: string; signatureData?: string; status: string }>;
@@ -655,8 +655,8 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
         </div>
       )}
 
-      {/* 붙임2/4: 특별조치 */}
-      {(isForm2 || isForm4) && fd.specialMeasures && (
+      {/* 붙임2/4: 특별조치 - 2단계(허가자)/3단계(확인자)에서만 표시 */}
+      {(isForm2 || isForm4) && fd.specialMeasures && doc.currentApprovalOrder !== 1 && doc.status !== "SUBMITTED" && (
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-2">특별조치 필요사항</h3>
           <p className="text-sm text-gray-800">{fd.specialMeasures as string}</p>
@@ -1009,10 +1009,16 @@ export default function ApprovalDetailPage() {
           </>
         )}
 
-        {/* ✅ 3번: 결재현황 탭 - 결재흐름 + 사진만 (PDF/문서 없음) */}
+        {/* ✅ 3번: 결재현황 탭 - 결재흐름 + 특별조치(2/3단계) + 사진 */}
         {activeTab === "결재현황" && (
           <>
-            <ApprovalFlow doc={doc} approvalLines={approvalLines} writerName={(fd.applicantName as string) || writerName} />
+            <ApprovalFlow doc={doc} approvalLines={approvalLines} writerName={(fd.applicantName as string) || writerName} applicantSignature={(fd.signatureData as string) || undefined} />
+            {(doc.documentType === "CONFINED_SPACE" || doc.documentType === "POWER_OUTAGE") && fd.specialMeasures && doc.currentApprovalOrder !== 1 && doc.status !== "SUBMITTED" && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-gray-900 mb-2">특별조치 필요사항</h3>
+                <p className="text-sm text-gray-800">{fd.specialMeasures as string}</p>
+              </div>
+            )}
             <PhotoViewer documentId={documentId} />
             {isMyTurn && <ReviewInputSection />}
             <CancelButton />
