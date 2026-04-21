@@ -551,8 +551,8 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
   );
 }
 
-function ApprovalSignModal({ documentId, documentType, onClose, onSubmitted }: {
-  documentId: string; documentType: string; onClose: () => void; onSubmitted: () => void;
+function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, onSubmitted }: {
+  documentId: string; documentType: string; measurerUserId?: string; onClose: () => void; onSubmitted: () => void;
 }) {
   const [step, setStep] = useState<"approver" | "sign">("approver");
   const [users, setUsers] = useState<UserItem[]>([]);
@@ -595,9 +595,20 @@ function ApprovalSignModal({ documentId, documentType, onClose, onSubmitted }: {
     if (!reviewer) { setError(info.approverLabel + "를 선택해주세요."); return; }
     setSubmitting(true); setError("");
     try {
+      // 밀폐공간은 monitorUserId + measurerUserId 함께 전송
+      const isConfined = documentType === "CONFINED_SPACE";
+      // measurerUserId는 formData에서 가져오기 위해 먼저 문서 조회 불필요
+      // edit/page.tsx의 form2.measurerUserId를 ApprovalSignModal에 props로 전달받음
+      const submitBody: Record<string, unknown> = { signatureData };
+      if (isConfined) {
+        submitBody.monitorUserId = reviewer.id;
+        submitBody.measurerUserId = measurerUserId ?? undefined;
+      } else {
+        submitBody.reviewerUserId = reviewer.id;
+      }
       const res = await fetch(`/api/documents/${documentId}/approval-lines`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reviewerUserId: reviewer.id, signatureData }),
+        body: JSON.stringify(submitBody),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "오류 발생");
@@ -927,6 +938,8 @@ interface Form2 {
   workLocation: string; workContent: string; entryList: string;
   needFireWork: string; useInternalEngine: string; safetyChecks: SafetyCheckItem[];
   gasMeasureRows: GasMeasureRow[]; specialMeasures: string;
+  monitorName: string; monitorUserId: string;
+  measurerName: string; measurerUserId: string;
 }
 const defaultGasMeasureRows: GasMeasureRow[] = [
   { time: "전", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
@@ -938,6 +951,7 @@ const defaultForm2: Form2 = {
   serviceName: "", applicantCompany: "", applicantTitle: "", applicantName: "", workLocation: "", workContent: "", entryList: "",
   needFireWork: "", useInternalEngine: "", safetyChecks: CONFINED_CHECKS.map(c => ({ ...c })),
   gasMeasureRows: defaultGasMeasureRows.map(r => ({ ...r })), specialMeasures: "",
+  monitorName: "", monitorUserId: "", measurerName: "", measurerUserId: "",
 };
 function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation, onClearLocation, taskName, documentId }: {
   form: Form2; onChange: (k: string, v: unknown) => void;
@@ -965,6 +979,15 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
           </FormInput>
           <FormInput label="작업 내용" required><textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} /></FormInput>
           <FormInput label="출입자 명단"><textarea value={form.entryList} onChange={e => onChange("entryList", e.target.value)} rows={2} className={textareaClass} /></FormInput>
+          <div className="bg-blue-50 rounded-xl p-3 space-y-3">
+            <p className="text-xs font-semibold text-blue-700">👤 감시인 및 측정담당자 지정</p>
+            <FormInput label="감시인 성명" required>
+              <input type="text" value={form.monitorName} onChange={e => onChange("monitorName", e.target.value)} placeholder="감시인 성명 입력" className={inputClass} />
+            </FormInput>
+            <FormInput label="측정담당자 성명" required>
+              <input type="text" value={form.measurerName} onChange={e => onChange("measurerName", e.target.value)} placeholder="측정담당자 성명 입력" className={inputClass} />
+            </FormInput>
+          </div>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -994,6 +1017,8 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         <SectionHeader num={3} title="안전조치 요구사항" />
         <SafetyCheckTable items={form.safetyChecks} onChange={updated => onChange("safetyChecks", updated)} />
       </div>
+      {/* 측정결과는 측정담당자(4단계)에서만 입력 - 신청 단계에서는 숨김 */}
+      <div className="hidden">
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={4} title="산소 및 유해가스 농도 측정결과" />
         <div className="overflow-x-auto">
@@ -1051,10 +1076,14 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
           </table>
         </div>
       </div>
+      </div>{/* end hidden */}
+      {/* 특별조치는 (계획확인)허가자(3단계)에서만 입력 - 신청 단계에서는 숨김 */}
+      <div className="hidden">
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={5} title="특별조치 필요사항" />
         <textarea value={form.specialMeasures} onChange={e => onChange("specialMeasures", e.target.value)} rows={3} className={textareaClass} />
       </div>
+      </div>{/* end hidden specialMeasures */}
       <PhotoAttachSection documentId={documentId} canAdd={true} />
     </>
   );
@@ -1264,6 +1293,9 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
           행 추가
         </button>
       </div>
+      </div>{/* end hidden */}
+      {/* 특별조치는 (계획확인)허가자(3단계)에서만 입력 - 신청 단계에서는 숨김 */}
+      <div className="hidden">
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={5} title="특별조치 필요사항" />
         <textarea value={form.specialMeasures} onChange={e => onChange("specialMeasures", e.target.value)} rows={3} className={textareaClass} />
@@ -1458,6 +1490,7 @@ export default function DocumentEditPage() {
       )}
       {showApproval && (
         <ApprovalSignModal documentId={documentId} documentType={documentType}
+          measurerUserId={documentType === "CONFINED_SPACE" ? (form2.measurerUserId || undefined) : undefined}
           onClose={() => setShowApproval(false)}
           onSubmitted={() => {
             setShowApproval(false);

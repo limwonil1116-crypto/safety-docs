@@ -34,9 +34,16 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> 
 };
 const ROLE_LABELS: Record<string, Record<number, string>> = {
   SAFETY_WORK_PERMIT: { 1: "최종 검토자", 2: "최종 허가자" },
-  CONFINED_SPACE:     { 1: "허가자",     2: "확인자" },
+  CONFINED_SPACE:     { 1: "감시인", 2: "(계획확인)허가자", 3: "측정담당자", 4: "(이행확인)확인자" },
   HOLIDAY_WORK:       { 1: "검토자",     2: "승인자" },
   POWER_OUTAGE:       { 1: "허가자",     2: "확인자" },
+};
+// 밀폐공간 단계별 액션 설명
+const CONFINED_STEP_DESC: Record<number, string> = {
+  1: "감시인 서명",
+  2: "특별조치 입력 및 (계획확인) 허가자 서명",
+  3: "측정결과 입력",
+  4: "(이행확인) 확인자 최종 서명",
 };
 const FINAL_ROLE_LABELS: Record<string, string> = {
   SAFETY_WORK_PERMIT: "최종 허가자",
@@ -341,6 +348,87 @@ function ApprovalFlow({ doc, approvalLines, writerName, applicantSignature }: { 
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+
+// 밀폐공간 다음단계 결재자 지정 모달
+function ConfinedNextModal({ documentId, action, onClose, onAssigned }: {
+  documentId: string;
+  action: "PLAN_APPROVER" | "FINAL_CONFIRMER";
+  onClose: () => void;
+  onAssigned: () => void;
+}) {
+  const [users, setUsers] = useState<UserItem[]>([]);
+  const [keyword, setKeyword] = useState("");
+  const [selected, setSelected] = useState<UserItem | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const label = action === "PLAN_APPROVER" ? "(계획확인) 허가자" : "(이행확인) 확인자";
+  const nextOrder = action === "PLAN_APPROVER" ? 2 : 4;
+  const nextTitle = action === "PLAN_APPROVER"
+    ? "밀폐공간 작업허가 - (계획확인) 허가자 서명 요청"
+    : "밀폐공간 작업허가 - (이행확인) 최종 확인 요청";
+
+  useEffect(() => {
+    const q = keyword ? `&keyword=${encodeURIComponent(keyword)}` : "";
+    fetch(`/api/users?krcOnly=true${q}`).then(r => r.json()).then(d => setUsers(d.users ?? []));
+  }, [keyword]);
+
+  const handleAssign = async () => {
+    if (!selected) { setError("결재자를 선택해주세요."); return; }
+    setLoading(true); setError("");
+    try {
+      const res = await fetch(`/api/documents/${documentId}/approval-lines`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nextApproverUserId: selected.id,
+          nextOrder,
+          nextRole: "FINAL_APPROVER",
+          nextTitle,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "오류 발생");
+      onAssigned();
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : "오류가 발생했습니다."); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+      <div className="bg-white w-full rounded-t-3xl p-6 pb-24 max-h-[85vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-bold text-gray-900">{label} 지정</h2>
+          <button onClick={onClose} className="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div className="bg-blue-50 rounded-xl p-3 mb-4 text-xs text-blue-700">{label}를 지정해주세요.</div>
+        <div className={`p-3 rounded-xl border-2 mb-4 ${selected ? "border-blue-400 bg-blue-50" : "border-dashed border-gray-300"}`}>
+          {selected ? (
+            <div className="flex items-center justify-between">
+              <div><span className="text-sm font-medium text-gray-900">{selected.name}</span><span className="text-xs text-gray-500 ml-2">{selected.organization}</span></div>
+              <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-red-500"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+          ) : <p className="text-xs text-gray-400">아래 목록에서 선택해주세요</p>}
+        </div>
+        <input value={keyword} onChange={e => setKeyword(e.target.value)} placeholder="이름으로 검색"
+          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2" />
+        <div className="space-y-1.5 max-h-48 overflow-y-auto mb-4">
+          {users.filter(u => u.id !== selected?.id).map(u => (
+            <button key={u.id} onClick={() => setSelected(u)}
+              className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-blue-400 hover:bg-blue-50 text-left">
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm shrink-0">{u.name[0]}</div>
+              <div><div className="text-sm font-medium text-gray-900">{u.name}</div><div className="text-xs text-gray-500">{u.organization}</div></div>
+            </button>
+          ))}
+        </div>
+        {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
+        <button onClick={handleAssign} disabled={loading || !selected}
+          className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50" style={{ background: "#2563eb" }}>
+          {loading ? "지정 중..." : `${label} 지정하기`}
+        </button>
       </div>
     </div>
   );
@@ -767,6 +855,11 @@ export default function ApprovalDetailPage() {
   const [cancelling, setCancelling] = useState(false);
   const [showSign, setShowSign] = useState(false);
   const [showFinalApprover, setShowFinalApprover] = useState(false);
+  // 밀폐공간 5단계 전용
+  const [showConfinedNextModal, setShowConfinedNextModal] = useState(false);
+  const [confinedNextAction, setConfinedNextAction] = useState<"PLAN_APPROVER"|"FINAL_CONFIRMER"|null>(null);
+  const [specialMeasuresInput, setSpecialMeasuresInput] = useState("");
+  const [gasMeasureRowsInput, setGasMeasureRowsInput] = useState<any[]>([]);
   const [pendingAction, setPendingAction] = useState<"APPROVE" | "REJECT" | null>(null);
   // ✅ 서명 모달 열기 전 textarea 값을 미리 저장 (ref는 모달 오픈 후 null 될 수 있음)
   const [pendingOpinion, setPendingOpinion] = useState("");
@@ -884,22 +977,51 @@ export default function ApprovalDetailPage() {
     try {
       const canvas = canvasRef.current;
       const signatureData = canvas ? canvas.toDataURL("image/png") : null;
+      const isConfined = doc?.documentType === "CONFINED_SPACE";
+      const confinedOrder = doc?.currentApprovalOrder ?? 0;
+      const extraBody: Record<string, unknown> = {};
+      // 밀폐공간 3단계: 특별조치 필요사항 포함
+      if (isConfined && confinedOrder === 2 && specialMeasuresInput) {
+        extraBody.specialMeasures = specialMeasuresInput;
+      }
+      // 밀폐공간 4단계: 측정결과 포함
+      if (isConfined && confinedOrder === 3 && gasMeasureRowsInput.length > 0) {
+        extraBody.gasMeasureRows = gasMeasureRowsInput;
+      }
       const res = await fetch(`/api/documents/${documentId}/approve`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           action: pendingAction, 
-          // ✅ pendingOpinion/Result 사용 (handleAction에서 모달 열기 전에 저장한 값)
           comment: pendingOpinion || null, 
           reviewResult: pendingResult || null, 
-          signatureData 
+          signatureData,
+          ...extraBody,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "오류 발생");
       setShowSign(false);
-      if (data.action === "NEED_FINAL_APPROVER") { setShowFinalApprover(true); }
-      else if (data.action === "APPROVED") { alert("최종 승인이 완료됩니다."); router.push("/approvals"); }
-      else { alert("처리됩니다."); router.push("/approvals"); }
+      if (data.action === "NEED_FINAL_APPROVER") {
+        setShowFinalApprover(true);
+      } else if (data.action === "NEED_PLAN_APPROVER") {
+        // 밀폐공간 2단계: 감시인 서명 완료 → (계획확인)허가자 지정
+        setConfinedNextAction("PLAN_APPROVER");
+        setShowConfinedNextModal(true);
+      } else if (data.action === "NEED_MEASUREMENT") {
+        // 밀폐공간 3단계: 측정담당자에게 넘어감
+        alert("(계획확인) 서명이 완료됩니다. 측정담당자에게 측정결과 입력을 요청합니다.");
+        router.push("/approvals");
+      } else if (data.action === "NEED_FINAL_CONFIRMER") {
+        // 밀폐공간 4단계: 측정결과 입력 완료 → (이행확인)확인자 지정
+        setConfinedNextAction("FINAL_CONFIRMER");
+        setShowConfinedNextModal(true);
+      } else if (data.action === "APPROVED") {
+        alert("최종 승인이 완료됩니다.");
+        router.push("/approvals");
+      } else {
+        alert("처리됩니다.");
+        router.push("/approvals");
+      }
     } catch (e: unknown) { alert(e instanceof Error ? e.message : "오류가 발생했습니다."); }
     finally { setProcessing(false); }
   };
@@ -921,39 +1043,146 @@ export default function ApprovalDetailPage() {
     ? `💡 ${step1ApproverName || "1단계 검토자"}(검토자)가 작성한 내용을 확인하여 최종 결재해주세요.`
     : null;
 
-  const ReviewInputSection = () => (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
-      <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
-        {doc.currentApprovalOrder === 1 ? "검토 의견 입력" : "검토의견 확인 및 설정"}
-      </h3>
-      {reviewGuideText && <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-3">{reviewGuideText}</p>}
-      <div className="space-y-3">
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1.5">
-            검토의견 {doc.currentApprovalOrder === 1 && <span className="text-red-500 text-xs">(반려 시 필수)</span>}
-          </label>
-          <textarea
-            key={`opinion-${dataKey}`}
-            ref={reviewOpinionRef}
-            defaultValue={reviewOpinion}
-            placeholder="검토 의견을 입력해주세요 (반려 시 필수)"
-            rows={3}
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1.5">조치결과</label>
-          <textarea
-            key={`result-${dataKey}`}
-            ref={reviewResultRef}
-            defaultValue={reviewResult}
-            placeholder="조치결과를 입력해주세요"
-            rows={2}
-            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
-        </div>
-      </div>
+
+// 측정결과 입력 컴포넌트 (결재 단계에서 사용)
+function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any[]) => void }) {
+  const update = (idx: number, field: string, value: string) =>
+    onChange(rows.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs border-collapse">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className="border border-gray-300 px-2 py-1.5 text-center text-gray-900 font-semibold" colSpan={2}>측정시간</th>
+            <th className="border border-gray-300 px-2 py-1.5 text-center text-gray-900 font-semibold">측정물질명 및 농도</th>
+            <th className="border border-gray-300 px-2 py-1.5 text-center text-gray-900 font-semibold">측정자</th>
+            <th className="border border-gray-300 px-2 py-1.5 text-center text-gray-900 font-semibold">입</th>
+            <th className="border border-gray-300 px-2 py-1.5 text-center text-gray-900 font-semibold">출</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, idx) => (
+            <tr key={idx}>
+              <td className="border border-gray-300 px-2 py-1 text-center font-bold text-gray-900 w-6">{row.time}</td>
+              <td className="border border-gray-300 px-1 py-1 w-20">
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-0.5">
+                    <input type="text" inputMode="numeric" maxLength={2} value={row.hour || ""}
+                      onChange={e => update(idx, "hour", e.target.value)}
+                      className="w-8 px-1 py-0.5 text-xs border border-gray-300 rounded text-center text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400" placeholder="0" />
+                    <span className="text-xs text-gray-600">시</span>
+                  </div>
+                  <div className="flex items-center gap-0.5">
+                    <input type="text" inputMode="numeric" maxLength={2} value={row.minute || ""}
+                      onChange={e => update(idx, "minute", e.target.value)}
+                      className="w-8 px-1 py-0.5 text-xs border border-gray-300 rounded text-center text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400" placeholder="0" />
+                    <span className="text-xs text-gray-600">분</span>
+                  </div>
+                </div>
+              </td>
+              <td className="border border-gray-300 px-1 py-1">
+                <input type="text" value={row.substances || ""} onChange={e => update(idx, "substances", e.target.value)}
+                  className="w-full px-1 py-1 text-xs text-gray-900 border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded" />
+              </td>
+              <td className="border border-gray-300 px-1 py-1">
+                <input type="text" value={row.measurer || ""} onChange={e => update(idx, "measurer", e.target.value)}
+                  className="w-full px-1 py-1 text-xs text-gray-900 border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded" />
+              </td>
+              <td className="border border-gray-300 px-1 py-1">
+                <input type="text" value={row.entryCount || ""} onChange={e => update(idx, "entryCount", e.target.value)}
+                  className="w-full px-1 py-1 text-xs text-gray-900 border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded text-center" />
+              </td>
+              <td className="border border-gray-300 px-1 py-1">
+                <input type="text" value={row.exitCount || ""} onChange={e => update(idx, "exitCount", e.target.value)}
+                  className="w-full px-1 py-1 text-xs text-gray-900 border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded text-center" />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
+}
+
+    const isConfinedSpace = doc.documentType === "CONFINED_SPACE";
+  const confinedOrder = doc.currentApprovalOrder ?? 0;
+
+  const ReviewInputSection = () => {
+    // 밀폐공간 단계별 UI
+    if (isConfinedSpace) {
+      const stepDesc = CONFINED_STEP_DESC[confinedOrder] ?? "";
+      return (
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
+          <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
+            {stepDesc}
+          </h3>
+          {confinedOrder === 1 && (
+            <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">감시인으로서 작업 계획을 확인하고 서명해주세요.</p>
+          )}
+          {confinedOrder === 2 && (
+            <div className="space-y-2">
+              <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">특별조치 필요사항을 입력 후 서명해주세요.</p>
+              <textarea
+                value={specialMeasuresInput}
+                onChange={e => setSpecialMeasuresInput(e.target.value)}
+                placeholder="특별조치 필요사항을 입력해주세요"
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+            </div>
+          )}
+          {confinedOrder === 3 && (
+            <div className="space-y-3">
+              <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">산소 및 유해가스 농도 측정결과를 입력해주세요.</p>
+              <GasMeasureInput rows={gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : [
+                { time: "전", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
+                { time: "중", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
+                { time: "후", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
+              ]} onChange={setGasMeasureRowsInput} />
+            </div>
+          )}
+          {confinedOrder === 4 && (
+            <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">측정결과를 최종 확인하고 서명해주세요.</p>
+          )}
+        </div>
+      );
+    }
+
+    // 일반 문서
+    return (
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
+        <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
+          {doc.currentApprovalOrder === 1 ? "검토 의견 입력" : "검토의견 확인 및 설정"}
+        </h3>
+        {reviewGuideText && <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-3">{reviewGuideText}</p>}
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+              검토의견 {doc.currentApprovalOrder === 1 && <span className="text-red-500 text-xs">(반려 시 필수)</span>}
+            </label>
+            <textarea
+              key={`opinion-${dataKey}`}
+              ref={reviewOpinionRef}
+              defaultValue={reviewOpinion}
+              placeholder="검토 의견을 입력해주세요 (반려 시 필수)"
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">조치결과</label>
+            <textarea
+              key={`result-${dataKey}`}
+              ref={reviewResultRef}
+              defaultValue={reviewResult}
+              placeholder="조치결과를 입력해주세요"
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const CancelButton = () => canCancel ? (
     <button onClick={handleCancelApproval} disabled={cancelling}
@@ -1123,6 +1352,23 @@ export default function ApprovalDetailPage() {
         <FinalApproverModal documentId={documentId} documentType={doc.documentType}
           onClose={() => setShowFinalApprover(false)}
           onAssigned={() => { setShowFinalApprover(false); alert("최종허가자가 지정됩니다. 알림이 전송됩니다."); router.push("/approvals"); }} />
+      )}
+
+      {/* 밀폐공간 다음단계 지정 모달 */}
+      {showConfinedNextModal && confinedNextAction && doc && (
+        <ConfinedNextModal
+          documentId={documentId}
+          action={confinedNextAction}
+          onClose={() => setShowConfinedNextModal(false)}
+          onAssigned={() => {
+            setShowConfinedNextModal(false);
+            const msg = confinedNextAction === "PLAN_APPROVER"
+              ? "(계획확인) 허가자가 지정됩니다."
+              : "(이행확인) 확인자가 지정됩니다.";
+            alert(msg);
+            router.push("/approvals");
+          }}
+        />
       )}
     </div>
   );

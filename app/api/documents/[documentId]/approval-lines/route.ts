@@ -62,10 +62,8 @@ export async function POST(
     }
     const { documentId } = await params;
     const body = await req.json();
-    const { reviewerUserId, formDataJson, signatureData } = body;
-    if (!reviewerUserId) {
-      return NextResponse.json({ error: "결재자를 지정해주세요." }, { status: 400 });
-    }
+    const { reviewerUserId, monitorUserId, measurerUserId, formDataJson, signatureData } = body;
+    // 밀폐공간: monitorUserId(감시인) 필수, 일반: reviewerUserId 필수
     const [doc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
     if (!doc || doc.deletedAt) {
       return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
@@ -73,12 +71,17 @@ export async function POST(
     if (!["DRAFT", "REJECTED"].includes(doc.status)) {
       return NextResponse.json({ error: "제출할 수 없는 상태입니다." }, { status: 400 });
     }
+    const isConfinedSpace = doc.documentType === "CONFINED_SPACE";
+    const step1UserId = isConfinedSpace ? monitorUserId : reviewerUserId;
+    if (!step1UserId) {
+      return NextResponse.json({ error: isConfinedSpace ? "감시인을 지정해주세요." : "결재자를 지정해주세요." }, { status: 400 });
+    }
     // 기존 결재선 삭제
     await db.delete(documentApprovalLines).where(eq(documentApprovalLines.documentId, documentId));
     // 1단계 결재선 생성
     const [newLine] = await db.insert(documentApprovalLines).values({
       documentId,
-      approverUserId: reviewerUserId,
+      approverUserId: step1UserId,
       approvalOrder: 1,
       approvalRole: "REVIEWER",
       stepStatus: "WAITING",
@@ -93,26 +96,29 @@ export async function POST(
         signatureData,
       }).catch(() => {});
     }
-    // 문서 상태 SUBMITTED로 업데이트
-    const updatedFormData = {
+    // 밀폐공간: 측정담당자도 formData에 저장
+    const updatedFormData: Record<string, unknown> = {
       ...(doc.formDataJson as object),
       ...(formDataJson ?? {}),
       signatureData: signatureData ?? null,
     };
+    if (isConfinedSpace && measurerUserId) {
+      updatedFormData.measurerUserId = measurerUserId;
+    }
     await db.update(documents).set({
       status: "SUBMITTED",
       formDataJson: updatedFormData,
       lastUpdatedBy: session.user.id,
       submittedAt: new Date(),
       currentApprovalOrder: 1,
-      currentApproverUserId: reviewerUserId,
+      currentApproverUserId: step1UserId,
       updatedAt: new Date(),
     }).where(eq(documents.id, documentId));
     // 결재자에게 알림
     await db.insert(notifications).values({
-      userId: reviewerUserId,
+      userId: step1UserId,
       type: "MY_TURN",
-      title: "결재 요청",
+      title: isConfinedSpace ? "밀폐공간 작업허가 - 감시인 서명 요청" : "결재 요청",
       body: `${session.user.name}이 결재를 요청했습니다.`,
       targetDocumentId: documentId,
       isRead: false,
@@ -136,36 +142,39 @@ export async function PATCH(
     }
     const { documentId } = await params;
     const body = await req.json();
-    const { finalApproverUserId } = body;
-    if (!finalApproverUserId) {
-      return NextResponse.json({ error: "최종허가자를 지정해주세요." }, { status: 400 });
+    const { finalApproverUserId, nextApproverUserId, nextOrder, nextRole, nextTitle } = body;
+    const targetUserId = finalApproverUserId ?? nextApproverUserId;
+    if (!targetUserId) {
+      return NextResponse.json({ error: "다음 결재자를 지정해주세요." }, { status: 400 });
     }
     const [doc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
     if (!doc) {
       return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
     }
-    // 2단계 결재선 생성
+    const order = nextOrder ?? 2;
+    const role = nextRole ?? "FINAL_APPROVER";
+    // 다음 단계 결재선 생성
     await db.insert(documentApprovalLines).values({
       documentId,
-      approverUserId: finalApproverUserId,
-      approvalOrder: 2,
-      approvalRole: "FINAL_APPROVER",
+      approverUserId: targetUserId,
+      approvalOrder: order,
+      approvalRole: role as "REVIEWER" | "FINAL_APPROVER",
       stepStatus: "WAITING",
       signatureRequired: true,
     });
-    // 문서 상태 IN_REVIEW로 업데이트
+    // 문서 상태 업데이트
     await db.update(documents).set({
       status: "IN_REVIEW",
-      currentApprovalOrder: 2,
-      currentApproverUserId: finalApproverUserId,
+      currentApprovalOrder: order,
+      currentApproverUserId: targetUserId,
       updatedAt: new Date(),
     }).where(eq(documents.id, documentId));
-    // 최종허가자에게 알림
+    // 다음 결재자에게 알림
     await db.insert(notifications).values({
-      userId: finalApproverUserId,
+      userId: targetUserId,
       type: "MY_TURN",
-      title: "최종 결재 요청",
-      body: "검토가 완료되어 최종 결재를 요청합니다.",
+      title: nextTitle ?? "결재 요청",
+      body: "결재를 요청합니다.",
       targetDocumentId: documentId,
       isRead: false,
     });
