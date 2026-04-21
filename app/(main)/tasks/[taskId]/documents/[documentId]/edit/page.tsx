@@ -1000,23 +1000,23 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr className="bg-gray-100">
-                <th className="border border-gray-300 px-2 py-2 text-center" colSpan={2}>측정시간</th>
-                <th className="border border-gray-300 px-2 py-2 text-center">측정물질명 및 농도</th>
-                <th className="border border-gray-300 px-2 py-2 text-center">측정자</th>
-                <th className="border border-gray-300 px-2 py-2 text-center" colSpan={2}>인원 확인(감시인)</th>
+                <th className="border border-gray-300 px-2 py-2 text-center text-gray-900 font-semibold" colSpan={2}>측정시간</th>
+                <th className="border border-gray-300 px-2 py-2 text-center text-gray-900 font-semibold">측정물질명 및 농도</th>
+                <th className="border border-gray-300 px-2 py-2 text-center text-gray-900 font-semibold">측정자</th>
+                <th className="border border-gray-300 px-2 py-2 text-center text-gray-900 font-semibold" colSpan={2}>인원 확인(감시인)</th>
               </tr>
               <tr className="bg-gray-50">
-                <th className="border border-gray-300 px-2 py-1 text-center" colSpan={2}></th>
-                <th className="border border-gray-300 px-2 py-1 text-center"></th>
-                <th className="border border-gray-300 px-2 py-1 text-center"></th>
-                <th className="border border-gray-300 px-2 py-1 text-center">입</th>
-                <th className="border border-gray-300 px-2 py-1 text-center">출</th>
+                <th className="border border-gray-300 px-2 py-1 text-center text-gray-900" colSpan={2}></th>
+                <th className="border border-gray-300 px-2 py-1 text-center text-gray-900"></th>
+                <th className="border border-gray-300 px-2 py-1 text-center text-gray-900"></th>
+                <th className="border border-gray-300 px-2 py-1 text-center text-gray-900 font-semibold">입</th>
+                <th className="border border-gray-300 px-2 py-1 text-center text-gray-900 font-semibold">출</th>
               </tr>
             </thead>
             <tbody>
               {(form.gasMeasureRows || defaultGasMeasureRows).map((row, idx) => (
                 <tr key={idx}>
-                  <td className="border border-gray-300 px-2 py-2 text-center font-medium w-8">{row.time}</td>
+                  <td className="border border-gray-300 px-2 py-2 text-center font-bold text-gray-900 w-8">{row.time}</td>
                   <td className="border border-gray-300 px-1 py-1 text-center w-24">
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-0.5">
@@ -1034,16 +1034,16 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
                     </div>
                   </td>
                   <td className="border border-gray-300 px-1 py-1">
-                    <input type="text" value={row.substances} onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,substances:e.target.value}:r); onChange("gasMeasureRows", rows); }} className="w-full px-1 py-1 text-xs border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded" />
+                    <input type="text" value={row.substances} onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,substances:e.target.value}:r); onChange("gasMeasureRows", rows); }} className="w-full px-1 py-1 text-xs text-gray-900 border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded" />
                   </td>
                   <td className="border border-gray-300 px-1 py-1">
-                    <input type="text" value={row.measurer} onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,measurer:e.target.value}:r); onChange("gasMeasureRows", rows); }} className="w-full px-1 py-1 text-xs border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded" />
+                    <input type="text" value={row.measurer} onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,measurer:e.target.value}:r); onChange("gasMeasureRows", rows); }} className="w-full px-1 py-1 text-xs text-gray-900 border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded" />
                   </td>
                   <td className="border border-gray-300 px-1 py-1">
-                    <input type="text" value={row.entryCount} onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,entryCount:e.target.value}:r); onChange("gasMeasureRows", rows); }} className="w-full px-1 py-1 text-xs border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded text-center" />
+                    <input type="text" value={row.entryCount} onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,entryCount:e.target.value}:r); onChange("gasMeasureRows", rows); }} className="w-full px-1 py-1 text-xs text-gray-900 border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded text-center" />
                   </td>
                   <td className="border border-gray-300 px-1 py-1">
-                    <input type="text" value={row.exitCount} onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,exitCount:e.target.value}:r); onChange("gasMeasureRows", rows); }} className="w-full px-1 py-1 text-xs border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded text-center" />
+                    <input type="text" value={row.exitCount} onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,exitCount:e.target.value}:r); onChange("gasMeasureRows", rows); }} className="w-full px-1 py-1 text-xs text-gray-900 border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded text-center" />
                   </td>
                 </tr>
               ))}

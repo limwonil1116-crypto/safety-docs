@@ -342,6 +342,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [filterTab, setFilterTab] = useState("ALL");
   const [viewMode, setViewMode] = useState<"map" | "calendar">("map");
+  const [selectedTaskId, setSelectedTaskId] = useState("ALL");
 
   const stats = {
     total: documents.length,
@@ -403,7 +404,10 @@ export default function DashboardPage() {
         () => {}
       );
     }
-    const filtered = filterTab === "ALL" ? documents : documents.filter(d => d.documentType === filterTab);
+    const taskFiltered = selectedTaskId === "ALL" ? documents : documents.filter(d => d.taskId === selectedTaskId);
+  const filtered = filterTab === "ALL" ? taskFiltered : taskFiltered.filter(d => d.documentType === filterTab);
+  // 용역 목록 (중복제거)
+  const taskList = Array.from(new Map(documents.map(d => [d.taskId, d.taskName])).entries());
     filtered.filter(d => d.lat && d.lng).forEach(doc => {
       const pos = new window.kakao.maps.LatLng(doc.lat!, doc.lng!);
       const pinColor = STATUS_STYLE[doc.status]?.pin ?? "#2563eb";
@@ -424,7 +428,10 @@ export default function DashboardPage() {
     });
   }, [mapLoaded, documents, filterTab, viewMode]);
 
-  const filtered = filterTab === "ALL" ? documents : documents.filter(d => d.documentType === filterTab);
+  const taskFiltered = selectedTaskId === "ALL" ? documents : documents.filter(d => d.taskId === selectedTaskId);
+  const filtered = filterTab === "ALL" ? taskFiltered : taskFiltered.filter(d => d.documentType === filterTab);
+  // 용역 목록 (중복제거)
+  const taskList = Array.from(new Map(documents.map(d => [d.taskId, d.taskName])).entries());
 
   return (
     <div className="pb-20">
@@ -512,9 +519,21 @@ export default function DashboardPage() {
       )}
 
       <div className="mx-4 mt-4 bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-gray-900">서류 목록</h3>
-          <span className="text-xs text-gray-500">{filtered.length}건</span>
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
+          <h3 className="text-sm font-bold text-gray-900 shrink-0">서류 목록</h3>
+          <div className="flex items-center gap-2 flex-1 justify-end">
+            <select
+              value={selectedTaskId}
+              onChange={e => setSelectedTaskId(e.target.value)}
+              className="text-xs px-2 py-1.5 border border-gray-200 rounded-lg text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[160px] truncate"
+            >
+              <option value="ALL">전체 용역</option>
+              {taskList.map(([id, name]) => (
+                <option key={id} value={id}>{name}</option>
+              ))}
+            </select>
+            <span className="text-xs text-gray-500 shrink-0">{filtered.length}건</span>
+          </div>
         </div>
         {loading ? (
           <div className="p-6 text-center text-sm text-gray-400">불러오는 중...</div>
