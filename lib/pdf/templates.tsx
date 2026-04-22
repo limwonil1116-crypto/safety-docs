@@ -20,18 +20,18 @@ const C = {
 
 // ✅ 1번: 여백 최소화 + 폰트/표 크기 확대
 const S = StyleSheet.create({
-  page: { fontFamily: "NanumGothic", fontSize: 9.5, paddingTop: 5, paddingBottom: 16, paddingHorizontal: 10, color: "#000" },
-  titleBox: { border: "1.5px solid " + C.black, paddingVertical: 13, marginBottom: 3 },
-  titleMain: { fontSize: 20, fontWeight: "bold", textAlign: "center", letterSpacing: 3 },
-  secHeader: { backgroundColor: C.sectionBg, border: "0.8px solid " + C.border, padding: "5 6", fontSize: 10, fontWeight: "bold", marginBottom: 0 },
-  table: { border: "0.8px solid " + C.border, marginBottom: 4 },
+  page: { fontFamily: "NanumGothic", fontSize: 8.5, paddingTop: 4, paddingBottom: 12, paddingHorizontal: 9, color: "#000" },
+  titleBox: { border: "1.5px solid " + C.black, paddingVertical: 7, marginBottom: 2 },
+  titleMain: { fontSize: 17, fontWeight: "bold", textAlign: "center", letterSpacing: 2 },
+  secHeader: { backgroundColor: C.sectionBg, border: "0.8px solid " + C.border, padding: "3 6", fontSize: 9, fontWeight: "bold", marginBottom: 0 },
+  table: { border: "0.8px solid " + C.border, marginBottom: 3 },
   tr: { flexDirection: "row", borderBottom: "0.5px solid " + C.border },
   trLast: { flexDirection: "row" },
-  th: { backgroundColor: C.thBg, fontWeight: "bold", padding: "5 4", fontSize: 9.5, borderRight: "0.5px solid " + C.border, textAlign: "center" },
-  td: { padding: "5 5", fontSize: 9.5, borderRight: "0.5px solid " + C.border },
-  tdc: { padding: "5 5", fontSize: 9.5, borderRight: "0.5px solid " + C.border, textAlign: "center" },
-  il: { fontWeight: "bold", padding: "5 5", fontSize: 9.5, borderRight: "0.5px solid " + C.border, backgroundColor: C.labelBg },
-  iv: { flex: 1, padding: "5 5", fontSize: 9.5 },
+  th: { backgroundColor: C.thBg, fontWeight: "bold", padding: "3 3", fontSize: 8.5, borderRight: "0.5px solid " + C.border, textAlign: "center" },
+  td: { padding: "3 4", fontSize: 8.5, borderRight: "0.5px solid " + C.border },
+  tdc: { padding: "3 4", fontSize: 8.5, borderRight: "0.5px solid " + C.border, textAlign: "center" },
+  il: { fontWeight: "bold", padding: "3 4", fontSize: 8.5, borderRight: "0.5px solid " + C.border, backgroundColor: C.labelBg },
+  iv: { flex: 1, padding: "3 4", fontSize: 8.5 },
   footer: { position: "absolute", bottom: 6, left: 12, right: 12, borderTop: "0.5px solid #aaa", paddingTop: 3, flexDirection: "row", justifyContent: "space-between" },
   footerText: { fontSize: 7.5, color: "#666" },
 });
@@ -470,8 +470,8 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
 
   return (
     <Document>
-      <Page size="A4" style={[S.page, { paddingTop: 3 }]}>
-        <View style={[S.titleBox, { paddingVertical: 8, marginBottom: 2 }]}>
+      <Page size="A4" style={S.page}>
+        <View style={S.titleBox}>
           <Text style={S.titleMain}>밀폐공간 작업 허가서<Text style={{ fontSize: 13, fontWeight: "normal" }}>(용역업체용)</Text></Text>
         </View>
         <View style={S.table}>
@@ -492,7 +492,7 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
         <Text style={{ fontSize: 9, textAlign: "center", marginBottom: 3 }}>위 공간에서의 작업을 다음의 조건하에서만 허가함.</Text>
 
         {/* 1. 화기작업 허가필요유무 */}
-        <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "5 7", marginBottom: 2 }}>
+        <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "3 6", marginBottom: 1 }}>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Text style={{ fontSize: 10, fontWeight: "bold" }}>1. 화기작업 허가필요유무 :   </Text>
             <CB checked={fd.needFireWork === "필요"} /><Text style={{ fontSize: 10, marginRight: 14 }}> 필요   </Text>
@@ -501,7 +501,7 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
         </View>
 
         {/* 2. 내연기관(양수기) 또는 갈탄 등의 사용여부 */}
-        <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "5 7", marginBottom: 5 }}>
+        <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "3 6", marginBottom: 3 }}>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Text style={{ fontSize: 10, fontWeight: "bold" }}>2. 내연기관(양수기) 또는 갈탄 등의 사용여부 :   </Text>
             <CB checked={fd.useInternalEngine === "사용"} /><Text style={{ fontSize: 10, marginRight: 14 }}> 사용   </Text>
@@ -522,11 +522,11 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
             const displayLabel = item.label.replace(/^●/, "");
             return (
               <View key={idx} style={idx === checks.length - 1 ? S.trLast : S.tr}>
-                <Text style={[S.td, { flex: 4, minHeight: 16, fontWeight: isBold ? "bold" : "normal", backgroundColor: idx % 2 === 1 ? C.rowEven : C.white }]}>
+                <Text style={[S.td, { flex: 4, minHeight: 14, fontWeight: isBold ? "bold" : "normal", backgroundColor: idx % 2 === 1 ? C.rowEven : C.white }]}>
                   {`○ ${displayLabel}`}
                 </Text>
-                <Text style={[S.tdc, { flex: 1, minHeight: 20, backgroundColor: item.applicable === "해당" ? "#dce6f0" : C.white }]}>{item.applicable || ""}</Text>
-                <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 20, backgroundColor: item.result ? "#ebf3e8" : C.white }]}>{item.result || ""}</Text>
+                <Text style={[S.tdc, { flex: 1, minHeight: 14, backgroundColor: item.applicable === "해당" ? "#dce6f0" : C.white }]}>{item.applicable || ""}</Text>
+                <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 14, backgroundColor: item.result ? "#ebf3e8" : C.white }]}>{item.result || ""}</Text>
               </View>
             );
           })}
@@ -664,7 +664,7 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
               : <View style={{ width: 50, height: 28 }} />}
           </View>
           {/* 검토자 행 */}
-          <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 36, borderTop: "0.5px solid " + C.border }}>
+          <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 28, borderTop: "0.5px solid " + C.border }}>
             <Text style={{ fontSize: 9, width: 55, color: C.black }}>검토자</Text>
             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${a1?.approverOrg || ""}  (용역감독원) ${a1?.approverName || ""}`}</Text>
             <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
@@ -673,7 +673,7 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
               : <View style={{ width: 50, height: 28 }} />}
           </View>
           {/* 승인자 행 */}
-          <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 36, borderTop: "0.5px solid " + C.border }}>
+          <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 28, borderTop: "0.5px solid " + C.border }}>
             <Text style={{ fontSize: 9, width: 55, color: C.black }}>승인자</Text>
             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${a2?.approverOrg || ""}  (관리감독자) ${a2?.approverName || ""}`}</Text>
             <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
@@ -732,14 +732,14 @@ export function PowerOutagePDF({ formData: fd, approvalLines, documentId, create
           ))}
         </View>
         <Text style={{ fontSize: 10, textAlign: "center", marginBottom: 4 }}>위 작업을 다음의 조건하에서만 허가함.</Text>
-        <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "5 7", marginBottom: 2 }}>
+        <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "3 6", marginBottom: 1 }}>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Text style={{ fontSize: 10, fontWeight: "bold" }}>1. 밀폐공간작업 허가 필요여부 :   </Text>
             <CB checked={fd.needConfinedSpace === "필요"} /><Text style={{ fontSize: 10, marginRight: 14 }}> 필요   </Text>
             <CB checked={fd.needConfinedSpace === "불필요"} /><Text style={{ fontSize: 10 }}> 불필요</Text>
           </View>
         </View>
-        <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "5 7", marginBottom: 5 }}>
+        <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "3 6", marginBottom: 3 }}>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Text style={{ fontSize: 10, fontWeight: "bold" }}>2. 화기작업 허가 필요여부 :   </Text>
             <CB checked={fd.needFireWork === "필요"} /><Text style={{ fontSize: 10, marginRight: 14 }}> 필요   </Text>
@@ -755,9 +755,9 @@ export function PowerOutagePDF({ formData: fd, approvalLines, documentId, create
           </View>
           {checks.map((item, idx) => (
             <View key={idx} style={idx === checks.length - 1 ? S.trLast : S.tr}>
-              <Text style={[S.td, { flex: 4, minHeight: 22, backgroundColor: idx % 2 === 1 ? C.rowEven : C.white }]}>{`▶ ${item.label}`}</Text>
-              <Text style={[S.tdc, { flex: 1, minHeight: 22, backgroundColor: item.applicable === "해당" ? "#dce6f0" : C.white }]}>{item.applicable || ""}</Text>
-              <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 22, backgroundColor: item.result ? "#ebf3e8" : C.white }]}>{item.result || ""}</Text>
+              <Text style={[S.td, { flex: 4, minHeight: 14, backgroundColor: idx % 2 === 1 ? C.rowEven : C.white }]}>{`▶ ${item.label}`}</Text>
+              <Text style={[S.tdc, { flex: 1, minHeight: 14, backgroundColor: item.applicable === "해당" ? "#dce6f0" : C.white }]}>{item.applicable || ""}</Text>
+              <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 14, backgroundColor: item.result ? "#ebf3e8" : C.white }]}>{item.result || ""}</Text>
             </View>
           ))}
         </View>

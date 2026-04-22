@@ -296,8 +296,7 @@ function StepIcon({ type, status }: { type: "submit" | "review" | "approve"; sta
 
 function ApprovalFlow({ doc, approvalLines, writerName, applicantSignature }: { doc: DocumentDetail; approvalLines: ApprovalLine[]; writerName: string; applicantSignature?: string }) {
   const isSubmitted = doc.status !== "DRAFT";
-  const line1 = approvalLines.find(l => l.approvalOrder === 1);
-  const line2 = approvalLines.find(l => l.approvalOrder === 2);
+  const isConfined = doc.documentType === "CONFINED_SPACE";
   const getStepStatus = (line?: ApprovalLine): "done" | "active" | "pending" | "rejected" => {
     if (!line) return "pending";
     if (line.stepStatus === "APPROVED") return "done";
@@ -307,11 +306,34 @@ function ApprovalFlow({ doc, approvalLines, writerName, applicantSignature }: { 
   };
   const roleLabels = ROLE_LABELS[doc.documentType] ?? {};
   const finalLabel = FINAL_ROLE_LABELS[doc.documentType] ?? "최종 허가자";
-  const steps = [
-    { icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />, label: "신청자", name: writerName, signatureData: isSubmitted ? applicantSignature : undefined, status: isSubmitted ? "done" : "active" },
-    ...(line1 ? [{ icon: <StepIcon type="review" status={getStepStatus(line1)} />, label: roleLabels[1] ?? "검토자", name: line1.approverName ?? "", comment: line1.comment, actedAt: line1.actedAt, signatureData: line1.signatureData, status: getStepStatus(line1) }] : []),
-    ...(line2 ? [{ icon: <StepIcon type="approve" status={getStepStatus(line2)} />, label: line2.approvalRole === "FINAL_APPROVER" ? finalLabel : (roleLabels[2] ?? "허가자"), name: line2.approverName ?? "", comment: line2.comment, actedAt: line2.actedAt, signatureData: line2.signatureData, status: getStepStatus(line2) }] : []),
-  ] as Array<{ icon: React.ReactNode; label: string; name: string; comment?: string; actedAt?: string; signatureData?: string; status: string }>;
+
+  // 밀폐공간: 5단계 고정 표시 (결재선에 없어도 예정 단계 표시)
+  const fd = doc.formDataJson ?? {};
+  let steps: Array<{ icon: React.ReactNode; label: string; name: string; comment?: string; actedAt?: string; signatureData?: string; status: string }>;
+
+  if (isConfined) {
+    const lineMap = Object.fromEntries(approvalLines.map(l => [l.approvalOrder, l]));
+    const mkStep = (order: number, label: string, type: "submit"|"review"|"approve", name: string) => {
+      const line = lineMap[order];
+      const status = line ? getStepStatus(line) : (isSubmitted && order === 0 ? "done" : "pending");
+      return { icon: <StepIcon type={type} status={status} />, label, name: line?.approverName ?? name, comment: line?.comment, actedAt: line?.actedAt, signatureData: line?.signatureData, status };
+    };
+    steps = [
+      { icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />, label: "신청자", name: writerName, signatureData: isSubmitted ? applicantSignature : undefined, status: isSubmitted ? "done" : "active" },
+      mkStep(1, "감시인", "review", (fd.monitorName as string) || ""),
+      mkStep(2, "(계획확인)허가자", "approve", ""),
+      mkStep(3, "측정담당자", "review", (fd.measurerName as string) || ""),
+      mkStep(4, "(이행확인)확인자", "approve", ""),
+    ];
+  } else {
+    const line1 = approvalLines.find(l => l.approvalOrder === 1);
+    const line2 = approvalLines.find(l => l.approvalOrder === 2);
+    steps = [
+      { icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />, label: "신청자", name: writerName, signatureData: isSubmitted ? applicantSignature : undefined, status: isSubmitted ? "done" : "active" },
+      ...(line1 ? [{ icon: <StepIcon type="review" status={getStepStatus(line1)} />, label: roleLabels[1] ?? "검토자", name: line1.approverName ?? "", comment: line1.comment, actedAt: line1.actedAt, signatureData: line1.signatureData, status: getStepStatus(line1) }] : []),
+      ...(line2 ? [{ icon: <StepIcon type="approve" status={getStepStatus(line2)} />, label: line2.approvalRole === "FINAL_APPROVER" ? finalLabel : (roleLabels[2] ?? "허가자"), name: line2.approverName ?? "", comment: line2.comment, actedAt: line2.actedAt, signatureData: line2.signatureData, status: getStepStatus(line2) }] : []),
+    ];
+  }
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -1047,62 +1069,86 @@ export default function ApprovalDetailPage() {
     : null;
 
 
+
+// 특별조치 필요사항 입력 - IME 버그 방지용 uncontrolled 컴포넌트
+function SpecialMeasuresInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (ref.current && ref.current.value !== value) {
+      ref.current.value = value;
+    }
+  }, []);
+  return (
+    <textarea
+      ref={ref}
+      defaultValue={value}
+      onCompositionEnd={e => onChange((e.target as HTMLTextAreaElement).value)}
+      onBlur={e => onChange(e.target.value)}
+      onKeyUp={e => { if (!e.nativeEvent.isComposing) onChange((e.target as HTMLTextAreaElement).value); }}
+      placeholder="특별조치 필요사항을 입력해주세요"
+      rows={4}
+      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+  );
+}
+
 // 측정결과 입력 컴포넌트 (결재 단계에서 사용)
+const DEFAULT_GAS_ROWS = [
+  { time: "전", hour: "", minute: "", substances: "O2:(  )%, CO2:(  )% H2S:(  )ppm\nCO:(  )ppm EX:(  )%", measurer: "", entryCount: "", exitCount: "" },
+  { time: "중*", hour: "", minute: "", substances: "O2:(  )%, CO2:(  )% H2S:(  )ppm\nCO:(  )ppm EX:(  )%", measurer: "", entryCount: "", exitCount: "" },
+  { time: "중*", hour: "", minute: "", substances: "O2:(  )%, CO2:(  )% H2S:(  )ppm\nCO:(  )ppm EX:(  )%", measurer: "", entryCount: "", exitCount: "" },
+];
 function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any[]) => void }) {
   const update = (idx: number, field: string, value: string) =>
     onChange(rows.map((r, i) => i === idx ? { ...r, [field]: value } : r));
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs border-collapse">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="border border-gray-300 px-2 py-1.5 text-center text-gray-900 font-semibold" colSpan={2}>측정시간</th>
-            <th className="border border-gray-300 px-2 py-1.5 text-center text-gray-900 font-semibold">측정물질명 및 농도</th>
-            <th className="border border-gray-300 px-2 py-1.5 text-center text-gray-900 font-semibold">측정자</th>
-            <th className="border border-gray-300 px-2 py-1.5 text-center text-gray-900 font-semibold">입</th>
-            <th className="border border-gray-300 px-2 py-1.5 text-center text-gray-900 font-semibold">출</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, idx) => (
-            <tr key={idx}>
-              <td className="border border-gray-300 px-2 py-1 text-center font-bold text-gray-900 w-6">{row.time}</td>
-              <td className="border border-gray-300 px-1 py-1 w-20">
-                <div className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-0.5">
-                    <input type="text" inputMode="numeric" maxLength={2} value={row.hour || ""}
-                      onChange={e => update(idx, "hour", e.target.value)}
-                      className="w-8 px-1 py-0.5 text-xs border border-gray-300 rounded text-center text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400" placeholder="0" />
-                    <span className="text-xs text-gray-600">시</span>
-                  </div>
-                  <div className="flex items-center gap-0.5">
-                    <input type="text" inputMode="numeric" maxLength={2} value={row.minute || ""}
-                      onChange={e => update(idx, "minute", e.target.value)}
-                      className="w-8 px-1 py-0.5 text-xs border border-gray-300 rounded text-center text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400" placeholder="0" />
-                    <span className="text-xs text-gray-600">분</span>
-                  </div>
-                </div>
-              </td>
-              <td className="border border-gray-300 px-1 py-1">
-                <input type="text" value={row.substances || ""} onChange={e => update(idx, "substances", e.target.value)}
-                  className="w-full px-1 py-1 text-xs text-gray-900 border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded" />
-              </td>
-              <td className="border border-gray-300 px-1 py-1">
-                <input type="text" value={row.measurer || ""} onChange={e => update(idx, "measurer", e.target.value)}
-                  className="w-full px-1 py-1 text-xs text-gray-900 border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded" />
-              </td>
-              <td className="border border-gray-300 px-1 py-1">
-                <input type="text" value={row.entryCount || ""} onChange={e => update(idx, "entryCount", e.target.value)}
-                  className="w-full px-1 py-1 text-xs text-gray-900 border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded text-center" />
-              </td>
-              <td className="border border-gray-300 px-1 py-1">
-                <input type="text" value={row.exitCount || ""} onChange={e => update(idx, "exitCount", e.target.value)}
-                  className="w-full px-1 py-1 text-xs text-gray-900 border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded text-center" />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
+        적정수치: O₂(18~23.5%) CO₂(1.5%미만) H₂S(10ppm미만) CO(30ppm미만) EX(10%미만)
+      </p>
+      {rows.map((row, idx) => (
+        <div key={idx} className="border border-gray-200 rounded-xl p-3 space-y-2 bg-gray-50">
+          {/* 시간 행 */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-bold text-gray-900 w-8 shrink-0">{row.time}</span>
+            <div className="flex items-center gap-2 flex-1">
+              <input type="number" min="0" max="23" value={row.hour || ""}
+                onChange={e => update(idx, "hour", e.target.value)}
+                className="w-14 px-2 py-2 text-sm border border-gray-300 rounded-lg text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="시" />
+              <span className="text-sm text-gray-600 font-medium">시</span>
+              <input type="number" min="0" max="59" value={row.minute || ""}
+                onChange={e => update(idx, "minute", e.target.value)}
+                className="w-14 px-2 py-2 text-sm border border-gray-300 rounded-lg text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="분" />
+              <span className="text-sm text-gray-600 font-medium">분</span>
+            </div>
+          </div>
+          {/* 농도 입력 */}
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">측정물질명 및 농도</label>
+            <textarea value={row.substances || ""}
+              onChange={e => update(idx, "substances", e.target.value)}
+              rows={2}
+              className="w-full px-3 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 resize-none bg-white" />
+          </div>
+          {/* 측정자 + 인원 */}
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">측정자</label>
+              <input type="text" value={row.measurer || ""} onChange={e => update(idx, "measurer", e.target.value)}
+                className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">입장(명)</label>
+              <input type="number" min="0" value={row.entryCount || ""} onChange={e => update(idx, "entryCount", e.target.value)}
+                className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg text-center focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1 block">퇴장(명)</label>
+              <input type="number" min="0" value={row.exitCount || ""} onChange={e => update(idx, "exitCount", e.target.value)}
+                className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg text-center focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -1126,25 +1172,13 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
           {confinedOrder === 2 && (
             <div className="space-y-2">
               <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">특별조치 필요사항을 입력 후 서명해주세요.</p>
-              <textarea
-                key="specialMeasures"
-                defaultValue={specialMeasuresInput}
-                onBlur={e => setSpecialMeasuresInput(e.target.value)}
-                onChange={e => { specialMeasuresInput; }}
-                onInput={e => setSpecialMeasuresInput((e.target as HTMLTextAreaElement).value)}
-                placeholder="특별조치 필요사항을 입력해주세요"
-                rows={4}
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+              <SpecialMeasuresInput value={specialMeasuresInput} onChange={setSpecialMeasuresInput} />
             </div>
           )}
           {confinedOrder === 3 && (
             <div className="space-y-3">
               <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">산소 및 유해가스 농도 측정결과를 입력해주세요.</p>
-              <GasMeasureInput rows={gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : [
-                { time: "전", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
-                { time: "중", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
-                { time: "후", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
-              ]} onChange={setGasMeasureRowsInput} />
+              <GasMeasureInput rows={gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : DEFAULT_GAS_ROWS} onChange={setGasMeasureRowsInput} />
             </div>
           )}
           {confinedOrder === 4 && (
@@ -1267,12 +1301,12 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
           {/* 밀폐공간 3단계(측정담당자): 서명 없이 측정결과만 제출 */}
           {isConfinedSpace && confinedOrder === 3 ? (
             <button onClick={async () => {
-              if (gasMeasureRowsInput.length === 0) { alert("측정결과를 입력해주세요."); return; }
+              const gasRows = gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : DEFAULT_GAS_ROWS;
               setProcessing(true);
               try {
                 const res = await fetch(`/api/documents/${documentId}/approve`, {
                   method: "POST", headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ action: "APPROVE", signatureData: null, gasMeasureRows: gasMeasureRowsInput }),
+                  body: JSON.stringify({ action: "APPROVE", signatureData: null, gasMeasureRows: gasRows }),
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || "오류 발생");
