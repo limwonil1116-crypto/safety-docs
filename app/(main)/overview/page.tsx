@@ -448,7 +448,7 @@ export default function DashboardPage() {
       window.kakao.maps.event.addListener(marker, "click", () => infowindow.open(map, marker));
       void labelOverlay;
     });
-  }, [mapLoaded, documents, filterTab, viewMode, selectedTaskId, filtered]);
+  }, [mapLoaded, documents, filterTab, viewMode, selectedTaskId]);
 
   const taskList = Array.from(new Map(documents.map(d => [d.taskId, d.taskName])).entries());
   const taskFiltered = selectedTaskId === "ALL" ? documents : documents.filter(d => d.taskId === selectedTaskId);
@@ -606,4 +606,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
 
