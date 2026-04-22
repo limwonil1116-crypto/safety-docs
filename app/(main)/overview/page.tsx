@@ -431,9 +431,6 @@ export default function DashboardPage() {
         () => {}
       );
     }
-    const taskList = Array.from(new Map(documents.map(d => [d.taskId, d.taskName])).entries());
-  const taskFiltered = selectedTaskId === "ALL" ? documents : documents.filter(d => d.taskId === selectedTaskId);
-  const filtered = filterTab === "ALL" ? taskFiltered : taskFiltered.filter(d => d.documentType === filterTab);
     filtered.filter(d => d.lat && d.lng).forEach(doc => {
       const pos = new window.kakao.maps.LatLng(doc.lat!, doc.lng!);
       const pinColor = STATUS_STYLE[doc.status]?.pin ?? "#2563eb";
@@ -454,9 +451,6 @@ export default function DashboardPage() {
     });
   }, [mapLoaded, documents, filterTab, viewMode, selectedTaskId]);
 
-  const taskList = Array.from(new Map(documents.map(d => [d.taskId, d.taskName])).entries());
-  const taskFiltered = selectedTaskId === "ALL" ? documents : documents.filter(d => d.taskId === selectedTaskId);
-  const filtered = filterTab === "ALL" ? taskFiltered : taskFiltered.filter(d => d.documentType === filterTab);
 
   return (
     <div className="pb-20">
