@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { documents, tasks, users } from "@/db/schema";
@@ -52,6 +52,7 @@ export async function GET(_req: NextRequest) {
           workStartDate,
           workEndDate,
         },
+        taskId: r.taskId as string,
         createdAt: r.createdAt as Date,
         task: { name: r.taskName ?? "용역명없음" },
         creator: { organization: r.creatorOrganization ?? "-" },
@@ -101,3 +102,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "알 수 없는 오류가 발생했습니다." }, { status: 500 });
   }
 }
+
