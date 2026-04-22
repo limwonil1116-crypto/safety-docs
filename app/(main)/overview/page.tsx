@@ -388,7 +388,7 @@ export default function DashboardPage() {
           // workStartDate/workEndDate: formDataJson 우선, 구버전 workDate fallback
           return {
             id: d.id,
-            taskId: d.taskId ?? "",
+            taskId: d.taskId ?? d.task?.id ?? "",
             taskName: d.task?.name ?? "제목없음",
             company: d.creator?.organization ?? "-",
             type: DOC_TYPE_LABEL[d.documentType] ?? d.documentType,
@@ -604,6 +604,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
 
 
 
