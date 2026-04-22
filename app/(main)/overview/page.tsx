@@ -67,9 +67,12 @@ function getDateRange(startStr: string, endStr: string): string[] {
 }
 
 // ===== 캘린더 (구글 캘린더 스타일) =====
-function CalendarView({ documents, onDocClick }: {
+function CalendarView({ documents, onDocClick, selectedTaskId, taskList, onTaskChange }: {
   documents: DocumentMapItem[];
   onDocClick: (doc: DocumentMapItem) => void;
+  selectedTaskId: string;
+  taskList: [string, string][];
+  onTaskChange: (id: string) => void;
 }) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
@@ -128,16 +131,14 @@ function CalendarView({ documents, onDocClick }: {
 
   const rowBars: BarItem[][] = rows.map((row) => {
     const bars: BarItem[] = [];
-    // 이 row에서 각 문서가 어느 범위를 차지하는지 계산
-    const docLanes: Record<string, number> = {};
-    let laneCounter = 0;
+    // 각 col별 사용 레인 추적 → 겹치지 않게 순서대로 배치
+    const laneUsedAtCol: number[][] = Array.from({ length: 7 }, () => []);
 
     approvedDocs.forEach(doc => {
       const start = doc.workStartDate!;
       const end = doc.workEndDate || start;
       const docRange = new Set(getDateRange(start, end));
 
-      // 이 row에서 연속된 셀 찾기
       let segStart = -1;
       let segEnd = -1;
       row.forEach((cell, col) => {
@@ -147,16 +148,25 @@ function CalendarView({ documents, onDocClick }: {
         }
       });
 
-      if (segStart === -1) return; // 이 row에 없음
+      if (segStart === -1) return;
 
       const span = segEnd - segStart + 1;
-      if (!(doc.id in docLanes)) {
-        docLanes[doc.id] = laneCounter % 3;
-        laneCounter++;
-      }
-      const lane = docLanes[doc.id];
 
-      // 텍스트: 이 바에서 시작일이 포함되거나 row 첫 셀이 포함된 경우 표시
+      // 겹치지 않는 가장 작은 레인 찾기
+      let lane = 0;
+      while (true) {
+        let conflict = false;
+        for (let c = segStart; c <= segEnd; c++) {
+          if (laneUsedAtCol[c]?.includes(lane)) { conflict = true; break; }
+        }
+        if (!conflict) break;
+        lane++;
+      }
+      // 레인 예약
+      for (let c = segStart; c <= segEnd; c++) {
+        if (laneUsedAtCol[c]) laneUsedAtCol[c].push(lane);
+      }
+
       const barFirstKey = row[segStart].key;
       const showLabel = barFirstKey === start || segStart === 0;
       const label = showLabel ? `${doc.taskName} ${DOC_TYPE_LABEL[doc.documentType] ?? ""}` : "";
@@ -169,6 +179,19 @@ function CalendarView({ documents, onDocClick }: {
 
   return (
     <div>
+      {/* 용역 선택 */}
+      {taskList.length > 1 && (
+        <div className="px-4 pt-3 pb-2 bg-white border-b border-gray-100">
+          <select value={selectedTaskId} onChange={e => onTaskChange(e.target.value)}
+            className="w-full text-sm px-3 py-2 border border-gray-200 rounded-xl text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="ALL">전체 용역</option>
+            {taskList.map(([id, name]) => (
+              <option key={id} value={id}>{name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* 월 네비게이션 */}
       <div className="flex items-center justify-between px-5 py-3 bg-white border-b border-gray-100">
         <button onClick={() => { if (month === 0) { setMonth(11); setYear(y => y-1); } else setMonth(m => m-1); }}
@@ -513,7 +536,13 @@ export default function DashboardPage() {
           {loading ? (
             <div className="p-8 text-center text-sm text-gray-400">불러오는 중...</div>
           ) : (
-            <CalendarView documents={filtered} onDocClick={doc => router.push(`/approvals/${doc.id}`)} />
+            <CalendarView
+              documents={filtered}
+              onDocClick={doc => router.push(`/approvals/${doc.id}`)}
+              selectedTaskId={selectedTaskId}
+              taskList={taskList}
+              onTaskChange={setSelectedTaskId}
+            />
           )}
         </div>
       )}

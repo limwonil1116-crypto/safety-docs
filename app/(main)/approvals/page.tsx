@@ -48,102 +48,90 @@ const DATE_FILTERS = [
 ];
 
 function ApprovalStepFlow({ doc }: { doc: ApprovalDoc }) {
-  const step1 = doc.status !== "DRAFT" ? "done" : "active";
+  const isConfined = doc.document_type === "CONFINED_SPACE";
+  type StepStatus = "done" | "active" | "pending" | "rejected";
 
-  let step2: "done" | "active" | "pending" | "rejected" = "pending";
-  let step3: "done" | "active" | "pending" | "rejected" = "pending";
-
-  if (doc.status === "SUBMITTED") {
-    step2 = "active";
-  } else if (doc.status === "IN_REVIEW") {
-    if (doc.current_approval_order === 1) {
-      step2 = "active";
-    } else if (doc.current_approval_order === 2) {
-      step2 = "done";
-      step3 = "active";
-    }
-  } else if (doc.status === "APPROVED") {
-    step2 = "done";
-    step3 = "done";
-  } else if (doc.status === "REJECTED") {
-    step2 = "rejected";
-  }
-
-  const stepColor = (s: "done" | "active" | "pending" | "rejected") => {
+  const stepColor = (s: StepStatus) => {
     if (s === "done")     return { bg: "#2563eb", icon: "white" };
     if (s === "active")   return { bg: "#f59e0b", icon: "white" };
     if (s === "rejected") return { bg: "#dc2626", icon: "white" };
     return { bg: "#e5e7eb", icon: "#9ca3af" };
   };
 
-  const c1 = stepColor(step1);
-  const c2 = stepColor(step2);
-  const c3 = stepColor(step3);
-  const line1Color = step1 === "done" ? "#2563eb" : "#e5e7eb";
-  const line2Color = step2 === "done" ? "#2563eb" : "#e5e7eb";
+  const StepDot = ({ s, label, type }: { s: StepStatus; label: string; type: "doc"|"search"|"shield" }) => {
+    const c = stepColor(s);
+    const icons: Record<string, JSX.Element> = {
+      doc: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.icon} strokeWidth="2.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
+      search: s === "rejected"
+        ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.icon} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.icon} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="15.65" y2="15.65"/></svg>,
+      shield: s === "done"
+        ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.icon} strokeWidth="2.5" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+        : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.icon} strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+    };
+    return (
+      <div className="flex flex-col items-center gap-0.5">
+        <div className="w-7 h-7 rounded-full flex items-center justify-center relative"
+          style={{ backgroundColor: c.bg, boxShadow: s === "active" ? `0 0 0 3px ${c.bg}44` : undefined }}>
+          {icons[type]}
+          {s === "active" && <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 border border-white animate-pulse" />}
+        </div>
+        <span className="text-[8px] text-gray-500 font-medium text-center leading-tight whitespace-nowrap">{label}</span>
+      </div>
+    );
+  };
+
+  const Line = ({ active }: { active: boolean }) => (
+    <div className="flex-1 h-0.5 mb-3.5 rounded" style={{ backgroundColor: active ? "#2563eb" : "#e5e7eb" }} />
+  );
+
+  if (isConfined) {
+    // 밀폐공간 5단계: 신청→감시인→계획확인→측정→이행확인
+    const ord = doc.current_approval_order ?? 0;
+    const st = doc.status;
+    const s0: StepStatus = st !== "DRAFT" ? "done" : "active";
+    const s1: StepStatus = st === "SUBMITTED" ? "active" : ord >= 1 ? (st === "REJECTED" && ord === 1 ? "rejected" : ord === 1 && st === "IN_REVIEW" ? "active" : "done") : "pending";
+    const s2: StepStatus = ord === 2 && st === "IN_REVIEW" ? "active" : ord > 2 || st === "APPROVED" ? "done" : "pending";
+    const s3: StepStatus = ord === 3 && st === "IN_REVIEW" ? "active" : ord > 3 || st === "APPROVED" ? "done" : "pending";
+    const s4: StepStatus = ord === 4 && st === "IN_REVIEW" ? "active" : st === "APPROVED" ? "done" : "pending";
+    return (
+      <div className="flex items-center gap-0.5 mt-2.5">
+        <StepDot s={s0} label="신청" type="doc" />
+        <Line active={s1 === "done" || s1 === "active"} />
+        <StepDot s={s1} label="감시인" type="search" />
+        <Line active={s2 === "done" || s2 === "active"} />
+        <StepDot s={s2} label="계획확인" type="shield" />
+        <Line active={s3 === "done" || s3 === "active"} />
+        <StepDot s={s3} label="측정" type="search" />
+        <Line active={s4 === "done" || s4 === "active"} />
+        <StepDot s={s4} label="이행확인" type="shield" />
+        {doc.current_approver_name && (
+          <div className="ml-1 text-[9px] text-amber-600 font-medium shrink-0 max-w-[50px] truncate">{doc.current_approver_name}</div>
+        )}
+      </div>
+    );
+  }
+
+  // 일반 3단계
+  const step1: StepStatus = doc.status !== "DRAFT" ? "done" : "active";
+  let step2: StepStatus = "pending";
+  let step3: StepStatus = "pending";
+  if (doc.status === "SUBMITTED") { step2 = "active"; }
+  else if (doc.status === "IN_REVIEW") {
+    if (doc.current_approval_order === 1) step2 = "active";
+    else if (doc.current_approval_order === 2) { step2 = "done"; step3 = "active"; }
+  } else if (doc.status === "APPROVED") { step2 = "done"; step3 = "done"; }
+  else if (doc.status === "REJECTED") { step2 = "rejected"; }
 
   return (
     <div className="flex items-center gap-1 mt-2.5">
-      <div className="flex flex-col items-center gap-0.5">
-        <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: c1.bg }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c1.icon} strokeWidth="2.5" strokeLinecap="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <line x1="16" y1="13" x2="8" y2="13"/>
-            <line x1="16" y1="17" x2="8" y2="17"/>
-          </svg>
-        </div>
-        <span className="text-[9px] text-gray-500 font-medium">신청</span>
-      </div>
-
-      <div className="flex-1 h-0.5 mb-3.5 rounded" style={{ backgroundColor: line1Color }} />
-
-      <div className="flex flex-col items-center gap-0.5">
-        <div className="w-8 h-8 rounded-full flex items-center justify-center relative"
-          style={{ backgroundColor: c2.bg, boxShadow: step2 === "active" ? `0 0 0 3px ${c2.bg}44` : undefined }}>
-          {step2 === "rejected" ? (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c2.icon} strokeWidth="2.5" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          ) : (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c2.icon} strokeWidth="2.5" strokeLinecap="round">
-              <circle cx="11" cy="11" r="7"/>
-              <line x1="21" y1="21" x2="15.65" y2="15.65"/>
-            </svg>
-          )}
-          {step2 === "active" && (
-            <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 border border-white animate-pulse" />
-          )}
-        </div>
-        <span className="text-[9px] text-gray-500 font-medium">검토</span>
-      </div>
-
-      <div className="flex-1 h-0.5 mb-3.5 rounded" style={{ backgroundColor: line2Color }} />
-
-      <div className="flex flex-col items-center gap-0.5">
-        <div className="w-8 h-8 rounded-full flex items-center justify-center relative"
-          style={{ backgroundColor: c3.bg, boxShadow: step3 === "active" ? `0 0 0 3px ${c3.bg}44` : undefined }}>
-          {step3 === "done" ? (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c3.icon} strokeWidth="2.5" strokeLinecap="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              <polyline points="9 12 11 14 15 10" strokeWidth="2.5"/>
-            </svg>
-          ) : (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c3.icon} strokeWidth="2" strokeLinecap="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-          )}
-          {step3 === "active" && (
-            <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 border border-white animate-pulse" />
-          )}
-        </div>
-        <span className="text-[9px] text-gray-500 font-medium">허가</span>
-      </div>
-
+      <StepDot s={step1} label="신청" type="doc" />
+      <Line active={step2 === "done" || step2 === "active"} />
+      <StepDot s={step2} label="검토" type="search" />
+      <Line active={step3 === "done" || step3 === "active"} />
+      <StepDot s={step3} label="허가" type="shield" />
       {doc.current_approver_name && (
-        <div className="ml-2 text-[10px] text-amber-600 font-medium shrink-0 max-w-[70px] truncate">
-          {doc.current_approver_name}
-        </div>
+        <div className="ml-2 text-[10px] text-amber-600 font-medium shrink-0 max-w-[70px] truncate">{doc.current_approver_name}</div>
       )}
     </div>
   );

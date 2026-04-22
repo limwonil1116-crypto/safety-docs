@@ -1070,21 +1070,28 @@ export default function ApprovalDetailPage() {
 
 
 
-// 특별조치 필요사항 입력 - IME 버그 방지용 uncontrolled 컴포넌트
+// 특별조치 필요사항 입력 - IME 버그 완전 해결 (composition 이벤트 활용)
 function SpecialMeasuresInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const composing = useRef(false);
+
   useEffect(() => {
-    if (ref.current && ref.current.value !== value) {
-      ref.current.value = value;
-    }
+    if (ref.current) ref.current.value = value;
   }, []);
+
   return (
     <textarea
       ref={ref}
       defaultValue={value}
-      onCompositionEnd={e => onChange((e.target as HTMLTextAreaElement).value)}
+      onCompositionStart={() => { composing.current = true; }}
+      onCompositionEnd={e => {
+        composing.current = false;
+        onChange((e.target as HTMLTextAreaElement).value);
+      }}
+      onChange={e => {
+        if (!composing.current) onChange(e.target.value);
+      }}
       onBlur={e => onChange(e.target.value)}
-      onKeyUp={e => { if (!e.nativeEvent.isComposing) onChange((e.target as HTMLTextAreaElement).value); }}
       placeholder="특별조치 필요사항을 입력해주세요"
       rows={4}
       className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />

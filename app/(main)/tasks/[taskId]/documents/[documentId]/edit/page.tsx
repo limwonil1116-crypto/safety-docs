@@ -1005,7 +1005,7 @@ interface Form2 {
 }
 const defaultGasMeasureRows: GasMeasureRow[] = [
   { time: "전", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
-  { time: "중", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
+  { time: "중*", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
   { time: "후", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
 ];
 const defaultForm2: Form2 = {
