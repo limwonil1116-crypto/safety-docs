@@ -367,6 +367,10 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<"map" | "calendar">("map");
   const [selectedTaskId, setSelectedTaskId] = useState("ALL");
 
+  const taskList = Array.from(new Map(documents.map(d => [d.taskId, d.taskName])).entries());
+  const taskFiltered = selectedTaskId === "ALL" ? documents : documents.filter(d => d.taskId === selectedTaskId);
+  const filtered = filterTab === "ALL" ? taskFiltered : taskFiltered.filter(d => d.documentType === filterTab);
+
   const stats = {
     total: documents.length,
     inProgress: documents.filter(d => d.status === "IN_REVIEW" || d.status === "SUBMITTED").length,
@@ -606,5 +610,6 @@ export default function DashboardPage() {
     </div>
   );
 }
+
 
 
