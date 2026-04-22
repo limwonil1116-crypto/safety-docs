@@ -60,7 +60,7 @@ function ApprovalStepFlow({ doc }: { doc: ApprovalDoc }) {
 
   const StepDot = ({ s, label, type }: { s: StepStatus; label: string; type: "doc"|"search"|"shield" }) => {
     const c = stepColor(s);
-    const icons: Record<string, JSX.Element> = {
+    const icons: Record<string, React.ReactElement> = {
       doc: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.icon} strokeWidth="2.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
       search: s === "rejected"
         ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.icon} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
