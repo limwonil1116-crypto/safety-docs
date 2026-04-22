@@ -562,6 +562,7 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
   const [error, setError] = useState("");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
+  const isConfinedModal = documentType === "CONFINED_SPACE";
   const info = DOC_TYPE_INFO[documentType] ?? DOC_TYPE_INFO.SAFETY_WORK_PERMIT;
 
   useEffect(() => {
@@ -595,14 +596,11 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
     if (!reviewer) { setError(info.approverLabel + "를 선택해주세요."); return; }
     setSubmitting(true); setError("");
     try {
-      // 밀폐공간은 monitorUserId + measurerUserId 함께 전송
       const isConfined = documentType === "CONFINED_SPACE";
-      // measurerUserId는 formData에서 가져오기 위해 먼저 문서 조회 불필요
-      // edit/page.tsx의 form2.measurerUserId를 ApprovalSignModal에 props로 전달받음
       const submitBody: Record<string, unknown> = { signatureData };
       if (isConfined) {
         submitBody.monitorUserId = reviewer.id;
-        submitBody.measurerUserId = measurerUserId ?? undefined;
+        if (measurerUserId) submitBody.measurerUserId = measurerUserId;
       } else {
         submitBody.reviewerUserId = reviewer.id;
       }
@@ -1017,73 +1015,7 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         <SectionHeader num={3} title="안전조치 요구사항" />
         <SafetyCheckTable items={form.safetyChecks} onChange={updated => onChange("safetyChecks", updated)} />
       </div>
-      {/* 측정결과는 측정담당자(4단계)에서만 입력 - 신청 단계에서는 숨김 */}
-      <div className="hidden">
-      <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={4} title="산소 및 유해가스 농도 측정결과" />
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border border-gray-300 px-2 py-2 text-center text-gray-900 font-semibold" colSpan={2}>측정시간</th>
-                <th className="border border-gray-300 px-2 py-2 text-center text-gray-900 font-semibold">측정물질명 및 농도</th>
-                <th className="border border-gray-300 px-2 py-2 text-center text-gray-900 font-semibold">측정자</th>
-                <th className="border border-gray-300 px-2 py-2 text-center text-gray-900 font-semibold" colSpan={2}>인원 확인(감시인)</th>
-              </tr>
-              <tr className="bg-gray-50">
-                <th className="border border-gray-300 px-2 py-1 text-center text-gray-900" colSpan={2}></th>
-                <th className="border border-gray-300 px-2 py-1 text-center text-gray-900"></th>
-                <th className="border border-gray-300 px-2 py-1 text-center text-gray-900"></th>
-                <th className="border border-gray-300 px-2 py-1 text-center text-gray-900 font-semibold">입</th>
-                <th className="border border-gray-300 px-2 py-1 text-center text-gray-900 font-semibold">출</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(form.gasMeasureRows || defaultGasMeasureRows).map((row, idx) => (
-                <tr key={idx}>
-                  <td className="border border-gray-300 px-2 py-2 text-center font-bold text-gray-900 w-8">{row.time}</td>
-                  <td className="border border-gray-300 px-1 py-1 text-center w-24">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-0.5">
-                        <input type="text" inputMode="numeric" maxLength={2} value={row.hour}
-                          onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,hour:e.target.value}:r); onChange("gasMeasureRows", rows); }}
-                          className="w-8 px-1 py-0.5 text-xs border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-400" placeholder="0" />
-                        <span className="text-xs text-gray-500">시</span>
-                      </div>
-                      <div className="flex items-center gap-0.5">
-                        <input type="text" inputMode="numeric" maxLength={2} value={row.minute}
-                          onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,minute:e.target.value}:r); onChange("gasMeasureRows", rows); }}
-                          className="w-8 px-1 py-0.5 text-xs border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-blue-400" placeholder="0" />
-                        <span className="text-xs text-gray-500">분</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="border border-gray-300 px-1 py-1">
-                    <input type="text" value={row.substances} onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,substances:e.target.value}:r); onChange("gasMeasureRows", rows); }} className="w-full px-1 py-1 text-xs text-gray-900 border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded" />
-                  </td>
-                  <td className="border border-gray-300 px-1 py-1">
-                    <input type="text" value={row.measurer} onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,measurer:e.target.value}:r); onChange("gasMeasureRows", rows); }} className="w-full px-1 py-1 text-xs text-gray-900 border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded" />
-                  </td>
-                  <td className="border border-gray-300 px-1 py-1">
-                    <input type="text" value={row.entryCount} onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,entryCount:e.target.value}:r); onChange("gasMeasureRows", rows); }} className="w-full px-1 py-1 text-xs text-gray-900 border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded text-center" />
-                  </td>
-                  <td className="border border-gray-300 px-1 py-1">
-                    <input type="text" value={row.exitCount} onChange={e => { const rows = (form.gasMeasureRows || defaultGasMeasureRows).map((r,i) => i===idx?{...r,exitCount:e.target.value}:r); onChange("gasMeasureRows", rows); }} className="w-full px-1 py-1 text-xs text-gray-900 border-0 focus:outline-none focus:ring-1 focus:ring-blue-400 rounded text-center" />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      </div>{/* end hidden */}
-      {/* 특별조치는 (계획확인)허가자(3단계)에서만 입력 - 신청 단계에서는 숨김 */}
-      <div className="hidden">
-      <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={5} title="특별조치 필요사항" />
-        <textarea value={form.specialMeasures} onChange={e => onChange("specialMeasures", e.target.value)} rows={3} className={textareaClass} />
-      </div>
-      </div>{/* end hidden specialMeasures */}
+      {/* 측정결과/특별조치는 결재 단계에서 입력 - 신청 단계 숨김 */}
       <PhotoAttachSection documentId={documentId} canAdd={true} />
     </>
   );
@@ -1240,7 +1172,16 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             <LocationField workLatitude={workLatitude} workAddress={workAddress} onOpenLocation={onOpenLocation} onClearLocation={onClearLocation} />
           </FormInput>
           <FormInput label="작업 내용" required><textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} /></FormInput>
-          <FormInput label="입장자 명단"><textarea value={form.entryList} onChange={e => onChange("entryList", e.target.value)} rows={2} className={textareaClass} /></FormInput>
+          <FormInput label="출입자 명단"><textarea value={form.entryList} onChange={e => onChange("entryList", e.target.value)} rows={2} className={textareaClass} /></FormInput>
+          <div className="bg-blue-50 rounded-xl p-3 space-y-3">
+            <p className="text-xs font-semibold text-blue-700">👤 감시인 및 측정담당자 지정</p>
+            <FormInput label="감시인 성명" required>
+              <input type="text" value={form.monitorName} onChange={e => onChange("monitorName", e.target.value)} placeholder="감시인 성명 입력" className={inputClass} />
+            </FormInput>
+            <FormInput label="측정담당자 성명" required>
+              <input type="text" value={form.measurerName} onChange={e => onChange("measurerName", e.target.value)} placeholder="측정담당자 성명 입력" className={inputClass} />
+            </FormInput>
+          </div>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -1293,9 +1234,6 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
           행 추가
         </button>
       </div>
-      </div>{/* end hidden */}
-      {/* 특별조치는 (계획확인)허가자(3단계)에서만 입력 - 신청 단계에서는 숨김 */}
-      <div className="hidden">
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={5} title="특별조치 필요사항" />
         <textarea value={form.specialMeasures} onChange={e => onChange("specialMeasures", e.target.value)} rows={3} className={textareaClass} />
@@ -1416,6 +1354,7 @@ export default function DocumentEditPage() {
     }, 300);
   };
 
+  const isConfinedModal = documentType === "CONFINED_SPACE";
   const info = DOC_TYPE_INFO[documentType] ?? DOC_TYPE_INFO.SAFETY_WORK_PERMIT;
   const locProps = {
     workLatitude, workAddress,
