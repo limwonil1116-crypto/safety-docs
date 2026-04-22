@@ -11,6 +11,7 @@ export default function SignupPage() {
   const [form, setForm] = useState({
     name: "",
     organization: "",
+    contractorName: "",
     email: "",
     password: "",
     passwordConfirm: "",
@@ -22,6 +23,21 @@ export default function SignupPage() {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleOrgChange = (value: string) => {
+    setForm(prev => ({
+      ...prev,
+      organization: value === "용역업체" ? "" : value,
+      contractorName: value === "용역업체" ? prev.contractorName : "",
+    }));
+  };
+
+  const orgType = form.organization === "한국농어촌공사" ? "한국농어촌공사"
+    : form.contractorName !== "" || form.organization === "" && form.contractorName === "" ? "용역업체"
+    : "한국농어촌공사";
+
+  // 소속기관 드롭다운 현재 선택값
+  const selectedOrg = form.organization === "한국농어촌공사" ? "한국농어촌공사" : "용역업체";
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -30,35 +46,35 @@ export default function SignupPage() {
       setError("비밀번호가 일치하지 않습니다.");
       return;
     }
-
     if (form.password.length < 8) {
       setError("비밀번호는 8자 이상이어야 합니다.");
       return;
     }
+    if (!form.organization && !form.contractorName) {
+      setError("소속기관을 선택해주세요.");
+      return;
+    }
+
+    const finalOrg = form.organization === "한국농어촌공사"
+      ? "한국농어촌공사"
+      : form.contractorName;
 
     setLoading(true);
-
     try {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name,
-          organization: form.organization,
+          organization: finalOrg,
           email: form.email,
           password: form.password,
           role: form.role,
           phone: form.phone,
         }),
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "회원가입에 실패했습니다.");
-        return;
-      }
-
+      if (!res.ok) { setError(data.error || "회원가입에 실패했습니다."); return; }
       router.push("/login?signup=success");
     } catch {
       setError("회원가입 처리 중 오류가 발생했습니다.");
@@ -66,6 +82,8 @@ export default function SignupPage() {
       setLoading(false);
     }
   };
+
+  const inputClass = "w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500";
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4"
@@ -91,62 +109,62 @@ export default function SignupPage() {
             )}
 
             <div>
-              <label className="block text-xs text-gray-500 mb-1">이름 <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">이름 <span className="text-red-500">*</span></label>
               <input type="text" value={form.name}
-                onChange={(e) => handleChange("name", e.target.value)}
-                placeholder="홍길동" required
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                onChange={e => handleChange("name", e.target.value)}
+                placeholder="홍길동" required className={inputClass} />
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 mb-1">소속 기관</label>
-              <input type="text" value={form.organization}
-                onChange={(e) => handleChange("organization", e.target.value)}
-                placeholder="한국안전연구원"
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-            </div>
-
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">이메일 <span className="text-red-500">*</span></label>
-              <input type="email" value={form.email}
-                onChange={(e) => handleChange("email", e.target.value)}
-                placeholder="example@email.com" required
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-            </div>
-
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">전화번호</label>
-              <input type="tel" value={form.phone}
-                onChange={(e) => handleChange("phone", e.target.value)}
-                placeholder="010-0000-0000"
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-            </div>
-
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">역할 <span className="text-red-500">*</span></label>
-              <select value={form.role}
-                onChange={(e) => handleChange("role", e.target.value)}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="CONTRACTOR">용역업체 (작성자)</option>
-                <option value="REVIEWER">공사 직원 (검토자)</option>
-                <option value="FINAL_APPROVER">최종 결재권자</option>
+              <label className="block text-xs font-medium text-gray-700 mb-1">소속기관 <span className="text-red-500">*</span></label>
+              <select
+                value={selectedOrg}
+                onChange={e => {
+                  if (e.target.value === "한국농어촌공사") {
+                    setForm(prev => ({ ...prev, organization: "한국농어촌공사", contractorName: "" }));
+                  } else {
+                    setForm(prev => ({ ...prev, organization: "", contractorName: "" }));
+                  }
+                }}
+                className={inputClass}>
+                <option value="">선택해주세요</option>
+                <option value="한국농어촌공사">한국농어촌공사</option>
+                <option value="용역업체">용역업체</option>
               </select>
+              {selectedOrg === "용역업체" && (
+                <input type="text" value={form.contractorName}
+                  onChange={e => setForm(prev => ({ ...prev, contractorName: e.target.value }))}
+                  placeholder="업체명을 입력해주세요" required
+                  className={inputClass + " mt-2"} />
+              )}
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 mb-1">비밀번호 <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">이메일 <span className="text-red-500">*</span></label>
+              <input type="email" value={form.email}
+                onChange={e => handleChange("email", e.target.value)}
+                placeholder="example@email.com" required className={inputClass} />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">전화번호</label>
+              <input type="tel" value={form.phone}
+                onChange={e => handleChange("phone", e.target.value)}
+                placeholder="010-0000-0000" className={inputClass} />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">비밀번호 <span className="text-red-500">*</span></label>
               <input type="password" value={form.password}
-                onChange={(e) => handleChange("password", e.target.value)}
-                placeholder="8자 이상" required
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                onChange={e => handleChange("password", e.target.value)}
+                placeholder="8자 이상" required className={inputClass} />
             </div>
 
             <div>
-              <label className="block text-xs text-gray-500 mb-1">비밀번호 확인 <span className="text-red-500">*</span></label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">비밀번호 확인 <span className="text-red-500">*</span></label>
               <input type="password" value={form.passwordConfirm}
-                onChange={(e) => handleChange("passwordConfirm", e.target.value)}
-                placeholder="비밀번호 재입력" required
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                onChange={e => handleChange("passwordConfirm", e.target.value)}
+                placeholder="비밀번호 재입력" required className={inputClass} />
             </div>
 
             <button type="submit" disabled={loading}
