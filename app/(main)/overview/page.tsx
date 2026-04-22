@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -427,10 +427,9 @@ export default function DashboardPage() {
         () => {}
       );
     }
-    const taskFiltered = selectedTaskId === "ALL" ? documents : documents.filter(d => d.taskId === selectedTaskId);
+    const taskList = Array.from(new Map(documents.map(d => [d.taskId, d.taskName])).entries());
+  const taskFiltered = selectedTaskId === "ALL" ? documents : documents.filter(d => d.taskId === selectedTaskId);
   const filtered = filterTab === "ALL" ? taskFiltered : taskFiltered.filter(d => d.documentType === filterTab);
-  // 용역 목록 (중복제거)
-  const taskList = Array.from(new Map(documents.map(d => [d.taskId, d.taskName])).entries());
     filtered.filter(d => d.lat && d.lng).forEach(doc => {
       const pos = new window.kakao.maps.LatLng(doc.lat!, doc.lng!);
       const pinColor = STATUS_STYLE[doc.status]?.pin ?? "#2563eb";
@@ -449,12 +448,11 @@ export default function DashboardPage() {
       window.kakao.maps.event.addListener(marker, "click", () => infowindow.open(map, marker));
       void labelOverlay;
     });
-  }, [mapLoaded, documents, filterTab, viewMode]);
+  }, [mapLoaded, documents, filterTab, viewMode, selectedTaskId, filtered]);
 
+  const taskList = Array.from(new Map(documents.map(d => [d.taskId, d.taskName])).entries());
   const taskFiltered = selectedTaskId === "ALL" ? documents : documents.filter(d => d.taskId === selectedTaskId);
   const filtered = filterTab === "ALL" ? taskFiltered : taskFiltered.filter(d => d.documentType === filterTab);
-  // 용역 목록 (중복제거)
-  const taskList = Array.from(new Map(documents.map(d => [d.taskId, d.taskName])).entries());
 
   return (
     <div className="pb-20">
@@ -608,3 +606,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+
