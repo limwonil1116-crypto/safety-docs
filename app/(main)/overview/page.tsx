@@ -367,7 +367,7 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<"map" | "calendar">("map");
   const [selectedTaskId, setSelectedTaskId] = useState("ALL");
 
-  const taskList = Array.from(new Map(documents.map(d => [d.taskId, d.taskName])).entries());
+  console.log("documents taskIds:", documents.map(d => d.taskId + "|" + d.taskName));`n  const taskList = Array.from(new Map(documents.map(d => [d.taskId, d.taskName])).entries());
   const taskFiltered = selectedTaskId === "ALL" ? documents : documents.filter(d => d.taskId === selectedTaskId);
   const filtered = filterTab === "ALL" ? taskFiltered : taskFiltered.filter(d => d.documentType === filterTab);
 
@@ -604,6 +604,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
 
 
 
