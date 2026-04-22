@@ -1173,15 +1173,6 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
           </FormInput>
           <FormInput label="작업 내용" required><textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} /></FormInput>
           <FormInput label="출입자 명단"><textarea value={form.entryList} onChange={e => onChange("entryList", e.target.value)} rows={2} className={textareaClass} /></FormInput>
-          <div className="bg-blue-50 rounded-xl p-3 space-y-3">
-            <p className="text-xs font-semibold text-blue-700">👤 감시인 및 측정담당자 지정</p>
-            <FormInput label="감시인 성명" required>
-              <input type="text" value={form.monitorName} onChange={e => onChange("monitorName", e.target.value)} placeholder="감시인 성명 입력" className={inputClass} />
-            </FormInput>
-            <FormInput label="측정담당자 성명" required>
-              <input type="text" value={form.measurerName} onChange={e => onChange("measurerName", e.target.value)} placeholder="측정담당자 성명 입력" className={inputClass} />
-            </FormInput>
-          </div>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
