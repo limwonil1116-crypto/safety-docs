@@ -339,26 +339,32 @@ function SafetyCheckTable({ items, onChange }: { items: SafetyCheckItem[]; onCha
   const OPTS = ["조치완료"];
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-12 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg">
-        <div className="col-span-5 text-xs font-medium text-gray-600">확인항목</div>
-        <div className="col-span-3 text-xs font-medium text-gray-600 text-center">해당여부</div>
-        <div className="col-span-4 text-xs font-medium text-gray-600 text-center">확인결과</div>
+      <div className="grid grid-cols-3 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg text-xs font-medium text-gray-600">
+        <div className="col-span-1">확인항목</div>
+        <div className="col-span-1 text-center">해당여부</div>
+        <div className="col-span-1 text-center">확인결과</div>
       </div>
       {items.map((item, idx) => {
         const isDirectInput = item.applicable === "해당" && !OPTS.includes(item.result) && item.result !== "" && item.result !== "선택";
+        const isBold = item.label.startsWith("●");
+        const displayLabel = item.label.replace(/^●/, "");
         return (
-          <div key={idx} className="grid grid-cols-12 gap-1 items-center border border-gray-100 rounded-xl p-2">
-            <div className="col-span-5 text-xs text-gray-700 leading-tight">{item.label}</div>
-            <div className="col-span-3 flex flex-col gap-1 items-start pl-1">
+          <div key={idx} className="border border-gray-100 rounded-xl p-2.5 space-y-2">
+            <div className={`text-xs leading-tight ${isBold ? "font-bold text-gray-900" : "text-gray-700"}`}>{displayLabel}</div>
+            <div className="flex gap-2">
               {["해당", "해당없음"].map(opt => (
-                <label key={opt} className="flex items-center gap-1 cursor-pointer">
-                  <input type="radio" name={`applicable_${idx}`} value={opt} checked={item.applicable === opt}
-                    onChange={() => update(idx, "applicable", opt)} className="w-3 h-3 text-blue-600" />
-                  <span className="text-xs text-gray-600">{opt}</span>
-                </label>
+                <button key={opt} type="button"
+                  onClick={() => update(idx, "applicable", opt)}
+                  className={`flex-1 py-2 rounded-lg text-xs font-semibold border-2 transition-colors ${
+                    item.applicable === opt
+                      ? opt === "해당" ? "bg-blue-600 border-blue-600 text-white" : "bg-gray-500 border-gray-500 text-white"
+                      : "bg-white border-gray-200 text-gray-500"
+                  }`}>
+                  {opt}
+                </button>
               ))}
             </div>
-            <div className="col-span-4 space-y-1">
+            <div className="space-y-1">
               {item.applicable === "해당" ? (
                 <>
                   <select
@@ -545,6 +551,64 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
             ✓ 위치로 설정
           </button>
           <div className="h-4" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// 사용자 선택 모달 (감시인/측정담당자 지정용)
+function UserPickerModal({ title, onSelect, onClose }: {
+  title: string;
+  onSelect: (user: { id: string; name: string; organization?: string }) => void;
+  onClose: () => void;
+}) {
+  const [users, setUsers] = useState<UserItem[]>([]);
+  const [keyword, setKeyword] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    const q = keyword ? `&keyword=${encodeURIComponent(keyword)}` : "";
+    fetch(`/api/users?krcOnly=false${q}`)
+      .then(r => r.json())
+      .then(d => { setUsers(d.users ?? []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [keyword]);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+      <div className="bg-white w-full rounded-t-3xl p-5 pb-24 max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-bold text-gray-900">{title}</h2>
+          <button onClick={onClose} className="text-gray-400">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div className="relative mb-3">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input value={keyword} onChange={e => setKeyword(e.target.value)}
+            placeholder="이름 또는 소속 검색"
+            className="w-full pl-8 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div className="flex-1 overflow-y-auto space-y-1.5">
+          {loading ? (
+            <div className="text-center py-8 text-sm text-gray-400">불러오는 중...</div>
+          ) : users.length === 0 ? (
+            <div className="text-center py-8 text-sm text-gray-400">검색 결과가 없습니다.</div>
+          ) : users.map(u => (
+            <button key={u.id} onClick={() => onSelect(u)}
+              className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-blue-400 hover:bg-blue-50 text-left active:bg-blue-100">
+              <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm shrink-0">
+                {u.name[0]}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-900">{u.name}</div>
+                {u.organization && <div className="text-xs text-gray-400 truncate">{u.organization}</div>}
+              </div>
+            </button>
+          ))}
         </div>
       </div>
     </div>
@@ -951,6 +1015,50 @@ const defaultForm2: Form2 = {
   gasMeasureRows: defaultGasMeasureRows.map(r => ({ ...r })), specialMeasures: "",
   monitorName: "", monitorUserId: "", measurerName: "", measurerUserId: "",
 };
+
+// 밀폐공간 감시인/측정담당자 선택 컴포넌트
+function ConfinedPersonPicker({ form, onChange }: {
+  form: Form2;
+  onChange: (k: string, v: unknown) => void;
+}) {
+  const [showMonitorPicker, setShowMonitorPicker] = useState(false);
+  const [showMeasurerPicker, setShowMeasurerPicker] = useState(false);
+
+  return (
+    <>
+      <div className="bg-blue-50 rounded-xl p-3 space-y-3">
+        <p className="text-xs font-semibold text-blue-700">👤 감시인 및 측정담당자 지정</p>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1.5">감시인 <span className="text-red-500">*</span></label>
+          <button onClick={() => setShowMonitorPicker(true)}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors ${form.monitorUserId ? "border-blue-400 bg-white text-gray-900" : "border-gray-300 bg-white text-gray-400"}`}>
+            <span>{form.monitorName || "감시인 선택"}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1.5">측정담당자 <span className="text-red-500">*</span></label>
+          <button onClick={() => setShowMeasurerPicker(true)}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors ${form.measurerUserId ? "border-blue-400 bg-white text-gray-900" : "border-gray-300 bg-white text-gray-400"}`}>
+            <span>{form.measurerName || "측정담당자 선택"}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      </div>
+      {showMonitorPicker && (
+        <UserPickerModal title="감시인 선택"
+          onSelect={u => { onChange("monitorName", u.name); onChange("monitorUserId", u.id); setShowMonitorPicker(false); }}
+          onClose={() => setShowMonitorPicker(false)} />
+      )}
+      {showMeasurerPicker && (
+        <UserPickerModal title="측정담당자 선택"
+          onSelect={u => { onChange("measurerName", u.name); onChange("measurerUserId", u.id); setShowMeasurerPicker(false); }}
+          onClose={() => setShowMeasurerPicker(false)} />
+      )}
+    </>
+  );
+}
+
 function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation, onClearLocation, taskName, documentId }: {
   form: Form2; onChange: (k: string, v: unknown) => void;
   workLatitude: number | null; workAddress: string; onOpenLocation: () => void; onClearLocation: () => void;
@@ -977,15 +1085,7 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
           </FormInput>
           <FormInput label="작업 내용" required><textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} /></FormInput>
           <FormInput label="출입자 명단"><textarea value={form.entryList} onChange={e => onChange("entryList", e.target.value)} rows={2} className={textareaClass} /></FormInput>
-          <div className="bg-blue-50 rounded-xl p-3 space-y-3">
-            <p className="text-xs font-semibold text-blue-700">👤 감시인 및 측정담당자 지정</p>
-            <FormInput label="감시인 성명" required>
-              <input type="text" value={form.monitorName} onChange={e => onChange("monitorName", e.target.value)} placeholder="감시인 성명 입력" className={inputClass} />
-            </FormInput>
-            <FormInput label="측정담당자 성명" required>
-              <input type="text" value={form.measurerName} onChange={e => onChange("measurerName", e.target.value)} placeholder="측정담당자 성명 입력" className={inputClass} />
-            </FormInput>
-          </div>
+          <ConfinedPersonPicker form={form} onChange={onChange} />
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">

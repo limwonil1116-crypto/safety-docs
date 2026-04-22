@@ -616,6 +616,9 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
           {isForm3 && <Field label="시설 관리자" value={fd.facilityManager as string} />}
           {isForm3 && <Field label="관리자 직급" value={fd.facilityManagerGrade as string} />}
           {isForm3 && <Field label="작업위치" value={fd.workPosition as string} />}
+          {/* 붙임2 감시인/측정담당자 */}
+          {isForm2 && <Field label="감시인" value={fd.monitorName as string} />}
+          {isForm2 && <Field label="측정담당자" value={fd.measurerName as string} />}
           {/* 붙임2/4 허가 조건 */}
           {isForm2 && <Field label="화기작업 필요" value={fd.needFireWork as string} />}
           {isForm2 && <Field label="내연기관 사용" value={fd.useInternalEngine as string} />}
@@ -1124,10 +1127,13 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
             <div className="space-y-2">
               <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">특별조치 필요사항을 입력 후 서명해주세요.</p>
               <textarea
-                value={specialMeasuresInput}
-                onChange={e => setSpecialMeasuresInput(e.target.value)}
+                key="specialMeasures"
+                defaultValue={specialMeasuresInput}
+                onBlur={e => setSpecialMeasuresInput(e.target.value)}
+                onChange={e => { specialMeasuresInput; }}
+                onInput={e => setSpecialMeasuresInput((e.target as HTMLTextAreaElement).value)}
                 placeholder="특별조치 필요사항을 입력해주세요"
-                rows={3}
+                rows={4}
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
             </div>
           )}
@@ -1258,30 +1264,57 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
       {/* 하단 고정 버튼 - 결재 액션 */}
       {isMyTurn && (
         <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-3 pb-4">
-          <div className="flex gap-3">
-            <button onClick={() => {
-                // ✅ 모달 열기 전 textarea 값 먼저 저장
-                const opinion = (reviewOpinionRef.current?.value ?? "").trim();
-                const result = (reviewResultRef.current?.value ?? "").trim();
-                setPendingOpinion(opinion);
-                setPendingResult(result);
-                setReviewOpinion(opinion);
-                setReviewResult(result);
-                setShowRejectConfirm(true);
-              }} className="flex-1 py-3 rounded-xl border-2 border-red-200 text-sm font-medium text-red-600">반려</button>
-            <button onClick={() => {
-                // ✅ 모달 열기 전 textarea 값 먼저 저장
-                const opinion = (reviewOpinionRef.current?.value ?? "").trim();
-                const result = (reviewResultRef.current?.value ?? "").trim();
-                setPendingOpinion(opinion);
-                setPendingResult(result);
-                setReviewOpinion(opinion);
-                setReviewResult(result);
-                setShowApproveConfirm(true);
-              }} className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#16a34a" }}>
-              {doc.currentApprovalOrder === 1 ? "검토완료" : "최종 승인"}
+          {/* 밀폐공간 3단계(측정담당자): 서명 없이 측정결과만 제출 */}
+          {isConfinedSpace && confinedOrder === 3 ? (
+            <button onClick={async () => {
+              if (gasMeasureRowsInput.length === 0) { alert("측정결과를 입력해주세요."); return; }
+              setProcessing(true);
+              try {
+                const res = await fetch(`/api/documents/${documentId}/approve`, {
+                  method: "POST", headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "APPROVE", signatureData: null, gasMeasureRows: gasMeasureRowsInput }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || "오류 발생");
+                if (data.action === "NEED_FINAL_CONFIRMER") {
+                  setConfinedNextAction("FINAL_CONFIRMER");
+                  setShowConfinedNextModal(true);
+                } else {
+                  alert("측정결과가 제출됐습니다.");
+                  router.push("/approvals");
+                }
+              } catch (e: unknown) { alert(e instanceof Error ? e.message : "오류가 발생했습니다."); }
+              finally { setProcessing(false); }
+            }} disabled={processing}
+              className="w-full py-3 rounded-xl text-white text-sm font-medium disabled:opacity-50" style={{ background: "#16a34a" }}>
+              {processing ? "제출 중..." : "📊 측정결과 제출 및 이행확인자 지정"}
             </button>
-          </div>
+          ) : (
+            <div className="flex gap-3">
+              <button onClick={() => {
+                  const opinion = (reviewOpinionRef.current?.value ?? "").trim();
+                  const result = (reviewResultRef.current?.value ?? "").trim();
+                  setPendingOpinion(opinion);
+                  setPendingResult(result);
+                  setReviewOpinion(opinion);
+                  setReviewResult(result);
+                  setShowRejectConfirm(true);
+                }} className="flex-1 py-3 rounded-xl border-2 border-red-200 text-sm font-medium text-red-600">반려</button>
+              <button onClick={() => {
+                  const opinion = (reviewOpinionRef.current?.value ?? "").trim();
+                  const result = (reviewResultRef.current?.value ?? "").trim();
+                  setPendingOpinion(opinion);
+                  setPendingResult(result);
+                  setReviewOpinion(opinion);
+                  setReviewResult(result);
+                  setShowApproveConfirm(true);
+                }} className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#16a34a" }}>
+                {isConfinedSpace
+                  ? confinedOrder === 1 ? "감시인 서명" : confinedOrder === 2 ? "(계획확인) 서명" : "(이행확인) 최종 서명"
+                  : doc.currentApprovalOrder === 1 ? "검토완료" : "최종 승인"}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -1304,10 +1337,16 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
             <h3 className="text-base font-bold text-gray-900 mb-2">
-              {doc.currentApprovalOrder === 1 ? "검토완료 후 최종허가자에게 지정됩니다" : "최종 승인하시겠습니까?"}
+              {isConfinedSpace
+                ? confinedOrder === 1 ? "감시인 서명 후 (계획확인)허가자를 지정합니다"
+                  : confinedOrder === 2 ? "(계획확인) 허가자 서명을 완료합니다"
+                  : "(이행확인) 최종 서명을 완료합니다"
+                : doc.currentApprovalOrder === 1 ? "검토완료 후 최종허가자에게 지정됩니다" : "최종 승인하시겠습니까?"}
             </h3>
             <p className="text-sm text-gray-500 mb-4">
-              {doc.currentApprovalOrder === 1 ? "서명 후 최종허가자를 지정합니다." : "최종 승인 후 되돌릴 수 없습니다."}
+              {isConfinedSpace
+                ? "서명 후 다음 단계가 진행됩니다."
+                : doc.currentApprovalOrder === 1 ? "서명 후 최종허가자를 지정합니다." : "최종 승인 후 되돌릴 수 없습니다."}
             </p>
             <div className="flex gap-3">
               <button onClick={() => setShowApproveConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">취소</button>
