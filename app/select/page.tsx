@@ -48,6 +48,10 @@ export default function SelectPage() {
   const [visible, setVisible] = useState(false);
   useEffect(() => { setTimeout(() => setVisible(true), 100); }, []);
 
+  const SIZE_OUTER = 108;
+  const SIZE_INNER = 90;
+  const LOGO_SIZE = 68;
+
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
       <div className="absolute inset-0 z-0"
@@ -63,53 +67,76 @@ export default function SelectPage() {
         <div className="flex flex-col items-center mb-8">
           {/* 로고 + 이중 링 */}
           <div className="relative flex items-center justify-center mb-5"
-            style={{ width: 96, height: 96 }}>
+            style={{ width: SIZE_OUTER, height: SIZE_OUTER }}>
 
-            {/* 바깥 링 테두리만 - 시계방향 */}
-            <svg className="absolute inset-0" width="96" height="96" viewBox="0 0 96 96"
-              style={{ animation: "spin-cw 6s linear infinite" }}>
-              <circle cx="48" cy="48" r="46"
+            {/* 바깥 링 - 시계방향 (점선 호) */}
+            <svg width={SIZE_OUTER} height={SIZE_OUTER} viewBox={`0 0 ${SIZE_OUTER} ${SIZE_OUTER}`}
+              className="absolute inset-0"
+              style={{ animation: "spin-cw 8s linear infinite" }}>
+              <circle
+                cx={SIZE_OUTER/2} cy={SIZE_OUTER/2}
+                r={SIZE_OUTER/2 - 3}
                 fill="none"
-                stroke="url(#goldGrad1)"
-                strokeWidth="3"
-                strokeDasharray="80 210"
-                strokeLinecap="round" />
-              <defs>
-                <linearGradient id="goldGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#ffd700" />
-                  <stop offset="50%" stopColor="#ff8c00" />
-                  <stop offset="100%" stopColor="#ffd700" />
-                </linearGradient>
-              </defs>
+                stroke="#ffd700"
+                strokeWidth="2.5"
+                strokeDasharray="12 8"
+                strokeLinecap="round"
+                opacity="0.9"
+              />
+              {/* 글로우 효과 */}
+              <circle
+                cx={SIZE_OUTER/2} cy={SIZE_OUTER/2}
+                r={SIZE_OUTER/2 - 3}
+                fill="none"
+                stroke="#ffd700"
+                strokeWidth="6"
+                strokeDasharray="12 8"
+                strokeLinecap="round"
+                opacity="0.2"
+              />
             </svg>
 
-            {/* 안쪽 링 테두리만 - 반시계방향 */}
-            <svg className="absolute" width="78" height="78" viewBox="0 0 78 78"
+            {/* 안쪽 링 - 반시계방향 */}
+            <svg width={SIZE_INNER} height={SIZE_INNER} viewBox={`0 0 ${SIZE_INNER} ${SIZE_INNER}`}
+              className="absolute"
               style={{
-                animation: "spin-ccw 4s linear infinite",
+                animation: "spin-ccw 5s linear infinite",
                 top: "50%", left: "50%",
                 transform: "translate(-50%, -50%)",
                 position: "absolute",
               }}>
-              <circle cx="39" cy="39" r="37"
+              <circle
+                cx={SIZE_INNER/2} cy={SIZE_INNER/2}
+                r={SIZE_INNER/2 - 2.5}
                 fill="none"
-                stroke="url(#goldGrad2)"
+                stroke="#ffaa00"
                 strokeWidth="2"
-                strokeDasharray="50 180"
-                strokeLinecap="round" />
-              <defs>
-                <linearGradient id="goldGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#ff6600" />
-                  <stop offset="50%" stopColor="#ffd700" />
-                  <stop offset="100%" stopColor="#ff6600" />
-                </linearGradient>
-              </defs>
+                strokeDasharray="6 10"
+                strokeLinecap="round"
+                opacity="0.8"
+              />
+              <circle
+                cx={SIZE_INNER/2} cy={SIZE_INNER/2}
+                r={SIZE_INNER/2 - 2.5}
+                fill="none"
+                stroke="#ffaa00"
+                strokeWidth="5"
+                strokeDasharray="6 10"
+                strokeLinecap="round"
+                opacity="0.15"
+              />
             </svg>
 
-            {/* 로고 중앙 */}
-            <div className="relative z-10 rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl"
-              style={{ width: 64, height: 64, background: "white" }}>
-              <img src="/logo.png" alt="로고" style={{ width: 54, height: 54, objectFit: "contain" }} />
+            {/* 로고 - 원형 + 흰배경 */}
+            <div className="relative z-10 flex items-center justify-center shadow-2xl"
+              style={{
+                width: LOGO_SIZE, height: LOGO_SIZE,
+                borderRadius: "50%",
+                background: "white",
+                overflow: "hidden",
+              }}>
+              <img src="/logo.png" alt="로고"
+                style={{ width: LOGO_SIZE - 10, height: LOGO_SIZE - 10, objectFit: "contain" }} />
             </div>
           </div>
 
@@ -160,17 +187,14 @@ export default function SelectPage() {
             </button>
           ))}
 
-          {/* KRC 로고 - TBM 버튼 아래, 흰색 투명 처리 */}
+          {/* KRC 로고 - 흰색 변환으로 배경과 자연스럽게 */}
           <div className="flex justify-center pt-5">
-            <div style={{
-                background: "rgba(255,255,255,0.15)",
-                backdropFilter: "blur(8px)",
-                borderRadius: 12,
-                padding: "8px 20px",
-              }}>
-              <img src="/krc_logo.png" alt="한국농어촌공사"
-                style={{ height: 32, objectFit: "contain" }} />
-            </div>
+            <img src="/krc_logo.png" alt="한국농어촌공사"
+              style={{
+                height: 34,
+                objectFit: "contain",
+                filter: "brightness(0) invert(1) opacity(0.75)",
+              }} />
           </div>
         </div>
       </div>
