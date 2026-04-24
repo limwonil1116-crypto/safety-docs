@@ -162,12 +162,15 @@ export default function SelectPage() {
 
           {/* KRC 로고 - TBM 버튼 아래, 흰색 투명 처리 */}
           <div className="flex justify-center pt-5">
-            <img src="/krc_logo.png" alt="한국농어촌공사"
-              style={{
-                height: 36,
-                objectFit: "contain",
-                filter: "brightness(10) saturate(0) opacity(0.85)",
-              }} />
+            <div style={{
+                background: "rgba(255,255,255,0.15)",
+                backdropFilter: "blur(8px)",
+                borderRadius: 12,
+                padding: "8px 20px",
+              }}>
+              <img src="/krc_logo.png" alt="한국농어촌공사"
+                style={{ height: 32, objectFit: "contain" }} />
+            </div>
           </div>
         </div>
       </div>
