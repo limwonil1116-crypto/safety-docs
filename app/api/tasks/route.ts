@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
         createdAt: tasks.createdAt,
         updatedAt: tasks.updatedAt,
         createdBy: tasks.createdBy,
+        // category/division은 description JSON에서 파싱해서 프론트에서 처리
       })
       .from(tasks)
       .where(
