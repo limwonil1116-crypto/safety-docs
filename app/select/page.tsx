@@ -82,12 +82,9 @@ export default function SelectPage() {
         <div className="text-center mb-10">
           <div className="flex items-center justify-center mb-4">
             {/* KRC 로고 스타일 */}
-            <div className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-2xl"
-              style={{ background: "linear-gradient(135deg, #1a3a6c, #2563eb)" }}>
-              <svg width="44" height="44" viewBox="0 0 24 24" fill="none">
-                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="white"/>
-                <path d="M9 12l2 2 4-4" stroke="#ffd700" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+            <div className="w-20 h-20 rounded-2xl flex items-center justify-center shadow-2xl overflow-hidden"
+              style={{ background: "white" }}>
+              <img src="/logo.png" alt="로고" style={{ width: 64, height: 64, objectFit: "contain" }} />
             </div>
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight drop-shadow-lg">스마트 안전관리</h1>
