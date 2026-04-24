@@ -29,9 +29,9 @@ function Sparks() {
           0%   { transform: translateY(0) scale(1); opacity: 1; }
           100% { transform: translateY(-85vh) scale(0); opacity: 0; }
         }
-        @keyframes orbit1 { from { transform: rotate(0deg)   translateX(56px) rotate(0deg);   } to { transform: rotate(360deg)  translateX(56px) rotate(-360deg);  } }
-        @keyframes orbit2 { from { transform: rotate(120deg) translateX(48px) rotate(-120deg); } to { transform: rotate(480deg)  translateX(48px) rotate(-480deg);  } }
-        @keyframes orbit3 { from { transform: rotate(240deg) translateX(64px) rotate(-240deg); } to { transform: rotate(600deg)  translateX(64px) rotate(-600deg);  } }
+        @keyframes spin-cw  { to { transform: rotate(360deg);  } }
+        @keyframes spin-ccw { to { transform: rotate(-360deg); } }
+        @keyframes spin-cw2 { to { transform: rotate(360deg);  } }
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(20px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -41,44 +41,12 @@ function Sparks() {
   );
 }
 
-function OrbitingStar({ orbitAnim, duration, size = 6 }: { orbitAnim: string; duration: number; size?: number }) {
-  return (
-    <div className="absolute" style={{
-      top: "50%", left: "50%",
-      width: 0, height: 0,
-      animation: `${orbitAnim} ${duration}s linear infinite`,
-    }}>
-      {/* 별 본체 */}
-      <div style={{
-        width: size, height: size,
-        borderRadius: "50%",
-        background: "radial-gradient(circle, #fff8dc, #ffd700)",
-        boxShadow: `0 0 ${size * 1.5}px #ffd700, 0 0 ${size * 3}px #ffaa00`,
-        marginTop: -size / 2,
-        marginLeft: -size / 2,
-        position: "relative",
-      }}>
-        {/* 꼬리 */}
-        <div style={{
-          position: "absolute",
-          right: size,
-          top: size / 2 - 1,
-          width: size * 4,
-          height: 2,
-          background: "linear-gradient(to left, rgba(255,215,0,0.8), transparent)",
-          borderRadius: 2,
-        }} />
-      </div>
-    </div>
-  );
-}
-
 export default function SelectPage() {
   const router = useRouter();
   const [visible, setVisible] = useState(false);
   useEffect(() => { setTimeout(() => setVisible(true), 100); }, []);
 
-  const LOGO_SIZE = 80;
+  const cx = 80, cy = 80;
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
@@ -91,20 +59,65 @@ export default function SelectPage() {
       <div className="relative z-20 w-full max-w-sm px-6 flex flex-col items-center"
         style={{ animation: visible ? "fadeUp 0.7s ease forwards" : "none", opacity: visible ? 1 : 0 }}>
 
-        {/* 로고 + 별똥별 3개 */}
+        {/* 로고 + 그라데이션 3줄 회전 링 */}
         <div className="relative flex items-center justify-center mb-5"
           style={{ width: 160, height: 160 }}>
 
-          {/* 별똥별 3개 - 각각 다른 궤도/속도 */}
-          <OrbitingStar orbitAnim="orbit1" duration={3.5} size={7} />
-          <OrbitingStar orbitAnim="orbit2" duration={5}   size={5} />
-          <OrbitingStar orbitAnim="orbit3" duration={4}   size={6} />
+          {/* 1번 링 - 시계방향 빠름 */}
+          <svg width="160" height="160" viewBox="0 0 160 160"
+            className="absolute inset-0"
+            style={{ animation: "spin-cw 3s linear infinite" }}>
+            <defs>
+              <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#ffd700" stopOpacity="1" />
+                <stop offset="40%" stopColor="#ff8c00" stopOpacity="0.6" />
+                <stop offset="100%" stopColor="#ffd700" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <circle cx="80" cy="80" r="74" fill="none" stroke="url(#g1)" strokeWidth="3" strokeLinecap="round" />
+          </svg>
 
-          {/* 로고 */}
+          {/* 2번 링 - 반시계방향 중간 */}
+          <svg width="148" height="148" viewBox="0 0 148 148"
+            className="absolute"
+            style={{
+              animation: "spin-ccw 4.5s linear infinite",
+              top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+              position: "absolute",
+            }}>
+            <defs>
+              <linearGradient id="g2" x1="100%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#ffe566" stopOpacity="1" />
+                <stop offset="50%" stopColor="#ffaa00" stopOpacity="0.5" />
+                <stop offset="100%" stopColor="#ffe566" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <circle cx="74" cy="74" r="68" fill="none" stroke="url(#g2)" strokeWidth="2.5" strokeLinecap="round" />
+          </svg>
+
+          {/* 3번 링 - 시계방향 느림 */}
+          <svg width="134" height="134" viewBox="0 0 134 134"
+            className="absolute"
+            style={{
+              animation: "spin-cw2 6s linear infinite",
+              top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+              position: "absolute",
+            }}>
+            <defs>
+              <linearGradient id="g3" x1="50%" y1="0%" x2="50%" y2="100%">
+                <stop offset="0%" stopColor="#ffd700" stopOpacity="0.9" />
+                <stop offset="30%" stopColor="#ff6600" stopOpacity="0.4" />
+                <stop offset="100%" stopColor="#ffd700" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <circle cx="67" cy="67" r="61" fill="none" stroke="url(#g3)" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+
+          {/* 로고 중앙 */}
           <div className="relative z-10 flex items-center justify-center shadow-2xl"
-            style={{ width: LOGO_SIZE, height: LOGO_SIZE, borderRadius: "50%", background: "white" }}>
+            style={{ width: 80, height: 80, borderRadius: "50%", background: "white" }}>
             <img src="/logo.png" alt="로고"
-              style={{ width: LOGO_SIZE - 12, height: LOGO_SIZE - 12, objectFit: "contain" }} />
+              style={{ width: 68, height: 68, objectFit: "contain" }} />
           </div>
         </div>
 
@@ -154,7 +167,6 @@ export default function SelectPage() {
             </button>
           ))}
 
-          {/* 하단 텍스트 */}
           <p className="text-white/30 text-[10px] text-center pt-4">
             © 2026. 한국농어촌공사 안전기술본부 All rights reserved.
           </p>
