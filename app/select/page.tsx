@@ -1,16 +1,9 @@
 "use client";
-export const dynamic = "force-dynamic";
 
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 
 export default function SelectPage() {
-  const { data: session } = useSession();
   const router = useRouter();
-
-  const handleSelect = (category: string) => {
-    router.push(`/tasks?category=${category}`);
-  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6"
@@ -28,7 +21,7 @@ export default function SelectPage() {
       <div className="w-full max-w-sm space-y-4">
         <p className="text-white/80 text-sm text-center mb-6">업무 유형을 선택해주세요</p>
 
-        <button onClick={() => handleSelect("CONTRACTOR")}
+        <button onClick={() => router.push("/tasks?category=CONTRACTOR")}
           className="w-full bg-white rounded-2xl p-6 flex items-center gap-4 shadow-lg hover:bg-blue-50 active:scale-95 transition-all">
           <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
@@ -45,7 +38,7 @@ export default function SelectPage() {
           <svg className="ml-auto text-gray-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
 
-        <button onClick={() => handleSelect("SELF")}
+        <button onClick={() => router.push("/tasks?category=SELF")}
           className="w-full bg-white rounded-2xl p-6 flex items-center gap-4 shadow-lg hover:bg-green-50 active:scale-95 transition-all">
           <div className="w-12 h-12 rounded-xl bg-green-600 flex items-center justify-center shrink-0">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
@@ -62,10 +55,6 @@ export default function SelectPage() {
           <svg className="ml-auto text-gray-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
-
-      {session?.user?.name && (
-        <p className="text-white/50 text-xs mt-8">{session.user.name} 님 환영합니다</p>
-      )}
     </div>
   );
 }
