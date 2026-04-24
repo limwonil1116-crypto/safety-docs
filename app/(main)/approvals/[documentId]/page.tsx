@@ -817,9 +817,9 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
               </div>
             )}
             {approvalLines.filter(l => l.stepStatus === "APPROVED" && l.signatureData).map(line => {
-              const roleLabel = line.approvalRole === "FINAL_APPROVER"
-                ? (FINAL_ROLE_LABELS[doc.documentType] ?? "최종 허가자")
-                : (ROLE_LABELS[doc.documentType]?.[line.approvalOrder] ?? `${line.approvalOrder}단계`);
+              const roleLabel = doc.documentType === "CONFINED_SPACE"
+                ? (line.approvalOrder === 2 ? "(계획확인)허가자" : line.approvalOrder === 4 ? "(이행확인)확인자" : ROLE_LABELS["CONFINED_SPACE"]?.[line.approvalOrder] ?? `${line.approvalOrder}단계`)
+                : line.approvalRole === "FINAL_APPROVER" ? (FINAL_ROLE_LABELS[doc.documentType] ?? "최종 허가자") : (ROLE_LABELS[doc.documentType]?.[line.approvalOrder] ?? `${line.approvalOrder}단계`);
               return (
                 <div key={line.id} className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="flex border-b border-gray-100 bg-gray-50">
