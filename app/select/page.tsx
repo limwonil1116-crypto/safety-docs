@@ -59,39 +59,57 @@ export default function SelectPage() {
       <div className="relative z-20 w-full max-w-sm px-6"
         style={{ animation: visible ? "fadeUp 0.7s ease forwards" : "none", opacity: visible ? 1 : 0 }}>
 
-        {/* 로고 + 타이틀 */}
+        {/* 로고 영역 */}
         <div className="flex flex-col items-center mb-8">
-          {/* 이중 회전링이 로고 주변만 감싸는 구조 */}
+          {/* 로고 + 이중 링 */}
           <div className="relative flex items-center justify-center mb-5"
-            style={{ width: 100, height: 100 }}>
+            style={{ width: 96, height: 96 }}>
 
-            {/* 바깥 링 - 시계방향 (로고보다 약간 크게) */}
-            <div className="absolute inset-0 rounded-full pointer-events-none"
-              style={{
-                animation: "spin-cw 5s linear infinite",
-                background: "conic-gradient(from 0deg, #ffd700 0%, #ffaa00 25%, transparent 50%, #ffd700 75%, #ffaa00 100%)",
-                WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 3px), white calc(100% - 3px))",
-                mask: "radial-gradient(farthest-side, transparent calc(100% - 3px), white calc(100% - 3px))",
-                filter: "drop-shadow(0 0 4px #ffd700)",
-              }} />
+            {/* 바깥 링 테두리만 - 시계방향 */}
+            <svg className="absolute inset-0" width="96" height="96" viewBox="0 0 96 96"
+              style={{ animation: "spin-cw 6s linear infinite" }}>
+              <circle cx="48" cy="48" r="46"
+                fill="none"
+                stroke="url(#goldGrad1)"
+                strokeWidth="3"
+                strokeDasharray="80 210"
+                strokeLinecap="round" />
+              <defs>
+                <linearGradient id="goldGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#ffd700" />
+                  <stop offset="50%" stopColor="#ff8c00" />
+                  <stop offset="100%" stopColor="#ffd700" />
+                </linearGradient>
+              </defs>
+            </svg>
 
-            {/* 안쪽 링 - 반시계방향 */}
-            <div className="absolute rounded-full pointer-events-none"
+            {/* 안쪽 링 테두리만 - 반시계방향 */}
+            <svg className="absolute" width="78" height="78" viewBox="0 0 78 78"
               style={{
-                width: 84, height: 84,
+                animation: "spin-ccw 4s linear infinite",
                 top: "50%", left: "50%",
                 transform: "translate(-50%, -50%)",
-                animation: "spin-ccw 3s linear infinite",
-                background: "conic-gradient(from 180deg, #ff8c00 0%, transparent 40%, #ff8c00 60%, transparent 100%)",
-                WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 2px), white calc(100% - 2px))",
-                mask: "radial-gradient(farthest-side, transparent calc(100% - 2px), white calc(100% - 2px))",
-                filter: "drop-shadow(0 0 3px #ff8c00)",
-              }} />
+                position: "absolute",
+              }}>
+              <circle cx="39" cy="39" r="37"
+                fill="none"
+                stroke="url(#goldGrad2)"
+                strokeWidth="2"
+                strokeDasharray="50 180"
+                strokeLinecap="round" />
+              <defs>
+                <linearGradient id="goldGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#ff6600" />
+                  <stop offset="50%" stopColor="#ffd700" />
+                  <stop offset="100%" stopColor="#ff6600" />
+                </linearGradient>
+              </defs>
+            </svg>
 
             {/* 로고 중앙 */}
             <div className="relative z-10 rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl"
-              style={{ width: 72, height: 72, background: "white" }}>
-              <img src="/logo.png" alt="로고" style={{ width: 60, height: 60, objectFit: "contain" }} />
+              style={{ width: 64, height: 64, background: "white" }}>
+              <img src="/logo.png" alt="로고" style={{ width: 54, height: 54, objectFit: "contain" }} />
             </div>
           </div>
 
@@ -138,17 +156,17 @@ export default function SelectPage() {
                 <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold mr-1"
                   style={{ background: "#ffd700", color: "#92400e" }}>{item.badge}</span>
               )}
-              <svg className="text-white/30" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+              <svg className="text-white/30 shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           ))}
 
-          {/* KRC 로고 - TBM 버튼 아래 */}
-          <div className="flex justify-center pt-4">
+          {/* KRC 로고 - TBM 버튼 아래, 흰색 투명 처리 */}
+          <div className="flex justify-center pt-5">
             <img src="/krc_logo.png" alt="한국농어촌공사"
               style={{
-                height: 32,
+                height: 36,
                 objectFit: "contain",
-                filter: "brightness(0) invert(1) opacity(0.7)",
+                filter: "brightness(10) saturate(0) opacity(0.85)",
               }} />
           </div>
         </div>
