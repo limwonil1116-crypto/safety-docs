@@ -29,9 +29,8 @@ function Sparks() {
           0%   { transform: translateY(0) scale(1); opacity: 1; }
           100% { transform: translateY(-85vh) scale(0); opacity: 0; }
         }
-        @keyframes spin-cw  { to { transform: rotate(360deg);  } }
-        @keyframes spin-ccw { to { transform: rotate(-360deg); } }
-        @keyframes spin-cw2 { to { transform: rotate(360deg);  } }
+        @keyframes spin-cw  { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes spin-ccw { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(20px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -41,12 +40,16 @@ function Sparks() {
   );
 }
 
+// 방패 모양 path - viewBox 0 0 100 100 기준
+// M 50,5 L 90,20 L 90,50 Q 90,80 50,95 Q 10,80 10,50 L 10,20 Z
+const SHIELD_PATH = "M 50,4 L 92,20 L 92,52 Q 90,82 50,96 Q 10,82 8,52 L 8,20 Z";
+const SHIELD_PATH_MID = "M 50,8 L 86,22 L 86,52 Q 84,78 50,91 Q 16,78 14,52 L 14,22 Z";
+const SHIELD_PATH_INNER = "M 50,13 L 80,26 L 80,52 Q 78,74 50,86 Q 22,74 20,52 L 20,26 Z";
+
 export default function SelectPage() {
   const router = useRouter();
   const [visible, setVisible] = useState(false);
   useEffect(() => { setTimeout(() => setVisible(true), 100); }, []);
-
-  const cx = 80, cy = 80;
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
@@ -59,65 +62,73 @@ export default function SelectPage() {
       <div className="relative z-20 w-full max-w-sm px-6 flex flex-col items-center"
         style={{ animation: visible ? "fadeUp 0.7s ease forwards" : "none", opacity: visible ? 1 : 0 }}>
 
-        {/* 로고 + 그라데이션 3줄 회전 링 */}
+        {/* 로고 + 방패형 3줄 회전 링 */}
         <div className="relative flex items-center justify-center mb-5"
           style={{ width: 160, height: 160 }}>
 
-          {/* 1번 링 - 시계방향 빠름 */}
-          <svg width="160" height="160" viewBox="0 0 160 160"
+          {/* 1번 링 - 바깥쪽, 시계방향 느리게 */}
+          <svg width="160" height="160" viewBox="0 0 100 100"
             className="absolute inset-0"
-            style={{ animation: "spin-cw 3s linear infinite" }}>
+            style={{ animation: "spin-cw 8s linear infinite", transformOrigin: "50% 50%" }}>
             <defs>
-              <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#ffd700" stopOpacity="1" />
-                <stop offset="40%" stopColor="#ff8c00" stopOpacity="0.6" />
-                <stop offset="100%" stopColor="#ffd700" stopOpacity="0" />
+              <linearGradient id="sg1" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#ffd700" stopOpacity="1"/>
+                <stop offset="50%" stopColor="#ff8c00" stopOpacity="0.3"/>
+                <stop offset="100%" stopColor="#ffd700" stopOpacity="1"/>
               </linearGradient>
             </defs>
-            <circle cx="80" cy="80" r="74" fill="none" stroke="url(#g1)" strokeWidth="3" strokeLinecap="round" />
+            <path d={SHIELD_PATH} fill="none" stroke="url(#sg1)" strokeWidth="2.5"
+              strokeLinejoin="round" strokeLinecap="round"
+              style={{ filter: "drop-shadow(0 0 4px #ffd700)" }} />
           </svg>
 
-          {/* 2번 링 - 반시계방향 중간 */}
-          <svg width="148" height="148" viewBox="0 0 148 148"
+          {/* 2번 링 - 중간, 반시계방향 */}
+          <svg width="136" height="136" viewBox="0 0 100 100"
             className="absolute"
             style={{
-              animation: "spin-ccw 4.5s linear infinite",
+              animation: "spin-ccw 5s linear infinite",
+              transformOrigin: "50% 50%",
               top: "50%", left: "50%", transform: "translate(-50%,-50%)",
               position: "absolute",
             }}>
             <defs>
-              <linearGradient id="g2" x1="100%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#ffe566" stopOpacity="1" />
-                <stop offset="50%" stopColor="#ffaa00" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="#ffe566" stopOpacity="0" />
+              <linearGradient id="sg2" x1="100%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stopColor="#ffe566" stopOpacity="1"/>
+                <stop offset="50%" stopColor="#ffaa00" stopOpacity="0.2"/>
+                <stop offset="100%" stopColor="#ffe566" stopOpacity="1"/>
               </linearGradient>
             </defs>
-            <circle cx="74" cy="74" r="68" fill="none" stroke="url(#g2)" strokeWidth="2.5" strokeLinecap="round" />
+            <path d={SHIELD_PATH_MID} fill="none" stroke="url(#sg2)" strokeWidth="2"
+              strokeLinejoin="round" strokeLinecap="round"
+              style={{ filter: "drop-shadow(0 0 3px #ffaa00)" }} />
           </svg>
 
-          {/* 3번 링 - 시계방향 느림 */}
-          <svg width="134" height="134" viewBox="0 0 134 134"
+          {/* 3번 링 - 안쪽, 시계방향 중간 */}
+          <svg width="112" height="112" viewBox="0 0 100 100"
             className="absolute"
             style={{
-              animation: "spin-cw2 6s linear infinite",
+              animation: "spin-cw 12s linear infinite",
+              transformOrigin: "50% 50%",
               top: "50%", left: "50%", transform: "translate(-50%,-50%)",
               position: "absolute",
             }}>
             <defs>
-              <linearGradient id="g3" x1="50%" y1="0%" x2="50%" y2="100%">
-                <stop offset="0%" stopColor="#ffd700" stopOpacity="0.9" />
-                <stop offset="30%" stopColor="#ff6600" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#ffd700" stopOpacity="0" />
+              <linearGradient id="sg3" x1="50%" y1="0%" x2="50%" y2="100%">
+                <stop offset="0%" stopColor="#ffd700" stopOpacity="0.9"/>
+                <stop offset="50%" stopColor="#ff6600" stopOpacity="0.2"/>
+                <stop offset="100%" stopColor="#ffd700" stopOpacity="0.9"/>
               </linearGradient>
             </defs>
-            <circle cx="67" cy="67" r="61" fill="none" stroke="url(#g3)" strokeWidth="2" strokeLinecap="round" />
+            <path d={SHIELD_PATH_INNER} fill="none" stroke="url(#sg3)" strokeWidth="1.5"
+              strokeLinejoin="round" strokeLinecap="round"
+              style={{ filter: "drop-shadow(0 0 2px #ffd700)" }} />
           </svg>
 
-          {/* 로고 중앙 */}
-          <div className="relative z-10 flex items-center justify-center shadow-2xl"
-            style={{ width: 80, height: 80, borderRadius: "50%", background: "white" }}>
+          {/* 로고 - 배경 없이 그대로 */}
+          <div className="relative z-10 flex items-center justify-center"
+            style={{ width: 80, height: 80 }}>
             <img src="/logo.png" alt="로고"
-              style={{ width: 68, height: 68, objectFit: "contain" }} />
+              style={{ width: 80, height: 80, objectFit: "contain" }} />
           </div>
         </div>
 
