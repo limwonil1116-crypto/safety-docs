@@ -11,7 +11,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { documentType, formData } = body;
 
-    // 문서 내용 요약 생성
     const fd = formData ?? {};
     const docTypeLabel =
       documentType === "SAFETY_WORK_PERMIT" ? "안전작업허가서" :
@@ -49,32 +48,30 @@ export async function POST(req: NextRequest) {
 
 위 내용을 바탕으로 특별조치 필요사항 5줄을 작성해주세요. 한국어로 작성하고, 다른 설명 없이 5줄만 출력하세요.`;
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: "OpenAI API 키가 설정되지 않았습니다." }, { status: 500 });
+      return NextResponse.json({ error: "Gemini API 키가 설정되지 않았습니다." }, { status: 500 });
     }
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 500,
-        temperature: 0.7,
-      }),
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 500, temperature: 0.7 },
+        }),
+      }
+    );
 
     if (!response.ok) {
       const err = await response.json();
-      return NextResponse.json({ error: err.error?.message || "OpenAI 오류" }, { status: 500 });
+      return NextResponse.json({ error: err.error?.message || "Gemini 오류" }, { status: 500 });
     }
 
     const data = await response.json();
-    const result = data.choices?.[0]?.message?.content?.trim() || "";
+    const result = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
 
     return NextResponse.json({ specialMeasures: result });
   } catch (error) {
