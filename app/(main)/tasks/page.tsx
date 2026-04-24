@@ -161,7 +161,7 @@ function EditTaskModal({ task, category, onClose, onUpdated }: { task: Task; cat
   );
 }
 
-export default function TasksPage() {
+function TasksPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const category = searchParams.get("category") || "CONTRACTOR";
@@ -352,5 +352,14 @@ export default function TasksPage() {
       {showCreate && <CreateTaskModal category={category} onClose={() => setShowCreate(false)} onCreated={fetchTasks} />}
       {editingTask && <EditTaskModal task={editingTask} category={category} onClose={() => setEditingTask(null)} onUpdated={fetchTasks} />}
     </div>
+  );
+}
+
+import { Suspense } from "react";
+export default function TasksPage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-center text-gray-400 text-sm">로딩 중...</div>}>
+      <TasksPageInner />
+    </Suspense>
   );
 }
