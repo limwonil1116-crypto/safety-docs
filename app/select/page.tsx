@@ -19,10 +19,7 @@ function Sparks() {
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {sparks.map(s => (
         <div key={s.id} className="absolute bottom-0"
-          style={{
-            left: `${s.x}%`,
-            animation: `spark ${s.duration}s ${s.delay}s linear infinite`,
-          }}>
+          style={{ left: `${s.x}%`, animation: `spark ${s.duration}s ${s.delay}s linear infinite` }}>
           <div style={{
             width: s.size, height: s.size, borderRadius: "50%",
             background: "radial-gradient(circle, #ffd700, #ff8c00)",
@@ -35,14 +32,8 @@ function Sparks() {
           0%   { transform: translateY(0) scale(1); opacity: 1; }
           100% { transform: translateY(-85vh) scale(0); opacity: 0; }
         }
-        @keyframes spin-cw {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(360deg); }
-        }
-        @keyframes spin-ccw {
-          from { transform: rotate(0deg); }
-          to   { transform: rotate(-360deg); }
-        }
+        @keyframes spin-cw  { to { transform: rotate(360deg);  } }
+        @keyframes spin-ccw { to { transform: rotate(-360deg); } }
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(20px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -59,65 +50,55 @@ export default function SelectPage() {
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
-      {/* 배경 */}
       <div className="absolute inset-0 z-0"
         style={{ backgroundImage: "url('/main_02.jpg')", backgroundSize: "cover", backgroundPosition: "center" }} />
       <div className="absolute inset-0 z-0"
         style={{ background: "linear-gradient(160deg, rgba(15,30,60,0.82) 0%, rgba(30,58,92,0.75) 50%, rgba(10,20,40,0.88) 100%)" }} />
-
-      {/* 불꽃 */}
       <div className="absolute inset-0 z-10"><Sparks /></div>
 
-      {/* 컨텐츠 */}
       <div className="relative z-20 w-full max-w-sm px-6"
         style={{ animation: visible ? "fadeUp 0.7s ease forwards" : "none", opacity: visible ? 1 : 0 }}>
 
-        {/* 로고 영역 */}
+        {/* 로고 + 타이틀 */}
         <div className="flex flex-col items-center mb-8">
-          {/* 이중 회전 링 + 로고 */}
-          <div className="relative flex items-center justify-center mb-5" style={{ width: 120, height: 120 }}>
-            {/* 바깥 링 - 시계방향 */}
-            <div className="absolute inset-0 rounded-full"
+          {/* 이중 회전링이 로고 주변만 감싸는 구조 */}
+          <div className="relative flex items-center justify-center mb-5"
+            style={{ width: 100, height: 100 }}>
+
+            {/* 바깥 링 - 시계방향 (로고보다 약간 크게) */}
+            <div className="absolute inset-0 rounded-full pointer-events-none"
               style={{
-                animation: "spin-cw 6s linear infinite",
-                background: "transparent",
-                border: "2px solid transparent",
-                borderRadius: "50%",
-                backgroundImage: "conic-gradient(from 0deg, #ffd700, #ff8c00, #ffd700 40%, transparent 60%, transparent 80%, #ffd700)",
-                WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 2.5px), white calc(100% - 2.5px))",
-                mask: "radial-gradient(farthest-side, transparent calc(100% - 2.5px), white calc(100% - 2.5px))",
-                boxShadow: "0 0 12px #ffd700aa",
+                animation: "spin-cw 5s linear infinite",
+                background: "conic-gradient(from 0deg, #ffd700 0%, #ffaa00 25%, transparent 50%, #ffd700 75%, #ffaa00 100%)",
+                WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 3px), white calc(100% - 3px))",
+                mask: "radial-gradient(farthest-side, transparent calc(100% - 3px), white calc(100% - 3px))",
+                filter: "drop-shadow(0 0 4px #ffd700)",
               }} />
+
             {/* 안쪽 링 - 반시계방향 */}
-            <div className="absolute rounded-full"
+            <div className="absolute rounded-full pointer-events-none"
               style={{
-                width: 96, height: 96,
+                width: 84, height: 84,
                 top: "50%", left: "50%",
                 transform: "translate(-50%, -50%)",
-                animation: "spin-ccw 4s linear infinite",
-                backgroundImage: "conic-gradient(from 90deg, #ff6600, #ffd700, #ff6600 40%, transparent 60%, transparent 80%, #ff6600)",
+                animation: "spin-ccw 3s linear infinite",
+                background: "conic-gradient(from 180deg, #ff8c00 0%, transparent 40%, #ff8c00 60%, transparent 100%)",
                 WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 2px), white calc(100% - 2px))",
                 mask: "radial-gradient(farthest-side, transparent calc(100% - 2px), white calc(100% - 2px))",
-                boxShadow: "0 0 8px #ff8c00aa",
+                filter: "drop-shadow(0 0 3px #ff8c00)",
               }} />
-            {/* 로고 */}
-            <div className="absolute rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl"
-              style={{ width: 72, height: 72, background: "white", top: "50%", left: "50%", transform: "translate(-50%, -50%)" }}>
-              <img src="/logo.png" alt="로고" style={{ width: 58, height: 58, objectFit: "contain" }} />
+
+            {/* 로고 중앙 */}
+            <div className="relative z-10 rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl"
+              style={{ width: 72, height: 72, background: "white" }}>
+              <img src="/logo.png" alt="로고" style={{ width: 60, height: 60, objectFit: "contain" }} />
             </div>
           </div>
 
-          {/* 타이틀 */}
-          <h1 className="text-2xl font-bold text-white tracking-tight drop-shadow-lg mb-3">스마트 안전관리</h1>
-
-          {/* KRC 로고 */}
-          <div className="flex items-center justify-center px-4 py-2 rounded-xl"
-            style={{ background: "rgba(255,255,255,0.12)", backdropFilter: "blur(8px)" }}>
-            <img src="/krc_logo.png" alt="한국농어촌공사" style={{ height: 28, objectFit: "contain", filter: "brightness(0) invert(1)" }} />
-          </div>
+          <h1 className="text-2xl font-bold text-white tracking-tight drop-shadow-lg">스마트 안전관리</h1>
         </div>
 
-        {/* 선택 버튼들 */}
+        {/* 선택 버튼 */}
         <div className="space-y-3">
           <p className="text-white/60 text-xs text-center mb-3 tracking-wide">업무 유형을 선택해주세요</p>
 
@@ -148,9 +129,7 @@ export default function SelectPage() {
               className="w-full rounded-2xl p-4 flex items-center gap-4 shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
               style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.18)" }}>
               <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-lg"
-                style={{ background: item.color }}>
-                {item.icon}
-              </div>
+                style={{ background: item.color }}>{item.icon}</div>
               <div className="text-left flex-1">
                 <div className="text-sm font-bold text-white">{item.label}</div>
                 <div className="text-xs text-white/50 mt-0.5">{item.sub}</div>
@@ -162,6 +141,16 @@ export default function SelectPage() {
               <svg className="text-white/30" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
           ))}
+
+          {/* KRC 로고 - TBM 버튼 아래 */}
+          <div className="flex justify-center pt-4">
+            <img src="/krc_logo.png" alt="한국농어촌공사"
+              style={{
+                height: 32,
+                objectFit: "contain",
+                filter: "brightness(0) invert(1) opacity(0.7)",
+              }} />
+          </div>
         </div>
       </div>
     </div>
