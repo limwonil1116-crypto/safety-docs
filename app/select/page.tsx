@@ -7,11 +7,8 @@ function Sparks() {
   const [sparks, setSparks] = useState<Array<{ id: number; x: number; delay: number; duration: number; size: number }>>([]);
   useEffect(() => {
     const items = Array.from({ length: 18 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      delay: Math.random() * 3,
-      duration: 2 + Math.random() * 2,
-      size: 3 + Math.random() * 5,
+      id: i, x: Math.random() * 100,
+      delay: Math.random() * 3, duration: 2 + Math.random() * 2, size: 3 + Math.random() * 5,
     }));
     setSparks(items);
   }, []);
@@ -32,8 +29,9 @@ function Sparks() {
           0%   { transform: translateY(0) scale(1); opacity: 1; }
           100% { transform: translateY(-85vh) scale(0); opacity: 0; }
         }
-        @keyframes spin-cw  { to { transform: rotate(360deg);  } }
-        @keyframes spin-ccw { to { transform: rotate(-360deg); } }
+        @keyframes orbit1 { from { transform: rotate(0deg)   translateX(56px) rotate(0deg);   } to { transform: rotate(360deg)  translateX(56px) rotate(-360deg);  } }
+        @keyframes orbit2 { from { transform: rotate(120deg) translateX(48px) rotate(-120deg); } to { transform: rotate(480deg)  translateX(48px) rotate(-480deg);  } }
+        @keyframes orbit3 { from { transform: rotate(240deg) translateX(64px) rotate(-240deg); } to { transform: rotate(600deg)  translateX(64px) rotate(-600deg);  } }
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(20px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -43,14 +41,44 @@ function Sparks() {
   );
 }
 
+function OrbitingStar({ orbitAnim, duration, size = 6 }: { orbitAnim: string; duration: number; size?: number }) {
+  return (
+    <div className="absolute" style={{
+      top: "50%", left: "50%",
+      width: 0, height: 0,
+      animation: `${orbitAnim} ${duration}s linear infinite`,
+    }}>
+      {/* 별 본체 */}
+      <div style={{
+        width: size, height: size,
+        borderRadius: "50%",
+        background: "radial-gradient(circle, #fff8dc, #ffd700)",
+        boxShadow: `0 0 ${size * 1.5}px #ffd700, 0 0 ${size * 3}px #ffaa00`,
+        marginTop: -size / 2,
+        marginLeft: -size / 2,
+        position: "relative",
+      }}>
+        {/* 꼬리 */}
+        <div style={{
+          position: "absolute",
+          right: size,
+          top: size / 2 - 1,
+          width: size * 4,
+          height: 2,
+          background: "linear-gradient(to left, rgba(255,215,0,0.8), transparent)",
+          borderRadius: 2,
+        }} />
+      </div>
+    </div>
+  );
+}
+
 export default function SelectPage() {
   const router = useRouter();
   const [visible, setVisible] = useState(false);
   useEffect(() => { setTimeout(() => setVisible(true), 100); }, []);
 
-  const SIZE_OUTER = 108;
-  const SIZE_INNER = 90;
-  const LOGO_SIZE = 68;
+  const LOGO_SIZE = 80;
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
@@ -60,91 +88,30 @@ export default function SelectPage() {
         style={{ background: "linear-gradient(160deg, rgba(15,30,60,0.82) 0%, rgba(30,58,92,0.75) 50%, rgba(10,20,40,0.88) 100%)" }} />
       <div className="absolute inset-0 z-10"><Sparks /></div>
 
-      <div className="relative z-20 w-full max-w-sm px-6"
+      <div className="relative z-20 w-full max-w-sm px-6 flex flex-col items-center"
         style={{ animation: visible ? "fadeUp 0.7s ease forwards" : "none", opacity: visible ? 1 : 0 }}>
 
-        {/* 로고 영역 */}
-        <div className="flex flex-col items-center mb-8">
-          {/* 로고 + 이중 링 */}
-          <div className="relative flex items-center justify-center mb-5"
-            style={{ width: SIZE_OUTER, height: SIZE_OUTER }}>
+        {/* 로고 + 별똥별 3개 */}
+        <div className="relative flex items-center justify-center mb-5"
+          style={{ width: 160, height: 160 }}>
 
-            {/* 바깥 링 - 시계방향 (점선 호) */}
-            <svg width={SIZE_OUTER} height={SIZE_OUTER} viewBox={`0 0 ${SIZE_OUTER} ${SIZE_OUTER}`}
-              className="absolute inset-0"
-              style={{ animation: "spin-cw 8s linear infinite" }}>
-              <circle
-                cx={SIZE_OUTER/2} cy={SIZE_OUTER/2}
-                r={SIZE_OUTER/2 - 3}
-                fill="none"
-                stroke="#ffd700"
-                strokeWidth="2.5"
-                strokeDasharray="12 8"
-                strokeLinecap="round"
-                opacity="0.9"
-              />
-              {/* 글로우 효과 */}
-              <circle
-                cx={SIZE_OUTER/2} cy={SIZE_OUTER/2}
-                r={SIZE_OUTER/2 - 3}
-                fill="none"
-                stroke="#ffd700"
-                strokeWidth="6"
-                strokeDasharray="12 8"
-                strokeLinecap="round"
-                opacity="0.2"
-              />
-            </svg>
+          {/* 별똥별 3개 - 각각 다른 궤도/속도 */}
+          <OrbitingStar orbitAnim="orbit1" duration={3.5} size={7} />
+          <OrbitingStar orbitAnim="orbit2" duration={5}   size={5} />
+          <OrbitingStar orbitAnim="orbit3" duration={4}   size={6} />
 
-            {/* 안쪽 링 - 반시계방향 */}
-            <svg width={SIZE_INNER} height={SIZE_INNER} viewBox={`0 0 ${SIZE_INNER} ${SIZE_INNER}`}
-              className="absolute"
-              style={{
-                animation: "spin-ccw 5s linear infinite",
-                top: "50%", left: "50%",
-                transform: "translate(-50%, -50%)",
-                position: "absolute",
-              }}>
-              <circle
-                cx={SIZE_INNER/2} cy={SIZE_INNER/2}
-                r={SIZE_INNER/2 - 2.5}
-                fill="none"
-                stroke="#ffaa00"
-                strokeWidth="2"
-                strokeDasharray="6 10"
-                strokeLinecap="round"
-                opacity="0.8"
-              />
-              <circle
-                cx={SIZE_INNER/2} cy={SIZE_INNER/2}
-                r={SIZE_INNER/2 - 2.5}
-                fill="none"
-                stroke="#ffaa00"
-                strokeWidth="5"
-                strokeDasharray="6 10"
-                strokeLinecap="round"
-                opacity="0.15"
-              />
-            </svg>
-
-            {/* 로고 - 원형 + 흰배경 */}
-            <div className="relative z-10 flex items-center justify-center shadow-2xl"
-              style={{
-                width: LOGO_SIZE, height: LOGO_SIZE,
-                borderRadius: "50%",
-                background: "white",
-                overflow: "hidden",
-              }}>
-              <img src="/logo.png" alt="로고"
-                style={{ width: LOGO_SIZE - 10, height: LOGO_SIZE - 10, objectFit: "contain" }} />
-            </div>
+          {/* 로고 */}
+          <div className="relative z-10 flex items-center justify-center shadow-2xl"
+            style={{ width: LOGO_SIZE, height: LOGO_SIZE, borderRadius: "50%", background: "white" }}>
+            <img src="/logo.png" alt="로고"
+              style={{ width: LOGO_SIZE - 12, height: LOGO_SIZE - 12, objectFit: "contain" }} />
           </div>
-
-          <h1 className="text-2xl font-bold text-white tracking-tight drop-shadow-lg">스마트 안전관리</h1>
         </div>
 
+        <h1 className="text-2xl font-bold text-white tracking-tight drop-shadow-lg mb-8">스마트 안전관리</h1>
+
         {/* 선택 버튼 */}
-        <div className="space-y-3">
+        <div className="w-full space-y-3">
           <p className="text-white/60 text-xs text-center mb-3 tracking-wide">업무 유형을 선택해주세요</p>
 
           {[
@@ -187,15 +154,10 @@ export default function SelectPage() {
             </button>
           ))}
 
-          {/* KRC 로고 - 흰색 변환으로 배경과 자연스럽게 */}
-          <div className="flex justify-center pt-5">
-            <img src="/krc_logo.png" alt="한국농어촌공사"
-              style={{
-                height: 34,
-                objectFit: "contain",
-                filter: "brightness(0) invert(1) opacity(0.75)",
-              }} />
-          </div>
+          {/* 하단 텍스트 */}
+          <p className="text-white/30 text-[10px] text-center pt-4">
+            © 2026. 한국농어촌공사 안전기술본부 All rights reserved.
+          </p>
         </div>
       </div>
     </div>
