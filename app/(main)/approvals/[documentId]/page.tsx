@@ -866,7 +866,7 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
                 ? confinedOrder === 1 ? "감시인 서명 후 (계획확인)허가자를 지정합니다"
                   : confinedOrder === 2 ? "(계획확인) 허가자 서명을 완료합니다"
                   : "(이행확인) 최종 서명을 완료합니다"
-                : doc.currentApprovalOrder === 1 ? "검토완료 후 최종허가자에게 지정됩니다" : "최종 승인하시겠습니까?"}}
+                : doc.currentApprovalOrder === 1 ? "검토완료 후 최종허가자에게 지정됩니다" : "최종 승인하시겠습니까?"}
             </h3>
             <p className="text-sm text-gray-500 mb-4">
               {isConfinedSpace
@@ -874,8 +874,8 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
                 : doc.currentApprovalOrder === 1 ? "서명 후 최종허가자를 지정합니다." : "최종 승인 후 되돌릴 수 없습니다."}
             </p>
             <div className="flex gap-3">
-              <button onClick={() => setShowApproveConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">?띯뫁??/button>
-              <button onClick={() => handleAction("APPROVE")} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: "#16a34a" }}>?類ㅼ뵥</button>
+              <button onClick={() => setShowApproveConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">취소</button>
+              <button onClick={() => handleAction("APPROVE")} className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white" style={{ background: "#16a34a" }}>확인</button>
             </div>
           </div>
         </div>
