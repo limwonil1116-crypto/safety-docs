@@ -800,7 +800,7 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
                   body: JSON.stringify({ action: "APPROVE", signatureData: null, gasMeasureRows: gasRows }),
                 });
                 const data = await res.json();
-                if (!res.ok) throw new Error(data.error || "??살첒 獄쏆뮇源?);
+                if (!res.ok) throw new Error(data.error || "오류 발생");
                 if (data.action === "NEED_FINAL_CONFIRMER") {
                   setConfinedNextAction("FINAL_CONFIRMER");
                   setShowConfinedNextModal(true);
