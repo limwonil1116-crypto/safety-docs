@@ -1158,111 +1158,80 @@ const DEFAULT_GAS_ROWS = [
   { time: "후",  hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
 ];
 
+// 시/분 스피너 - 외부 컴포넌트 (팅김 방지)
+function NumSpinner({ initialValue, min, max, label, onCommit }: { initialValue: string; min: number; max: number; label: string; onCommit: (v: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (ref.current) ref.current.value = initialValue; }, []);
+  const step = (dir: number) => {
+    const cur = parseInt(ref.current?.value || "0") || 0;
+    const next = Math.min(max, Math.max(min, cur + dir));
+    if (ref.current) ref.current.value = String(next);
+    onCommit(String(next));
+  };
+  return (
+    <div className="flex flex-col items-center">
+      <button type="button" onClick={() => step(1)} className="w-10 h-8 rounded-t-lg bg-gray-100 border border-gray-300 flex items-center justify-center hover:bg-blue-100">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="18 15 12 9 6 15"/></svg>
+      </button>
+      <input ref={ref} type="number" min={min} max={max} defaultValue={initialValue}
+        onChange={e => onCommit(e.target.value)} onBlur={e => onCommit(e.target.value)}
+        className="w-14 py-2 text-base border-x border-gray-300 text-center text-gray-900 font-medium focus:outline-none bg-white" />
+      <button type="button" onClick={() => step(-1)} className="w-10 h-8 rounded-b-lg bg-gray-100 border border-gray-300 flex items-center justify-center hover:bg-blue-100">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <span className="text-xs text-gray-500 mt-1">{label}</span>
+    </div>
+  );
+}
+function GasValueInput({ initialValue, label, unit, placeholder, onCommit }: { initialValue: string; label: string; unit: string; placeholder?: string; onCommit: (v: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (ref.current) ref.current.value = initialValue || ""; }, []);
+  return (
+    <div className="flex flex-col">
+      <label className="text-[10px] text-gray-500 mb-0.5">{label}</label>
+      <div className="flex items-center gap-0.5">
+        <input ref={ref} type="text" defaultValue={initialValue || ""}
+          onChange={e => onCommit(e.target.value)} onBlur={e => onCommit(e.target.value)}
+          placeholder={placeholder || ""}
+          className="w-full px-2 py-2 text-sm text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
+        <span className="text-xs text-gray-500 shrink-0 ml-0.5">{unit}</span>
+      </div>
+    </div>
+  );
+}
+function GasTextInput({ initialValue, onCommit, className }: { initialValue: string; onCommit: (v: string) => void; className?: string }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (ref.current) ref.current.value = initialValue || ""; }, []);
+  return (
+    <input ref={ref} type="text" defaultValue={initialValue || ""}
+      onChange={e => onCommit(e.target.value)} onBlur={e => onCommit(e.target.value)}
+      className={className || "w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"} />
+  );
+}
 function GasRowInput({ row, idx, onChange }: { row: any; idx: number; onChange: (idx: number, field: string, value: string) => void }) {
-  const composing = useRef(false);
-
-  const NumSpinner = ({ field, value, min, max, label }: { field: string; value: string; min: number; max: number; label: string }) => {
-    const ref = useRef<HTMLInputElement>(null);
-    useEffect(() => { if (ref.current) ref.current.value = value; }, []);
-    const step = (dir: number) => {
-      const cur = parseInt(ref.current?.value || "0") || 0;
-      const next = Math.min(max, Math.max(min, cur + dir));
-      if (ref.current) ref.current.value = String(next);
-      onChange(idx, field, String(next));
-    };
-    return (
-      <div className="flex flex-col items-center">
-        <button type="button" onClick={() => step(1)}
-          className="w-8 h-7 rounded-t-lg bg-gray-100 border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-blue-100 active:bg-blue-200">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="18 15 12 9 6 15"/></svg>
-        </button>
-        <input ref={ref} type="number" min={min} max={max} defaultValue={value}
-          onChange={e => { if (!composing.current) onChange(idx, field, e.target.value); }}
-          onBlur={e => onChange(idx, field, e.target.value)}
-          className="w-12 py-1.5 text-sm border-x border-gray-300 text-center text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
-        <button type="button" onClick={() => step(-1)}
-          className="w-8 h-7 rounded-b-lg bg-gray-100 border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-blue-100 active:bg-blue-200">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <span className="text-xs text-gray-500 mt-1">{label}</span>
-      </div>
-    );
-  };
-
-  const GasField = ({ field, label, unit, placeholder }: { field: string; label: string; unit: string; placeholder?: string }) => {
-    const ref = useRef<HTMLInputElement>(null);
-    const comp = useRef(false);
-    useEffect(() => { if (ref.current) ref.current.value = row[field] || ""; }, []);
-    return (
-      <div className="flex flex-col">
-        <label className="text-[10px] text-gray-500 mb-0.5">{label}</label>
-        <div className="flex items-center gap-0.5">
-          <input ref={ref} type="text" defaultValue={row[field] || ""}
-            onCompositionStart={() => { comp.current = true; }}
-            onCompositionEnd={e => { comp.current = false; onChange(idx, field, (e.target as HTMLInputElement).value); }}
-            onChange={e => { if (!comp.current) onChange(idx, field, e.target.value); }}
-            onBlur={e => onChange(idx, field, e.target.value)}
-            placeholder={placeholder || ""}
-            className="w-full px-2 py-2 text-sm text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
-          <span className="text-xs text-gray-500 shrink-0 ml-0.5">{unit}</span>
-        </div>
-      </div>
-    );
-  };
-
-  const MeasurerField = ({ field, value }: { field: string; value: string }) => {
-    const ref = useRef<HTMLInputElement>(null);
-    const comp = useRef(false);
-    useEffect(() => { if (ref.current) ref.current.value = value || ""; }, []);
-    return (
-      <input ref={ref} type="text" defaultValue={value || ""}
-        onCompositionStart={() => { comp.current = true; }}
-        onCompositionEnd={e => { comp.current = false; onChange(idx, field, (e.target as HTMLInputElement).value); }}
-        onChange={e => { if (!comp.current) onChange(idx, field, e.target.value); }}
-        onBlur={e => onChange(idx, field, e.target.value)}
-        className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
-    );
-  };
-
   return (
     <div className="border border-gray-200 rounded-xl p-3 space-y-3 bg-gray-50">
-      {/* 援щ텇 + ?쒓컙 */}
       <div className="flex items-start gap-3">
-        <span className="text-base font-bold text-gray-900 w-8 shrink-0 pt-2">{row.time}</span>
+        <span className="text-base font-bold text-gray-900 w-8 shrink-0 pt-4">{row.time}</span>
         <div className="flex gap-4">
-          <NumSpinner field="hour" value={row.hour || ""} min={0} max={23} label="?? />
-          <NumSpinner field="minute" value={row.minute || ""} min={0} max={59} label="遺? />
+          <NumSpinner initialValue={row.hour || ""} min={0} max={23} label="시" onCommit={v => onChange(idx, "hour", v)} />
+          <NumSpinner initialValue={row.minute || ""} min={0} max={59} label="분" onCommit={v => onChange(idx, "minute", v)} />
         </div>
       </div>
-      {/* 媛???띾룄 媛쒕퀎 ?낅젰 */}
       <div>
-        <p className="text-xs font-medium text-gray-600 mb-2">痢≪젙 ?띾룄</p>
+        <p className="text-xs font-medium text-gray-600 mb-2">측정 농도</p>
         <div className="grid grid-cols-2 gap-2">
-          <GasField field="o2"  label="?곗냼 O??      unit="%" placeholder="18~23.5" />
-          <GasField field="co2" label="?댁궛?뷀깂??CO?? unit="%" placeholder="1.5誘몃쭔" />
-          <GasField field="h2s" label="?⑺솕?섏냼 H?괪"   unit="ppm" placeholder="10誘몃쭔" />
-          <GasField field="co"  label="?쇱궛?뷀깂??CO"  unit="ppm" placeholder="30誘몃쭔" />
-          <GasField field="ex"  label="??컻?섑븳 EX"    unit="%" placeholder="10誘몃쭔" />
+          <GasValueInput initialValue={row.o2||""} label="산소 O₂" unit="%" placeholder="18~23.5" onCommit={v=>onChange(idx,"o2",v)} />
+          <GasValueInput initialValue={row.co2||""} label="이산화탄소 CO₂" unit="%" placeholder="1.5미만" onCommit={v=>onChange(idx,"co2",v)} />
+          <GasValueInput initialValue={row.h2s||""} label="황화수소 H₂S" unit="ppm" placeholder="10미만" onCommit={v=>onChange(idx,"h2s",v)} />
+          <GasValueInput initialValue={row.co||""} label="일산화탄소 CO" unit="ppm" placeholder="30미만" onCommit={v=>onChange(idx,"co",v)} />
+          <GasValueInput initialValue={row.ex||""} label="폭발하한 EX" unit="%" placeholder="10미만" onCommit={v=>onChange(idx,"ex",v)} />
         </div>
       </div>
-      {/* 痢≪젙??+ ?몄썝 */}
       <div className="grid grid-cols-3 gap-2">
-        <div>
-          <label className="text-xs text-gray-500 mb-1 block">痢≪젙??/label>
-          <MeasurerField field="measurer" value={row.measurer || ""} />
-        </div>
-        <div>
-          <label className="text-xs text-gray-500 mb-1 block">?낆옣(紐?</label>
-          <input type="number" min="0" defaultValue={row.entryCount || ""}
-            onChange={e => onChange(idx, "entryCount", e.target.value)}
-            className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg text-center focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
-        </div>
-        <div>
-          <label className="text-xs text-gray-500 mb-1 block">?댁옣(紐?</label>
-          <input type="number" min="0" defaultValue={row.exitCount || ""}
-            onChange={e => onChange(idx, "exitCount", e.target.value)}
-            className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg text-center focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
-        </div>
+        <div><label className="text-xs text-gray-500 mb-1 block">측정자</label><GasTextInput initialValue={row.measurer||""} onCommit={v=>onChange(idx,"measurer",v)} /></div>
+        <div><label className="text-xs text-gray-500 mb-1 block">입장(명)</label><GasTextInput initialValue={row.entryCount||""} onCommit={v=>onChange(idx,"entryCount",v)} className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg text-center focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" /></div>
+        <div><label className="text-xs text-gray-500 mb-1 block">퇴장(명)</label><GasTextInput initialValue={row.exitCount||""} onCommit={v=>onChange(idx,"exitCount",v)} className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg text-center focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" /></div>
       </div>
     </div>
   );
