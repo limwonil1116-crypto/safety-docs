@@ -291,88 +291,6 @@ function SpecialMeasuresInput({ value, onChange }: { value: string; onChange: (v
   );
 }
 
-  const ReviewInputSection = () => {
-    // 밀폐공간 단계별 UI
-    if (isConfinedSpace) {
-      const stepDesc = CONFINED_STEP_DESC[confinedOrder] ?? "";
-      return (
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
-          <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
-            {stepDesc}
-          </h3>
-          {confinedOrder === 1 && (
-            <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">감시인으로서 작업 계획을 확인하고 서명해주세요.</p>
-          )}
-          {confinedOrder === 2 && (
-            <div className="space-y-2">
-              <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">특별조치 필요사항을 입력 후 서명해주세요.</p>
-              <AiSpecialMeasuresButton doc={doc} onGenerated={setSpecialMeasuresInput} />
-              <SpecialMeasuresInput value={specialMeasuresInput} onChange={setSpecialMeasuresInput} />
-            </div>
-          )}
-          {confinedOrder === 3 && (
-            <div className="space-y-3">
-              <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">산소 및 유해가스 농도 측정결과를 입력해주세요.</p>
-              <GasMeasureInput rows={gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : DEFAULT_GAS_ROWS} onChange={setGasMeasureRowsInput} />
-            </div>
-          )}
-          {confinedOrder === 4 && (
-            <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">측정결과를 최종 확인하고 서명해주세요.</p>
-          )}
-        </div>
-      );
-    }
-
-    // ??곗뺘 ?얜챷苑?
-    return (
-      <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
-        <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
-          {doc.currentApprovalOrder === 1 ? "검토 의견 입력" : "검토의견 확인 및 설정"}
-        </h3>
-        {reviewGuideText && <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-3">{reviewGuideText}</p>}
-        <div className="space-y-3">
-          <div>
-            {doc.currentApprovalOrder === 1 && (
-              <AiSpecialMeasuresButton doc={doc} onGenerated={(v) => {
-                if (reviewOpinionRef.current) reviewOpinionRef.current.value = v;
-                setReviewOpinion(v);
-              }} label="AI 검토의견 초안" />
-            )}
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">
-              검토의견 {doc.currentApprovalOrder === 1 && <span className="text-red-500 text-xs">(반려 시 필수)</span>}
-            </label>
-            <textarea
-              key={`opinion-${dataKey}`}
-              ref={reviewOpinionRef}
-              defaultValue={reviewOpinion}
-              placeholder="검토 의견을 입력해주세요 (반려 시 필수)"
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">조치결과</label>
-            <textarea
-              key={`result-${dataKey}`}
-              ref={reviewResultRef}
-              defaultValue={reviewResult}
-              placeholder="조치결과를 입력해주세요"
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const CancelButton = () => canCancel ? (
-    <button onClick={handleCancelApproval} disabled={cancelling}
-      className="w-full py-2.5 rounded-xl text-sm font-medium border-2 border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50">
-      {cancelling ? "취소 중..." : "결재 취소 (작성중으로)"}
-    </button>
-  ) : null;
-
   if (isConfined) {
     const lineMap = Object.fromEntries(approvalLines.map(l => [l.approvalOrder, l]));
     const mkStep = (order: number, label: string, type: "submit" | "review" | "approve", name: string) => {
@@ -948,6 +866,89 @@ export default function ApprovalDetailPage() {
   const canCancel = doc.status !== "DRAFT" && (isOwner || isStaff);
   const isApproved = doc.status === "APPROVED";
   const reviewGuideText = doc.currentApprovalOrder === 2 ? `💡 ${step1ApproverName || "1단계 검토자"}(검토자)가 작성한 내용을 확인하여 최종 결재해주세요.` : null;
+
+  const ReviewInputSection = () => {
+    // 밀폐공간 단계별 UI
+    if (isConfinedSpace) {
+      const stepDesc = CONFINED_STEP_DESC[confinedOrder] ?? "";
+      return (
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
+          <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
+            {stepDesc}
+          </h3>
+          {confinedOrder === 1 && (
+            <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">감시인으로서 작업 계획을 확인하고 서명해주세요.</p>
+          )}
+          {confinedOrder === 2 && (
+            <div className="space-y-2">
+              <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">특별조치 필요사항을 입력 후 서명해주세요.</p>
+              <AiSpecialMeasuresButton doc={doc} onGenerated={setSpecialMeasuresInput} />
+              <SpecialMeasuresInput value={specialMeasuresInput} onChange={setSpecialMeasuresInput} />
+            </div>
+          )}
+          {confinedOrder === 3 && (
+            <div className="space-y-3">
+              <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">산소 및 유해가스 농도 측정결과를 입력해주세요.</p>
+              <GasMeasureInput rows={gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : DEFAULT_GAS_ROWS} onChange={setGasMeasureRowsInput} />
+            </div>
+          )}
+          {confinedOrder === 4 && (
+            <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">측정결과를 최종 확인하고 서명해주세요.</p>
+          )}
+        </div>
+      );
+    }
+
+    // ??곗뺘 ?얜챷苑?
+    return (
+      <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
+        <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
+          {doc.currentApprovalOrder === 1 ? "검토 의견 입력" : "검토의견 확인 및 설정"}
+        </h3>
+        {reviewGuideText && <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-3">{reviewGuideText}</p>}
+        <div className="space-y-3">
+          <div>
+            {doc.currentApprovalOrder === 1 && (
+              <AiSpecialMeasuresButton doc={doc} onGenerated={(v) => {
+                if (reviewOpinionRef.current) reviewOpinionRef.current.value = v;
+                setReviewOpinion(v);
+              }} label="AI 검토의견 초안" />
+            )}
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">
+              검토의견 {doc.currentApprovalOrder === 1 && <span className="text-red-500 text-xs">(반려 시 필수)</span>}
+            </label>
+            <textarea
+              key={`opinion-${dataKey}`}
+              ref={reviewOpinionRef}
+              defaultValue={reviewOpinion}
+              placeholder="검토 의견을 입력해주세요 (반려 시 필수)"
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">조치결과</label>
+            <textarea
+              key={`result-${dataKey}`}
+              ref={reviewResultRef}
+              defaultValue={reviewResult}
+              placeholder="조치결과를 입력해주세요"
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const CancelButton = () => canCancel ? (
+    <button onClick={handleCancelApproval} disabled={cancelling}
+      className="w-full py-2.5 rounded-xl text-sm font-medium border-2 border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50">
+      {cancelling ? "취소 중..." : "결재 취소 (작성중으로)"}
+    </button>
+  ) : null;
+
 
   return (
     <div className="pb-40">
