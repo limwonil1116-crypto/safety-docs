@@ -865,7 +865,7 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
               {isConfinedSpace
                 ? confinedOrder === 1 ? "감시인 서명 후 (계획확인)허가자를 지정합니다"
                   : confinedOrder === 2 ? "(계획확인) 허가자 서명을 완료합니다"
-                  : "(이행확인) 최종 서명을 완료합니다"}
+                  : "(이행확인) 최종 서명을 완료합니다"
                 : doc.currentApprovalOrder === 1 ? "검토완료 후 최종허가자에게 지정됩니다" : "최종 승인하시겠습니까?"}}
             </h3>
             <p className="text-sm text-gray-500 mb-4">
