@@ -354,7 +354,15 @@ function SafetyCheckTable({ items, onChange }: { items: SafetyCheckItem[]; onCha
             <div className="flex gap-2">
               {["해당", "해당없음"].map(opt => (
                 <button key={opt} type="button"
-                  onClick={() => update(idx, "applicable", opt)}
+                  onClick={() => {
+                    update(idx, "applicable", opt);
+                    if (opt === "해당" && !items[idx].result) {
+                      update(idx, "result", "조치완료");
+                    }
+                    if (opt === "해당없음") {
+                      update(idx, "result", "");
+                    }
+                  }}
                   className={`flex-1 py-2 rounded-lg text-xs font-semibold border-2 transition-colors ${
                     item.applicable === opt
                       ? opt === "해당" ? "bg-blue-600 border-blue-600 text-white" : "bg-gray-500 border-gray-500 text-white"
