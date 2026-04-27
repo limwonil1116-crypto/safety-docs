@@ -39,14 +39,14 @@ const ROLE_LABELS: Record<string, Record<number, string>> = {
 const CONFINED_STEP_DESC: Record<number, string> = {
   1: "감시인 서명",
   2: "특별조치 입력 및 (계획확인) 허가자 서명",
-  3: "痢≪젙寃곌낵 ?낅젰",
-  4: "(?댄뻾?뺤씤) ?뺤씤??理쒖쥌 ?쒕챸",
+  3: "측정결과 입력",
+  4: "(이행확인) 확인자 최종 서명",
 };
 const FINAL_ROLE_LABELS: Record<string, string> = {
-  SAFETY_WORK_PERMIT: "(?댄뻾?뺤씤)?뺤씤??,
-  CONFINED_SPACE:     "(?댄뻾?뺤씤)?뺤씤??,
-  HOLIDAY_WORK:       "?뱀씤??,
-  POWER_OUTAGE:       "(?댄뻾?뺤씤)?뺤씤??,
+  SAFETY_WORK_PERMIT: "(이행확인)확인자",
+  CONFINED_SPACE:     "(이행확인)확인자",
+  HOLIDAY_WORK:       "승인자",
+  POWER_OUTAGE:       "(이행확인)확인자",
 };
 
 function getStatusKey(doc: DocumentDetail): string {
