@@ -91,10 +91,10 @@ function LocationMapPreview({ lat, lng, address }: { lat: number; lng: number; a
   return (
     <div className="mt-2 rounded-xl overflow-hidden border border-gray-200">
       <div className="flex items-center justify-end px-3 py-1.5 bg-gray-50 border-b border-gray-100">
-        <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 font-medium">吏?꾩뿴湲???/a>
+        <a href={mapUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 font-medium">지도열기 →</a>
       </div>
       <div ref={mapRef} style={{ width: "100%", height: "200px" }}>
-        <div className="w-full h-full flex items-center justify-center bg-gray-50"><p className="text-xs text-gray-400">吏??濡쒕뵫 以?..</p></div>
+          <div className="w-full h-full flex items-center justify-center bg-gray-50"><p className="text-xs text-gray-400">지도 로딩 중...</p></div>
       </div>
     </div>
   );
