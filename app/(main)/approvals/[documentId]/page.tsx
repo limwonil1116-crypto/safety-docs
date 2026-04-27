@@ -592,11 +592,11 @@ function GasRowInput({ row, idx, onChange }: { row: any; idx: number; onChange: 
       <div>
         <p className="text-xs font-medium text-gray-600 mb-2">측정 농도</p>
         <div className="grid grid-cols-2 gap-2">
-          <GasField field="o2"  label="?怨쀫꺖 O??      unit="%" placeholder="18~23.5" />
-          <GasField field="co2" label="??곴텦?酉源??CO?? unit="%" placeholder="1.5沃섎챶彛? />
-          <GasField field="h2s" label="??븐넅??뤿꺖 H?愿?   unit="ppm" placeholder="10沃섎챶彛? />
-          <GasField field="co"  label="??깃텦?酉源??CO"  unit="ppm" placeholder="30沃섎챶彛? />
-          <GasField field="ex"  label="??而??묐립 EX"    unit="%" placeholder="10沃섎챶彛? />
+          <GasField field="o2"  label="산소 O₂"      unit="%" placeholder="18~23.5" onCommit={v => onChange(idx, "o2",  v)} />
+          <GasField field="co2" label="이산화탄소 CO₂" unit="%" placeholder="1.5미만"  onCommit={v => onChange(idx, "co2", v)} />
+          <GasField field="h2s" label="황화수소 H₂S"   unit="ppm" placeholder="10미만" onCommit={v => onChange(idx, "h2s", v)} />
+          <GasField field="co"  label="일산화탄소 CO"  unit="ppm" placeholder="30미만" onCommit={v => onChange(idx, "co",  v)} />
+          <GasField field="ex"  label="폭발하한 EX"    unit="%" placeholder="10미만"   onCommit={v => onChange(idx, "ex",  v)} />
         </div>
       </div>
       {/* 측정자 + 인원 */}
@@ -848,11 +848,11 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
             <h3 className="text-base font-bold text-gray-900 mb-2">반려하시겠습니까?</h3>
             <p className="text-sm text-gray-500 mb-4">반려 처리 후 신청인에게 알림이 전송됩니다.</p>
-            {!(reviewOpinionRef.current?.value ?? reviewOpinion).trim() && <p className="text-xs text-red-500 mb-3">諛섎젮 ???(野꺜?醫롮벥野????믪눘? ??낆젾??곻폒?紐꾩뒄.</p>}
+            {!(reviewOpinionRef.current?.value ?? reviewOpinion).trim() && <p className="text-xs text-red-500 mb-3">반려 사유(검토의견)를 먼저 입력해주세요.</p>}
             <div className="flex gap-3">
               <button onClick={() => setShowRejectConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">?띯뫁??/button>
               <button onClick={() => handleAction("REJECT")} disabled={!reviewOpinion.trim()}
-                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-40" style={{ background: "#dc2626" }}>諛섎젮</button>
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-40" style={{ background: "#dc2626" }}>반려</button>
             </div>
           </div>
         </div>
