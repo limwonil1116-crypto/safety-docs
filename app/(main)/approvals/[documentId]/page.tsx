@@ -288,8 +288,8 @@ function ConfinedNextModal({ documentId, action, onClose, onAssigned }: { docume
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
       <div className="bg-white w-full rounded-t-3xl p-6 pb-24 max-h-[85vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4"><h2 className="text-base font-bold text-gray-900">{label} 吏??/h2><button onClick={onClose} className="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-        <div className="bg-blue-50 rounded-xl p-3 mb-4 text-xs text-blue-700">{label}瑜?吏?뺥빐二쇱꽭??</div>
+        <div className="flex items-center justify-between mb-4"><h2 className="text-base font-bold text-gray-900">{label} 지정</h2><button onClick={onClose} className="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+        <div className="bg-blue-50 rounded-xl p-3 mb-4 text-xs text-blue-700">{label}를 지정해주세요.</div>
         <div className={`p-3 rounded-xl border-2 mb-4 ${selected?"border-blue-400 bg-blue-50":"border-dashed border-gray-300"}`}>
           {selected?<div className="flex items-center justify-between"><div><span className="text-sm font-medium text-gray-900">{selected.name}</span><span className="text-xs text-gray-500 ml-2">{selected.organization}</span></div><button onClick={()=>setSelected(null)} className="text-gray-400 hover:text-red-500"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>:<p className="text-xs text-gray-400">아래 목록에서 선택해주세요</p>}
         </div>
