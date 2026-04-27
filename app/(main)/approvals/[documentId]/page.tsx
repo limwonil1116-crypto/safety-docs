@@ -66,7 +66,7 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 
 function LocationMapPreview({ lat, lng, address }: { lat: number; lng: number; address?: string | null }) {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapUrl = `https://map.kakao.com/link/map/${encodeURIComponent(address || "?묒뾽?μ냼")},${lat},${lng}`;
+  const mapUrl = `https://map.kakao.com/link/map/${encodeURIComponent(address || "작업장소")},${lat},${lng}`;
   useEffect(() => {
     const initMap = () => {
       if (!mapRef.current || !window.kakao?.maps) return;
@@ -122,7 +122,7 @@ function PhotoViewer({ documentId }: { documentId: string }) {
       {previewUrl && (
         <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center" onClick={() => setPreviewUrl(null)}>
           <button className="absolute top-4 right-4 text-white p-2 z-10"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-          <img src={previewUrl} alt="誘몃━蹂닿린" className="max-w-full max-h-[85vh] object-contain" onClick={e => e.stopPropagation()} />
+          <img src={previewUrl} alt="미리보기" className="max-w-full max-h-[85vh] object-contain" onClick={e=>e.stopPropagation()} /></div>}
         </div>
       )}
     </div>
@@ -270,12 +270,12 @@ function ConfinedNextModal({ documentId, action, onClose, onAssigned }: { docume
   const [selected, setSelected] = useState<UserItem|null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const label = action==="PLAN_APPROVER"?"(怨꾪쉷?뺤씤) ?덇???:"(?댄뻾?뺤씤) ?뺤씤??;
+  const label = action==="PLAN_APPROVER"?"(계획확인) 허가자":"(이행확인) 확인자";
   const nextOrder = action==="PLAN_APPROVER"?2:4;
   const nextTitle = action==="PLAN_APPROVER"?"밀폐공간 작업허가 - (계획확인) 허가자 서명 요청":"밀폐공간 작업허가 - (이행확인) 최종 확인 요청";
   useEffect(() => { const q=keyword?`&keyword=${encodeURIComponent(keyword)}`:""; fetch(`/api/users?krcOnly=true${q}`).then(r=>r.json()).then(d=>setUsers(d.users??[])); }, [keyword]);
   const handleAssign = async () => {
-    if (!selected) { setError("寃곗옱?먮? ?좏깮?댁＜?몄슂."); return; }
+    if (!selected) { setError("결재자를 선택해주세요."); return; }
     setLoading(true); setError("");
     try {
       const res = await fetch(`/api/documents/${documentId}/approval-lines`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nextApproverUserId: selected.id, nextOrder, nextRole: "FINAL_APPROVER", nextTitle }) });
@@ -291,7 +291,7 @@ function ConfinedNextModal({ documentId, action, onClose, onAssigned }: { docume
         <div className="flex items-center justify-between mb-4"><h2 className="text-base font-bold text-gray-900">{label} 吏??/h2><button onClick={onClose} className="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
         <div className="bg-blue-50 rounded-xl p-3 mb-4 text-xs text-blue-700">{label}瑜?吏?뺥빐二쇱꽭??</div>
         <div className={`p-3 rounded-xl border-2 mb-4 ${selected?"border-blue-400 bg-blue-50":"border-dashed border-gray-300"}`}>
-          {selected?<div className="flex items-center justify-between"><div><span className="text-sm font-medium text-gray-900">{selected.name}</span><span className="text-xs text-gray-500 ml-2">{selected.organization}</span></div><button onClick={()=>setSelected(null)} className="text-gray-400 hover:text-red-500"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>:<p className="text-xs text-gray-400">?꾨옒 紐⑸줉?먯꽌 ?좏깮?댁＜?몄슂</p>}
+          {selected?<div className="flex items-center justify-between"><div><span className="text-sm font-medium text-gray-900">{selected.name}</span><span className="text-xs text-gray-500 ml-2">{selected.organization}</span></div><button onClick={()=>setSelected(null)} className="text-gray-400 hover:text-red-500"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>:<p className="text-xs text-gray-400">아래 목록에서 선택해주세요</p>}
         </div>
         <input value={keyword} onChange={e=>setKeyword(e.target.value)} placeholder="?대쫫?쇰줈 寃?? className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2" />
         <div className="space-y-1.5 max-h-48 overflow-y-auto mb-4">
@@ -315,10 +315,10 @@ function FinalApproverModal({ documentId, documentType, onClose, onAssigned }: {
   const [selected, setSelected] = useState<UserItem|null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const finalRoleLabel = FINAL_ROLE_LABELS[documentType]??"理쒖쥌 ?덇???;
+  const finalRoleLabel = FINAL_ROLE_LABELS[documentType]??"최종 허가자";
   useEffect(() => { const q=keyword?`&keyword=${encodeURIComponent(keyword)}`:""; fetch(`/api/users?krcOnly=true${q}`).then(r=>r.json()).then(d=>setUsers(d.users??[])); }, [keyword]);
   const handleAssign = async () => {
-    if (!selected) { setError("寃곗옱?먮? ?좏깮?댁＜?몄슂."); return; }
+    if (!selected) { setError("결재자를 선택해주세요."); return; }
     setLoading(true); setError("");
     try {
       const res = await fetch(`/api/documents/${documentId}/approval-lines`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ finalApproverUserId: selected.id }) });
@@ -332,10 +332,10 @@ function FinalApproverModal({ documentId, documentType, onClose, onAssigned }: {
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
       <div className="bg-white w-full rounded-t-3xl p-6 pb-24 max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4"><h2 className="text-base font-bold text-gray-900">{finalRoleLabel} 吏??/h2><button onClick={onClose} className="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-        <div className="bg-amber-50 rounded-xl p-3 mb-4 text-xs text-amber-700">寃?좉? ?꾨즺?⑸땲?? 理쒖쥌 寃곗옱?먮? 吏?뺥빐二쇱꽭??</div>
+        <div className="bg-amber-50 rounded-xl p-3 mb-4 text-xs text-amber-700">검토가 완료됩니다. 최종 결재자를 지정해주세요.</div>
         <div className={`p-3 rounded-xl border-2 mb-4 ${selected?"border-green-400 bg-green-50":"border-dashed border-gray-300"}`}>
           <div className="text-xs text-gray-500 mb-1">{finalRoleLabel} <span className="text-red-500">*</span></div>
-          {selected?<div className="flex items-center justify-between"><div><span className="text-sm font-medium text-gray-900">{selected.name}</span><span className="text-xs text-gray-500 ml-2">{selected.organization}</span></div><button onClick={()=>setSelected(null)} className="text-gray-400 hover:text-red-500"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>:<p className="text-xs text-gray-400">?꾨옒 紐⑸줉?먯꽌 ?좏깮?댁＜?몄슂</p>}
+          {selected?<div className="flex items-center justify-between"><div><span className="text-sm font-medium text-gray-900">{selected.name}</span><span className="text-xs text-gray-500 ml-2">{selected.organization}</span></div><button onClick={()=>setSelected(null)} className="text-gray-400 hover:text-red-500"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>:<p className="text-xs text-gray-400">아래 목록에서 선택해주세요</p>}
         </div>
         <input value={keyword} onChange={e=>setKeyword(e.target.value)} placeholder="?대쫫?쇰줈 寃?? className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2" />
         <div className="space-y-1.5 max-h-48 overflow-y-auto mb-4">
@@ -363,7 +363,7 @@ function PdfButtons({ documentId }: { documentId: string }) {
       if (!res.ok) { const data=await res.json().catch(()=>({})); alert(`PDF ?앹꽦 ?ㅽ뙣: ${data.error||res.statusText}`); return; }
       const contentType = res.headers.get("Content-Type")||"";
       if (contentType.includes("application/pdf")) { const blob=await res.blob(); const url=URL.createObjectURL(blob); window.open(url,"_blank"); setTimeout(()=>URL.revokeObjectURL(url),10000); }
-      else { const data=await res.json(); if(data.url) window.open(data.url,"_blank"); else alert(`PDF ?앹꽦 ?ㅽ뙣: ${data.error||"?????녿뒗 ?ㅻ쪟"}`); }
+      else { const data=await res.json(); if(data.url) window.open(data.url,"_blank"); else alert(`PDF 생성 실패: ${data.error||"알 수 없는 오류"}`); }
     } catch(e) { console.error(e); alert("PDF 미리보기 중 오류가 발생했습니다."); }
     finally { setLoading(false); }
   };
@@ -377,7 +377,7 @@ function PdfButtons({ documentId }: { documentId: string }) {
     <div className="flex gap-2">
       <button onClick={handlePreview} disabled={loading} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-blue-200 text-blue-600 text-sm font-medium hover:bg-blue-50 disabled:opacity-50 active:bg-blue-100">
         {loading?<svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
-        {loading?"?앹꽦 以?..":"誘몃━蹂닿린"}
+        {loading?"생성 중...":"미리보기"}
       </button>
       <button onClick={handleDownload} disabled={downloading} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-green-200 text-green-600 text-sm font-medium hover:bg-green-50 disabled:opacity-50 active:bg-green-100">
         {downloading?<svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>}
@@ -395,11 +395,11 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
   const workLocationRaw = (fd.workLocation??fd.facilityLocation) as string|undefined;
   const workLocation = workAddress||workLocationRaw;
   const riskTypesSummary = [
-    fd.riskHighPlace&&`怨좎냼?묒뾽${highPlaceItems.length?": "+highPlaceItems.join(", "):""}${fd.riskHighPlaceDetail?(highPlaceItems.length?", ":": ")+fd.riskHighPlaceDetail:""}`,
-    fd.riskWaterWork&&`?섏긽쨌?섏쨷?묒뾽${waterWorkItems.length?": "+waterWorkItems.join(", "):""}${fd.riskWaterWorkDetail?(waterWorkItems.length?", ":": ")+fd.riskWaterWorkDetail:""}`,
+    fd.riskHighPlace&&`고소작업${highPlaceItems.length?": "+highPlaceItems.join(", "):""}${fd.riskHighPlaceDetail?(highPlaceItems.length?", ":": ")+fd.riskHighPlaceDetail:""}`,
+    fd.riskWaterWork&&`수상·수중작업${waterWorkItems.length?": "+waterWorkItems.join(", "):""}${fd.riskWaterWorkDetail?(waterWorkItems.length?", ":": ")+fd.riskWaterWorkDetail:""}`,
     fd.riskConfinedSpace&&`諛?먭났媛?{fd.riskConfinedSpaceDetail?": "+fd.riskConfinedSpaceDetail:""}`,
-    fd.riskPowerOutage&&`?뺤쟾?묒뾽${fd.riskPowerOutageDetail?": "+fd.riskPowerOutageDetail:""}`,
-    fd.riskFireWork&&`?붽린?묒뾽${fd.riskFireWorkDetail?": "+fd.riskFireWorkDetail:""}`,
+    fd.riskPowerOutage&&`정전작업${fd.riskPowerOutageDetail?": "+fd.riskPowerOutageDetail:""}`,
+    fd.riskFireWork&&`화기작업${fd.riskFireWorkDetail?": "+fd.riskFireWorkDetail:""}`,
     fd.riskOther&&`湲고?${fd.riskOtherDetail?": "+fd.riskOtherDetail:""}`,
   ].filter(Boolean) as string[];
   const factorLabels: Record<string, string> = {
@@ -417,35 +417,35 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <h3 className="text-sm font-bold text-gray-900 mb-3">湲곕낯?뺣낫</h3>
         <div className="space-y-2">
-          <Field label="?좎껌?? value={(fd.requestDate as string)||(fd.reportDate as string)} />
-          <Field label="?묒뾽湲곌컙" value={workPeriod} />
-          <Field label="?묒뾽?쒓컙" value={fd.workStartTime&&fd.workEndTime?`${fd.workStartTime} ~ ${fd.workEndTime}`:null} />
+          <Field label="신청일" value={(fd.requestDate as string)||(fd.reportDate as string)} />
+          <Field label="작업기간" value={workPeriod} />
+          <Field label="작업시간" value={fd.workStartTime&&fd.workEndTime?`${fd.workStartTime} ~ ${fd.workEndTime}`:null} />
           <Field label="?⑹뿭紐? value={(fd.projectName??fd.serviceName) as string} />
           <Field label="?낆껜紐? value={fd.applicantCompany as string} />
           <Field label="吏곸콉" value={fd.applicantTitle as string} />
-          <Field label="?좎껌?? value={fd.applicantName as string} />
+          <Field label="신청자" value={fd.applicantName as string} />
           {isForm3&&<Field label="?쒓났?ъ뾽泥? value={fd.contractorCompany as string} />}
           {isForm3&&(fd.contractPeriodStart||fd.contractPeriodEnd)&&<Field label="?⑹뿭湲곌컙" value={`${fd.contractPeriodStart||""} ~ ${fd.contractPeriodEnd||""}`} />}
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <h3 className="text-sm font-bold text-gray-900 mb-3">?묒뾽?뺣낫</h3>
+        <h3 className="text-sm font-bold text-gray-900 mb-3">작업정보</h3>
         <div className="space-y-2">
-          <Field label="?묒뾽?μ냼" value={workLocation} />
+          <Field label="작업장소" value={workLocation} />
           {doc.workLatitude&&doc.workLongitude&&<LocationMapPreview lat={doc.workLatitude} lng={doc.workLongitude} address={doc.workAddress||workLocation} />}
-          <Field label="?묒뾽?댁슜" value={(fd.workContent??fd.workContents) as string} />
-          {!Array.isArray(fd.participants)&&fd.participants&&<Field label="?묒뾽李몄뿬?? value={fd.participants as string} />}
+          <Field label="작업내용" value={(fd.workContent??fd.workContents) as string} />
+          {!Array.isArray(fd.participants)&&fd.participants&&<Field label="작업참여자" value={fd.participants as string} />}
           <Field label="?낆옣??紐낅떒" value={fd.entryList as string} />
-          {isForm3&&<Field label="?쒖꽕臾쇰챸" value={fd.facilityName as string} />}
-          {isForm3&&<Field label="?쒖꽕 愿由ъ옄" value={fd.facilityManager as string} />}
+          {isForm3&&<Field label="시설물명" value={fd.facilityName as string} />}
+          {isForm3&&<Field label="시설 관리자" value={fd.facilityManager as string} />}
           {isForm3&&<Field label="愿由ъ옄 吏곴툒" value={fd.facilityManagerGrade as string} />}
-          {isForm3&&<Field label="?묒뾽?꾩튂" value={fd.workPosition as string} />}
-          {isForm2&&<Field label="媛먯떆?? value={fd.monitorName as string} />}
-          {isForm2&&<Field label="痢≪젙?대떦?? value={fd.measurerName as string} />}
-          {isForm2&&<Field label="?붽린?묒뾽 ?꾩슂" value={fd.needFireWork as string} />}
+          {isForm3&&<Field label="작업위치" value={fd.workPosition as string} />}
+          {isForm2&&<Field label="감시인" value={fd.monitorName as string} />}
+          {isForm2&&<Field label="측정담당자" value={fd.measurerName as string} />}
+          {isForm2&&<Field label="화기작업 필요" value={fd.needFireWork as string} />}
           {isForm2&&<Field label="?댁뿰湲곌? ?ъ슜" value={fd.useInternalEngine as string} />}
           {isForm4&&<Field label="諛?먭났媛꾩옉?? value={fd.needConfinedSpace as string} />}
-          {isForm4&&<Field label="?붽린?묒뾽 ?꾩슂" value={fd.needFireWork as string} />}
+          {isForm4&&<Field label="화기작업 필요" value={fd.needFireWork as string} />}
         </div>
       </div>
       {isForm1&&riskTypesSummary.length>0&&<div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-3">?꾪뿕怨듭쥌 泥댄겕?ы빆</h3><div className="space-y-1.5">{riskTypesSummary.map((item,i)=>(<div key={i} className="flex items-start gap-2"><div className="w-4 h-4 rounded bg-blue-600 flex items-center justify-center shrink-0 mt-0.5"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg></div><span className="text-sm text-gray-800">{item}</span></div>))}</div></div>}
@@ -469,8 +469,8 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
             )}
             {approvalLines.filter(l=>l.stepStatus==="APPROVED"&&l.signatureData).map(line=>{
               const roleLabel = doc.documentType==="CONFINED_SPACE"
-                ?(line.approvalOrder===2?"(怨꾪쉷?뺤씤)?덇???:line.approvalOrder===4?"(?댄뻾?뺤씤)?뺤씤??:ROLE_LABELS["CONFINED_SPACE"]?.[line.approvalOrder]??`${line.approvalOrder}?④퀎`)
-                :line.approvalRole==="FINAL_APPROVER"?(FINAL_ROLE_LABELS[doc.documentType]??"理쒖쥌 ?덇???):(ROLE_LABELS[doc.documentType]?.[line.approvalOrder]??`${line.approvalOrder}?④퀎`);
+                ?(line.approvalOrder===2?"(계획확인)허가자":line.approvalOrder===4?"(이행확인)확인자":ROLE_LABELS["CONFINED_SPACE"]?.[line.approvalOrder]??`${line.approvalOrder}단계`)
+                :line.approvalRole==="FINAL_APPROVER"?(FINAL_ROLE_LABELS[doc.documentType]??"최종 허가자"):(ROLE_LABELS[doc.documentType]?.[line.approvalOrder]??`${line.approvalOrder}단계`);
               return (
                 <div key={line.id} className="border border-gray-200 rounded-xl overflow-hidden">
                   <div className="flex border-b border-gray-100 bg-gray-50"><span className="text-xs font-medium text-gray-600 px-3 py-2 w-24 border-r border-gray-200">{roleLabel}</span><span className="text-xs text-gray-500 px-3 py-2">{line.approverName}</span></div>
@@ -486,7 +486,7 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
 }
 
 
-// 筌β돦?쇿칰怨뚮궢 ??낆젾 ?뚮똾猷??곕뱜 - uncontrolled + 揶쏆뮆????얜즲 ??낆젾燁?+ ??쎈돗??
+// 측정결과 입력 컴포넌트 - uncontrolled + 개별 농도 입력칸 + 스피너
 const DEFAULT_GAS_ROWS = [
   { time: "??,  hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
   { time: "以?", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
@@ -571,7 +571,7 @@ function GasRowInput({ row, idx, onChange }: { row: any; idx: number; onChange: 
       </div>
       {/* 가스 농도 개별 입력 */}
       <div>
-        <p className="text-xs font-medium text-gray-600 mb-2">筌β돦????얜즲</p>
+        <p className="text-xs font-medium text-gray-600 mb-2">측정 농도</p>
         <div className="grid grid-cols-2 gap-2">
           <GasField field="o2"  label="?怨쀫꺖 O??      unit="%" placeholder="18~23.5" />
           <GasField field="co2" label="??곴텦?酉源??CO?? unit="%" placeholder="1.5沃섎챶彛? />
@@ -580,10 +580,10 @@ function GasRowInput({ row, idx, onChange }: { row: any; idx: number; onChange: 
           <GasField field="ex"  label="??而??묐립 EX"    unit="%" placeholder="10沃섎챶彛? />
         </div>
       </div>
-      {/* 筌β돦???+ ?紐꾩뜚 */}
+      {/* 측정자 + 인원 */}
       <div className="grid grid-cols-3 gap-2">
         <div>
-          <label className="text-xs text-gray-500 mb-1 block">筌β돦???/label>
+          <label className="text-xs text-gray-500 mb-1 block">측정자</label>
           <MeasurerField field="measurer" value={row.measurer || ""} />
         </div>
         <div>
@@ -632,23 +632,23 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
             {stepDesc}
           </h3>
           {confinedOrder === 1 && (
-            <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">揶쏅Ŋ??紐꾩몵嚥≪뮇苑??묒뾽 ?④쑵????類ㅼ뵥??랁???뺤구??곻폒?紐꾩뒄.</p>
+            <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">감시인으로서 작업 계획을 확인하고 서명해주세요.</p>
           )}
           {confinedOrder === 2 && (
             <div className="space-y-2">
-              <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">?諛명롨?怨쀭뒄 ?袁⑹뒄??鍮????낆젾 ????뺤구??곻폒?紐꾩뒄.</p>
+              <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">특별조치 필요사항을 입력 후 서명해주세요.</p>
               <AiSpecialMeasuresButton doc={doc} onGenerated={setSpecialMeasuresInput} />
               <SpecialMeasuresInput value={specialMeasuresInput} onChange={setSpecialMeasuresInput} />
             </div>
           )}
           {confinedOrder === 3 && (
             <div className="space-y-3">
-              <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">?怨쀫꺖 獄??醫뤿퉸揶쎛????얜즲 筌β돦?쇿칰怨뚮궢????낆젾??곻폒?紐꾩뒄.</p>
+              <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">산소 및 유해가스 농도 측정결과를 입력해주세요.</p>
               <GasMeasureInput rows={gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : DEFAULT_GAS_ROWS} onChange={setGasMeasureRowsInput} />
             </div>
           )}
           {confinedOrder === 4 && (
-            <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">筌β돦?쇿칰怨뚮궢??筌ㅼ뮇伊??類ㅼ뵥??랁???뺤구??곻폒?紐꾩뒄.</p>
+            <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">측정결과를 최종 확인하고 서명해주세요.</p>
           )}
         </div>
       );
@@ -668,10 +668,10 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
               <AiSpecialMeasuresButton doc={doc} onGenerated={(v) => {
                 if (reviewOpinionRef.current) reviewOpinionRef.current.value = v;
                 setReviewOpinion(v);
-              }} label="AI 野꺜?醫롮벥野??λ뜆釉? />
+              }} label="AI 검토의견 초안" />
             )}
             <label className="block text-xs font-medium text-gray-600 mb-1.5">
-              野꺜?醫롮벥野?{doc.currentApprovalOrder === 1 && <span className="text-red-500 text-xs">(諛섎젮 ???袁⑸땾)</span>}
+              검토의견 {doc.currentApprovalOrder === 1 && <span className="text-red-500 text-xs">(반려 시 필수)</span>}
             </label>
             <textarea
               key={`opinion-${dataKey}`}
@@ -699,7 +699,7 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
   const CancelButton = () => canCancel ? (
     <button onClick={handleCancelApproval} disabled={cancelling}
       className="w-full py-2.5 rounded-xl text-sm font-medium border-2 border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50">
-      {cancelling ? "?띯뫁???댄썑.." : "野껉퀣???띯뫁??(?臾믨쉐餓λ쵐?앮에?"}
+      {cancelling ? "취소 중..." : "결재 취소 (작성중으로)"}
     </button>
   ) : null;
 
@@ -708,7 +708,7 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
       <div className="px-4 pt-4 pb-3 bg-white border-b border-gray-100">
         <Link href="/approvals" className="flex items-center gap-1 text-gray-400 text-sm mb-2">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
-          野껉퀣??筌뤴뫖以?
+          결재 목록
         </Link>
         <div className="flex items-center gap-2 mb-1">
           <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{typeShort}</span>
@@ -720,7 +720,7 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
         {doc.submittedAt && <p className="text-xs text-gray-400 mt-0.5">제출일: {new Date(doc.submittedAt).toLocaleDateString("ko-KR")}</p>}
       </div>
 
-      {/* ????- ??곸뒠 / 野껉퀣??袁れ넺 */}
+      {/* 탭 - 내용 / 결재현황 */}
       <div className="bg-white border-b border-gray-200 flex">
         {["내용", "결재현황"].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
@@ -731,8 +731,8 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
       </div>
 
       <div className="p-4 space-y-4">
-        {/* ????곸뒠 ?? 筌뤴뫀諭???낆젾??곸뒠 + 筌ｂ뫀????뵬 + PDF (?뱀씤?꾨즺?? */}
-        {activeTab === "??곸뒠" && (
+        {/* 내용 탭: 모든 입력내용 + 첨부파일 + PDF (승인완료시) */}
+        {activeTab === "내용" && (
           <>
             <DocumentContent doc={doc} fd={fd} approvalLines={approvalLines} />
             <AttachmentViewer documentId={documentId} canAdd={false} />
@@ -750,7 +750,7 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
           </>
         )}
 
-        {/* ??3甕? 寃곗옱?꾪솴 ?? 野껉퀣??癒?カ + ?諛명롨?怨쀭뒄(2/3??ｍ? + ??彛?*/}
+        {/* 결재현황 탭 - 결재흐름 + 특별조치 + 사진 */}
         {activeTab === "결재현황" && (
           <>
             <ApprovalFlow doc={doc} approvalLines={approvalLines} writerName={(fd.applicantName as string) || writerName} applicantSignature={(fd.signatureData as string) || undefined} />
@@ -767,10 +767,10 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
         )}
       </div>
 
-      {/* ??롫뼊 ?⑥쥙??甕곌쑵??- 野껉퀣????る?*/}
+      {/* 하단 고정 버튼 - 결재 액션 */}
       {isMyTurn && (
         <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-3 pb-4">
-          {/* 獄쎛?癒?궗揶?3??ｍ?筌β돦??????: ??뺤구 ??곸뵠 筌β돦?쇿칰怨뚮궢筌???뽱뀱 */}
+          {/* 밀폐공간 3단계: 서명 없이 측정결과만 제출 */}
           {isConfinedSpace && confinedOrder === 3 ? (
             <button onClick={async () => {
               const gasRows = gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : DEFAULT_GAS_ROWS;
@@ -805,7 +805,7 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
                   setReviewOpinion(opinion);
                   setReviewResult(result);
                   setShowRejectConfirm(true);
-                }} className="flex-1 py-3 rounded-xl border-2 border-red-200 text-sm font-medium text-red-600">諛섎젮</button>
+                }} className="flex-1 py-3 rounded-xl border-2 border-red-200 text-sm font-medium text-red-600">반려</button>
               <button onClick={() => {
                   const opinion = (reviewOpinionRef.current?.value ?? "").trim();
                   const result = (reviewResultRef.current?.value ?? "").trim();
@@ -817,7 +817,7 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
                 }} className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#16a34a" }}>
                 {isConfinedSpace
                   ? confinedOrder === 1 ? "감시인 서명" : confinedOrder === 2 ? "(계획확인) 서명" : "(이행확인) 최종 서명"
-                  : doc.currentApprovalOrder === 1 ? "野꺜?醫롮끏?? : "筌ㅼ뮇伊??諭??}
+                  : doc.currentApprovalOrder === 1 ? "검토완료" : "최종 승인"}
               </button>
             </div>
           )}
@@ -827,8 +827,8 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
       {showRejectConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
-            <h3 className="text-base font-bold text-gray-900 mb-2">諛섎젮??뤿뻻野껋쥙???뉙돱?</h3>
-            <p className="text-sm text-gray-500 mb-4">諛섎젮 筌ｌ꼶?????醫롪퍕?紐꾨퓠野????뵝???袁⑸꽊??몃빍??</p>
+            <h3 className="text-base font-bold text-gray-900 mb-2">반려하시겠습니까?</h3>
+            <p className="text-sm text-gray-500 mb-4">반려 처리 후 신청인에게 알림이 전송됩니다.</p>
             {!(reviewOpinionRef.current?.value ?? reviewOpinion).trim() && <p className="text-xs text-red-500 mb-3">諛섎젮 ???(野꺜?醫롮벥野????믪눘? ??낆젾??곻폒?紐꾩뒄.</p>}
             <div className="flex gap-3">
               <button onClick={() => setShowRejectConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">?띯뫁??/button>
@@ -845,8 +845,8 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
             <h3 className="text-base font-bold text-gray-900 mb-2">
               {isConfinedSpace
                 ? confinedOrder === 1 ? "감시인 서명 후 (계획확인)허가자를 지정합니다"
-                  : confinedOrder === 2 ? "(怨꾪쉷?뺤씤) ?덇????뺤구???袁⑥┷??몃빍??
-                  : "(??꾨뻬?類ㅼ뵥) 筌ㅼ뮇伊???뺤구???袁⑥┷??몃빍??
+                  : confinedOrder === 2 ? "(계획확인) 허가자 서명을 완료합니다"
+                  : "(이행확인) 최종 서명을 완료합니다"}
                 : doc.currentApprovalOrder === 1 ? "검토완료 후 최종허가자에게 지정됩니다" : "최종 승인하시겠습니까?"}}
             </h3>
             <p className="text-sm text-gray-500 mb-4">
@@ -867,11 +867,11 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
           <div className="bg-white w-full rounded-t-3xl" style={{ paddingBottom: "env(safe-area-inset-bottom, 20px)", maxHeight: "80vh", overflowY: "auto" }}>
             <div className="px-6 pt-6 pb-2">
               <h2 className="text-base font-bold text-gray-900 mb-1">{pendingAction === "APPROVE" ? "승인 서명" : "반려 서명"}</h2>
-              <p className="text-xs text-gray-500">??뺤구 ??筌ｌ꼶?곩첎? ?袁⑥┷??몃빍??</p>
+              <p className="text-xs text-gray-500">서명 후 처리가 완료됩니다.</p>
             </div>
             <div className="px-6 py-3">
               <div className="border-2 border-gray-200 rounded-2xl overflow-hidden bg-white relative">
-                <div className="absolute top-2 left-3 text-xs text-gray-300 pointer-events-none">?袁⑥삋????뺤구??곻폒?紐꾩뒄</div>
+                <div className="absolute top-2 left-3 text-xs text-gray-300 pointer-events-none">아래에 서명해주세요</div>
                 <canvas ref={canvasRef} width={600} height={180} className="w-full"
                   style={{ cursor: "crosshair", touchAction: "none", display: "block" }}
                   onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
@@ -880,7 +880,7 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
             </div>
             <div className="px-6 pb-24 space-y-2">
               <div className="flex gap-2">
-                <button onClick={clearCanvas} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium">??뺤구 筌왖?怨뚮┛</button>
+                <button onClick={clearCanvas} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium">서명 지우기</button>
                 <button onClick={() => setShowSign(false)} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium">?띯뫁??/button>
               </div>
               <button onClick={handleSubmitWithSign} disabled={processing}
@@ -899,7 +899,7 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
           onAssigned={() => { setShowFinalApprover(false); alert("최종허가자가 지정됩니다. 알림이 전송됩니다."); router.push("/approvals"); }} />
       )}
 
-      {/* 獄쎛?癒?궗揶???쇱벉??ｍ?筌왖??筌뤴뫀??*/}
+      {/* 밀폐공간 다음단계 지정 모달 */}
       {showConfinedNextModal && confinedNextAction && doc && (
         <ConfinedNextModal
           documentId={documentId}
