@@ -235,6 +235,8 @@ function ApprovalFlow({ doc, approvalLines, writerName, applicantSignature }: { 
   const roleLabels = ROLE_LABELS[doc.documentType] ?? {};
   const finalLabel = FINAL_ROLE_LABELS[doc.documentType] ?? "최종 허가자";
   const fd = doc.formDataJson ?? {};
+  const isConfinedSpace = doc.documentType === "CONFINED_SPACE";
+  const confinedOrder = doc.currentApprovalOrder ?? 0;
   let steps: Array<{ icon: React.ReactNode; label: string; name: string; comment?: string; actedAt?: string; signatureData?: string; status: string }>;
   if (isConfined) {
     const lineMap = Object.fromEntries(approvalLines.map(l => [l.approvalOrder, l]));
@@ -638,9 +640,6 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
 }
 
 export default function ApprovalDetailPage() {
-    const isConfinedSpace = doc.documentType === "CONFINED_SPACE";
-  const confinedOrder = doc.currentApprovalOrder ?? 0;
-
   const ReviewInputSection = () => {
     // 밀폐공간 단계별 UI
     if (isConfinedSpace) {
