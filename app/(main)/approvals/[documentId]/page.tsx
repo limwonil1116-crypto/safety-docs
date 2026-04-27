@@ -775,7 +775,7 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
             <ApprovalFlow doc={doc} approvalLines={approvalLines} writerName={(fd.applicantName as string) || writerName} applicantSignature={(fd.signatureData as string) || undefined} />
             {(doc.documentType === "CONFINED_SPACE" || doc.documentType === "POWER_OUTAGE") && fd.specialMeasures && doc.currentApprovalOrder !== 1 && doc.status !== "SUBMITTED" && (
               <div className="bg-white rounded-2xl p-4 shadow-sm">
-                <h3 className="text-sm font-bold text-gray-900 mb-2">?諛명롨?怨쀭뒄 ?袁⑹뒄??鍮?/h3>
+                <h3 className="text-sm font-bold text-gray-900 mb-2">특별조치 필요사항</h3>
                 <p className="text-sm text-gray-800">{fd.specialMeasures as string}</p>
               </div>
             )}
