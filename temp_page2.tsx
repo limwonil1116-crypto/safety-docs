@@ -25,12 +25,12 @@ interface Attachment {
 }
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
-  SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료" },
-  IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중" },
-  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종결재 진행중" },
-  APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료" },
-  REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "반려" },
-  DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중" },
+  SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "?쒖텧?꾨즺" },
+  IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "寃?좎쨷" },
+  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "理쒖쥌寃곗옱 吏꾪뻾以? },
+  APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "?뱀씤?꾨즺" },
+  REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "諛섎젮" },
+  DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "?묒꽦以? },
 };
 const ROLE_LABELS: Record<string, Record<number, string>> = {
   SAFETY_WORK_PERMIT: { 1: "理쒖쥌 寃?좎옄", 2: "理쒖쥌 ?덇??? },
@@ -67,7 +67,8 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
-// ??5踰? 吏??二쇱냼 寃??湲??function LocationMapPreview({ lat, lng, address }: { lat: number; lng: number; address?: string | null }) {
+// ??5踰? 吏??二쇱냼 寃??湲??
+function LocationMapPreview({ lat, lng, address }: { lat: number; lng: number; address?: string | null }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapUrl = `https://map.kakao.com/link/map/${encodeURIComponent(address || "?묒뾽?μ냼")},${lat},${lng}`;
 
@@ -79,7 +80,8 @@ function Field({ label, value }: { label: string; value?: string | null }) {
         const center = new window.kakao.maps.LatLng(lat, lng);
         const map = new window.kakao.maps.Map(mapRef.current, { center, level: 4, draggable: false, scrollwheel: false, disableDoubleClick: true });
         const marker = new window.kakao.maps.Marker({ position: center, map });
-        // ??infowindow ?쒓굅 - 留덉빱 ??二쇱냼 ?띿뒪??遺덊븘??      });
+        // ??infowindow ?쒓굅 - 留덉빱 ??二쇱냼 ?띿뒪??遺덊븘??
+      });
     };
     if (window.kakao?.maps) { initMap(); }
     else {
@@ -249,11 +251,13 @@ function AttachmentViewer({ documentId, canAdd = false }: { documentId: string; 
           <button onClick={() => cameraRef.current?.click()} disabled={uploading}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            移대찓??          </button>
+            移대찓??
+          </button>
           <button onClick={() => galleryRef.current?.click()} disabled={uploading}
             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            媛ㅻ윭由?          </button>
+            媛ㅻ윭由?
+          </button>
         </div>
       )}
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
@@ -860,7 +864,8 @@ export default function ApprovalDetailPage() {
   // ???곗씠??濡쒕뱶 ?꾨즺 ??textarea remount??key
   const [dataKey, setDataKey] = useState(0);
 
-  // ??dataKey 蹂寃???textarea remount ??ref 珥덇린??  useEffect(() => {
+  // ??dataKey 蹂寃???textarea remount ??ref 珥덇린??
+  useEffect(() => {
     if (dataKey > 0 && reviewOpinionRef.current) {
       reviewOpinionRef.current.value = reviewOpinion;
     }
@@ -912,7 +917,8 @@ export default function ApprovalDetailPage() {
       const initialResult = (fd.reviewResult || "") as string;
       setReviewOpinion(initialOpinion);
       setReviewResult(initialResult);
-      // ??dataKey瑜?諛붽퓭??textarea瑜?remount ??defaultValue ?ъ쟻??      setDataKey(prev => prev + 1);
+      // ??dataKey瑜?諛붽퓭??textarea瑜?remount ??defaultValue ?ъ쟻??
+      setDataKey(prev => prev + 1);
       const taskRes = await fetch(`/api/tasks/${docObj.taskId}`);
       const taskData = await taskRes.json();
       if (taskRes.ok) setTaskName(taskData.task?.name ?? "");
@@ -975,7 +981,8 @@ export default function ApprovalDetailPage() {
   const clearCanvas = () => { const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext("2d"); if (!ctx) return; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); };
 
   const handleAction = async (action: "APPROVE" | "REJECT") => {
-    // ???쒕챸 紐⑤떖 ?닿린 ?꾩뿉 ref?먯꽌 媛믪쓣 ?쎌뼱 蹂꾨룄 state?????    // (?쒕챸 紐⑤떖???대━硫?ReviewInputSection??媛?ㅼ졇 ref媛 null ?????덉쓬)
+    // ???쒕챸 紐⑤떖 ?닿린 ?꾩뿉 ref?먯꽌 媛믪쓣 ?쎌뼱 蹂꾨룄 state?????
+    // (?쒕챸 紐⑤떖???대━硫?ReviewInputSection??媛?ㅼ졇 ref媛 null ?????덉쓬)
     const opinionVal = (reviewOpinionRef.current?.value ?? reviewOpinion).trim();
     const resultVal = (reviewResultRef.current?.value ?? reviewResult).trim();
     if (action === "REJECT" && !opinionVal) { 
@@ -1022,13 +1029,16 @@ export default function ApprovalDetailPage() {
       if (data.action === "NEED_FINAL_APPROVER") {
         setShowFinalApprover(true);
       } else if (data.action === "NEED_PLAN_APPROVER") {
-        // 諛?먭났媛?2?④퀎: 媛먯떆???쒕챸 ?꾨즺 ??(怨꾪쉷?뺤씤)?덇???吏??        setConfinedNextAction("PLAN_APPROVER");
+        // 諛?먭났媛?2?④퀎: 媛먯떆???쒕챸 ?꾨즺 ??(怨꾪쉷?뺤씤)?덇???吏??
+        setConfinedNextAction("PLAN_APPROVER");
         setShowConfinedNextModal(true);
       } else if (data.action === "NEED_MEASUREMENT") {
-        // 諛?먭났媛?3?④퀎: 痢≪젙?대떦?먯뿉寃??섏뼱媛?        alert("(怨꾪쉷?뺤씤) ?쒕챸???꾨즺?⑸땲?? 痢≪젙?대떦?먯뿉寃?痢≪젙寃곌낵 ?낅젰???붿껌?⑸땲??");
+        // 諛?먭났媛?3?④퀎: 痢≪젙?대떦?먯뿉寃??섏뼱媛?
+        alert("(怨꾪쉷?뺤씤) ?쒕챸???꾨즺?⑸땲?? 痢≪젙?대떦?먯뿉寃?痢≪젙寃곌낵 ?낅젰???붿껌?⑸땲??");
         router.push("/approvals");
       } else if (data.action === "NEED_FINAL_CONFIRMER") {
-        // 諛?먭났媛?4?④퀎: 痢≪젙寃곌낵 ?낅젰 ?꾨즺 ??(?댄뻾?뺤씤)?뺤씤??吏??        setConfinedNextAction("FINAL_CONFIRMER");
+        // 諛?먭났媛?4?④퀎: 痢≪젙寃곌낵 ?낅젰 ?꾨즺 ??(?댄뻾?뺤씤)?뺤씤??吏??
+        setConfinedNextAction("FINAL_CONFIRMER");
         setShowConfinedNextModal(true);
       } else if (data.action === "APPROVED") {
         alert("理쒖쥌 ?뱀씤???꾨즺?⑸땲??");
@@ -1141,10 +1151,11 @@ function SpecialMeasuresInput({ value, onChange }: { value: string; onChange: (v
   );
 }
 
-// 痢≪젙寃곌낵 ?낅젰 而댄룷?뚰듃 - uncontrolled + 媛쒕퀎 ?띾룄 ?낅젰移?+ ?ㅽ뵾??const DEFAULT_GAS_ROWS = [
-  { time: "??,  hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
-  { time: "以?", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
-  { time: "??,  hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
+// 痢≪젙寃곌낵 ?낅젰 而댄룷?뚰듃 - uncontrolled + 媛쒕퀎 ?띾룄 ?낅젰移?+ ?ㅽ뵾??
+const DEFAULT_GAS_ROWS = [
+  { time: "전",  hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
+  { time: "중*", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
+  { time: "후",  hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
 ];
 
 function GasRowInput({ row, idx, onChange }: { row: any; idx: number; onChange: (idx: number, field: string, value: string) => void }) {
