@@ -223,9 +223,9 @@ function ApprovalFlow({ doc, approvalLines, writerName, applicantSignature }: { 
     const line1 = approvalLines.find(l => l.approvalOrder===1);
     const line2 = approvalLines.find(l => l.approvalOrder===2);
     steps = [
-      { icon: <StepIcon type="submit" status={isSubmitted?"done":"active"} />, label: "?좎껌??, name: writerName, signatureData: isSubmitted?applicantSignature:undefined, status: isSubmitted?"done":"active" },
-      ...(line1?[{ icon: <StepIcon type="review" status={getStepStatus(line1)} />, label: roleLabels[1]??"寃?좎옄", name: line1.approverName??"", comment: line1.comment, actedAt: line1.actedAt, signatureData: line1.signatureData, status: getStepStatus(line1) }]:[]),
-      ...(line2?[{ icon: <StepIcon type="approve" status={getStepStatus(line2)} />, label: line2.approvalRole==="FINAL_APPROVER"?finalLabel:(roleLabels[2]??"?덇???), name: line2.approverName??"", comment: line2.comment, actedAt: line2.actedAt, signatureData: line2.signatureData, status: getStepStatus(line2) }]:[]),
+      { icon: <StepIcon type="submit" status={isSubmitted?"done":"active"} />, label: "신청자", name: writerName, signatureData: isSubmitted?applicantSignature:undefined, status: isSubmitted?"done":"active" },
+      ...(line1?[{ icon: <StepIcon type="review" status={getStepStatus(line1)} />, label: roleLabels[1]??"검토자", name: line1.approverName??"", comment: line1.comment, actedAt: line1.actedAt, signatureData: line1.signatureData, status: getStepStatus(line1) }]:[]),
+      ...(line2?[{ icon: <StepIcon type="approve" status={getStepStatus(line2)} />, label: line2.approvalRole==="FINAL_APPROVER"?finalLabel:(roleLabels[2]??"허가자"), name: line2.approverName??"", comment: line2.comment, actedAt: line2.actedAt, signatureData: line2.signatureData, status: getStepStatus(line2) }]:[]),
     ];
   }
   return (
