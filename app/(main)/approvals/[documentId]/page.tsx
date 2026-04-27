@@ -701,12 +701,12 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1.5">鈺곌퀣?귛칰怨뚮궢</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">조치결과</label>
             <textarea
               key={`result-${dataKey}`}
               ref={reviewResultRef}
               defaultValue={reviewResult}
-              placeholder="鈺곌퀣?귛칰怨뚮궢????낆젾??곻폒?紐꾩뒄"
+              placeholder="조치결과를 입력해주세요"
               rows={2}
               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
           </div>
