@@ -238,6 +238,65 @@ function ApprovalFlow({ doc, approvalLines, writerName, applicantSignature }: { 
   const isConfinedSpace = doc.documentType === "CONFINED_SPACE";
   const confinedOrder = doc.currentApprovalOrder ?? 0;
   let steps: Array<{ icon: React.ReactNode; label: string; name: string; comment?: string; actedAt?: string; signatureData?: string; status: string }>;
+  if (isConfined) {
+    const lineMap = Object.fromEntries(approvalLines.map(l => [l.approvalOrder, l]));
+    const mkStep = (order: number, label: string, type: "submit"|"review"|"approve", name: string) => {
+      const line = lineMap[order];
+      const status = line ? getStepStatus(line) : "pending";
+      return { icon: <StepIcon type={type} status={status} />, label, name: line?.approverName ?? name, comment: line?.comment, actedAt: line?.actedAt, signatureData: line?.signatureData, status };
+    };
+    steps = [
+      { icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />, label: "신청자", name: writerName, signatureData: isSubmitted ? applicantSignature : undefined, status: isSubmitted ? "done" : "active" },
+      mkStep(1, "감시인", "review", (fd.monitorName as string) || ""),
+      mkStep(2, "(계획확인)허가자", "approve", ""),
+      mkStep(3, "측정담당자", "review", (fd.measurerName as string) || ""),
+      mkStep(4, "(이행확인)확인자", "approve", ""),
+    ];
+  } else {
+    const line1 = approvalLines.find(l => l.approvalOrder === 1);
+    const line2 = approvalLines.find(l => l.approvalOrder === 2);
+    steps = [
+      { icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />, label: "신청자", name: writerName, signatureData: isSubmitted ? applicantSignature : undefined, status: isSubmitted ? "done" : "active" },
+      ...(line1 ? [{ icon: <StepIcon type="review" status={getStepStatus(line1)} />, label: roleLabels[1] ?? "검토자", name: line1.approverName ?? "", comment: line1.comment, actedAt: line1.actedAt, signatureData: line1.signatureData, status: getStepStatus(line1) }] : []),
+      ...(line2 ? [{ icon: <StepIcon type="approve" status={getStepStatus(line2)} />, label: line2.approvalRole === "FINAL_APPROVER" ? finalLabel : (roleLabels[2] ?? "허가자"), name: line2.approverName ?? "", comment: line2.comment, actedAt: line2.actedAt, signatureData: line2.signatureData, status: getStepStatus(line2) }] : []),
+    ];
+  }
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-sm">
+      <h3 className="text-sm font-bold text-gray-900 mb-4">결재 흐름</h3>
+      <div className="flex items-start justify-around mb-4 relative">
+        <div className="absolute top-6 left-[10%] right-[10%] h-0.5 bg-gray-200 z-0" />
+        {steps.map((step, i) => (
+          <div key={i} className="flex flex-col items-center gap-1 z-10 flex-1">
+            {step.icon}
+            <span className="text-[10px] font-semibold text-gray-500 text-center mt-1">{step.label}</span>
+            <span className="text-[10px] text-gray-700 text-center font-medium truncate max-w-[70px]">{step.name}</span>
+          </div>
+        ))}
+      </div>
+      <div className="space-y-2 mt-3 border-t border-gray-100 pt-3">
+        {steps.map((step, i) => (
+          <div key={i} className={`flex items-start gap-3 p-2.5 rounded-xl ${step.status === "done" ? "bg-green-50" : step.status === "active" ? "bg-amber-50" : step.status === "rejected" ? "bg-red-50" : "bg-gray-50"}`}>
+            <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${step.status === "done" ? "bg-green-500" : step.status === "active" ? "bg-amber-400 animate-pulse" : step.status === "rejected" ? "bg-red-500" : "bg-gray-300"}`} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-gray-700">{step.label}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${step.status === "done" ? "bg-green-100 text-green-600" : step.status === "active" ? "bg-amber-100 text-amber-600" : step.status === "rejected" ? "bg-red-100 text-red-600" : "bg-gray-100 text-gray-400"}`}>
+                  {step.status === "done" ? "완료" : step.status === "active" ? "진행중" : step.status === "rejected" ? "반려" : "대기"}
+                </span>
+              </div>
+              <span className="text-xs text-gray-600">{step.name}</span>
+              {step.signatureData && <div className="mt-1.5 border border-gray-200 rounded-lg overflow-hidden bg-white inline-block"><img src={step.signatureData} alt="서명" className="h-10 object-contain px-2" /></div>}
+              {step.comment && <div className="mt-1 text-xs text-gray-500 bg-white/70 rounded-lg px-2 py-1">💬 {step.comment}</div>}
+              {step.actedAt && <span className="text-[10px] text-gray-400 mt-0.5 block">{new Date(step.actedAt).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
 
 function AiSpecialMeasuresButton({ doc, onGenerated, label = "AI 특별조치 초안 생성" }: {
