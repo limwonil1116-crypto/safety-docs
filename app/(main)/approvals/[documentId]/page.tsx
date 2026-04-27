@@ -732,7 +732,7 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
         <div className="flex items-center gap-2 mb-1">
           <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{typeShort}</span>
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle.bg} ${statusStyle.text}`}>{statusStyle.label}</span>
-          {isMyTurn && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium animate-pulse">??筌△뫀?</span>}
+            {isMyTurn && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium animate-pulse">내 차례</span>}
         </div>
         <h2 className="text-base font-bold text-gray-900">{taskName}</h2>
         <p className="text-xs text-gray-500 mt-0.5">{typeLabel}</p>
@@ -759,7 +759,7 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
               <div className="bg-white rounded-2xl p-4 shadow-sm">
                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  ?????PDF
+                    허가서 PDF
                 </h3>
                 <PdfButtons documentId={documentId} />
               </div>
