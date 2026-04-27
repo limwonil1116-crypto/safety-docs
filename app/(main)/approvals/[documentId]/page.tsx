@@ -156,7 +156,7 @@ function AttachmentViewer({ documentId, canAdd = false }: { documentId: string; 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setPhotos(prev => [...prev, data.attachment]);
-    } catch (e) { alert(`?낅줈???ㅽ뙣: ${e instanceof Error ? e.message : "?ㅻ쪟"}`); }
+    } catch (e) { alert(`업로드 실패: ${e instanceof Error ? e.message : "오류"}`); }
     finally { setUploading(false); }
   };
   const formatSize = (size: number | null) => { if (!size) return ""; if (size < 1024*1024) return `${(size/1024).toFixed(0)}KB`; return `${(size/1024/1024).toFixed(1)}MB`; };
