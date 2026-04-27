@@ -239,6 +239,58 @@ function ApprovalFlow({ doc, approvalLines, writerName, applicantSignature }: { 
   const confinedOrder = doc.currentApprovalOrder ?? 0;
   let steps: Array<{ icon: React.ReactNode; label: string; name: string; comment?: string; actedAt?: string; signatureData?: string; status: string }>;
 
+
+function AiSpecialMeasuresButton({ doc, onGenerated, label = "AI 특별조치 초안 생성" }: {
+  doc: DocumentDetail;
+  onGenerated: (v: string) => void;
+  label?: string;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const handleGenerate = async () => {
+    setLoading(true); setError("");
+    try {
+      const res = await fetch("/api/ai/special-measures", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentType: doc.documentType, formData: doc.formDataJson }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "AI 생성 오류");
+      onGenerated(data.specialMeasures);
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : "오류가 발생했습니다."); }
+    finally { setLoading(false); }
+  };
+  return (
+    <div>
+      <button onClick={handleGenerate} disabled={loading}
+        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-50 transition-all"
+        style={{ background: loading ? "#6b7280" : "linear-gradient(135deg, #7c3aed, #2563eb)" }}>
+        {loading ? (
+          <><svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>AI 초안 생성 중...</>
+        ) : (
+          <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>✨ {label}</>
+        )}
+      </button>
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+    </div>
+  );
+}
+
+function SpecialMeasuresInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const composing = useRef(false);
+  useEffect(() => { if (ref.current) ref.current.value = value; }, []);
+  return (
+    <textarea ref={ref} defaultValue={value}
+      onCompositionStart={() => { composing.current = true; }}
+      onCompositionEnd={e => { composing.current = false; onChange((e.target as HTMLTextAreaElement).value); }}
+      onChange={e => { if (!composing.current) onChange(e.target.value); }}
+      onBlur={e => onChange(e.target.value)}
+      placeholder="특별조치 필요사항을 입력해주세요" rows={4}
+      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+  );
+}
+
   const ReviewInputSection = () => {
     // 밀폐공간 단계별 UI
     if (isConfinedSpace) {
