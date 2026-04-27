@@ -606,13 +606,13 @@ function GasRowInput({ row, idx, onChange }: { row: any; idx: number; onChange: 
           <MeasurerField field="measurer" value={row.measurer || ""} />
         </div>
         <div>
-          <label className="text-xs text-gray-500 mb-1 block">??놁삢(筌?</label>
+          <label className="text-xs text-gray-500 mb-1 block">입장(명)</label>
           <input type="number" min="0" defaultValue={row.entryCount || ""}
             onChange={e => onChange(idx, "entryCount", e.target.value)}
             className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg text-center focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
         </div>
         <div>
-          <label className="text-xs text-gray-500 mb-1 block">??곸삢(筌?</label>
+          <label className="text-xs text-gray-500 mb-1 block">퇴장(명)</label>
           <input type="number" min="0" defaultValue={row.exitCount || ""}
             onChange={e => onChange(idx, "exitCount", e.target.value)}
             className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg text-center focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
@@ -628,7 +628,7 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
   return (
     <div className="space-y-3">
       <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
-        ?怨몄젟??륂뒄: O??18~23.5%) CO??1.5%沃섎챶彛? H?愿?10ppm沃섎챶彛? CO(30ppm沃섎챶彛? EX(10%沃섎챶彛?
+        적정수치: O₂(18~23.5%) CO₂(1.5%미만) H₂S(10ppm미만) CO(30ppm미만) EX(10%미만)
       </p>
       {rows.map((row, idx) => (
         <GasRowInput key={idx} row={row} idx={idx} onChange={update} />
