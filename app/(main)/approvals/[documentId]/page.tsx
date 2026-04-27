@@ -641,8 +641,6 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
 
 export default function ApprovalDetailPage() {
   const ReviewInputSection = () => {
-    const isConfinedSpace = doc?.documentType === "CONFINED_SPACE";
-    const confinedOrder = doc?.currentApprovalOrder ?? 0;
     // 밀폐공간 단계별 UI
     if (isConfinedSpace) {
       const stepDesc = CONFINED_STEP_DESC[confinedOrder] ?? "";
