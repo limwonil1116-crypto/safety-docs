@@ -31,10 +31,10 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> 
   DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중" },
 };
 const ROLE_LABELS: Record<string, Record<number, string>> = {
-  SAFETY_WORK_PERMIT: { 1: "(怨꾪쉷?뺤씤)?덇???, 2: "(?댄뻾?뺤씤)?뺤씤?? },
+  SAFETY_WORK_PERMIT: { 1: "(계획확인)허가자", 2: "(이행확인)확인자" },
   CONFINED_SPACE:     { 1: "감시인", 2: "(계획확인)허가자", 3: "측정담당자", 4: "(이행확인)확인자" },
-  HOLIDAY_WORK:       { 1: "寃?좎옄", 2: "?뱀씤?? },
-  POWER_OUTAGE:       { 1: "(怨꾪쉷?뺤씤)?덇???, 2: "(?댄뻾?뺤씤)?뺤씤?? },
+  HOLIDAY_WORK:       { 1: "검토자", 2: "승인자" },
+  POWER_OUTAGE:       { 1: "(계획확인)허가자", 2: "(이행확인)확인자" },
 };
 const CONFINED_STEP_DESC: Record<number, string> = {
   1: "감시인 서명",
