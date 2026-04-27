@@ -866,6 +866,8 @@ export default function ApprovalDetailPage() {
   const canCancel = doc.status !== "DRAFT" && (isOwner || isStaff);
   const isApproved = doc.status === "APPROVED";
   const reviewGuideText = doc.currentApprovalOrder === 2 ? `💡 ${step1ApproverName || "1단계 검토자"}(검토자)가 작성한 내용을 확인하여 최종 결재해주세요.` : null;
+  const isConfinedSpace = doc.documentType === "CONFINED_SPACE";
+  const confinedOrder = doc.currentApprovalOrder ?? 0;
 
   const ReviewInputSection = () => {
     // 밀폐공간 단계별 UI
