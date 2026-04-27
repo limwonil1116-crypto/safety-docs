@@ -900,7 +900,7 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
             <div className="px-6 pb-24 space-y-2">
               <div className="flex gap-2">
                 <button onClick={clearCanvas} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium">서명 지우기</button>
-                <button onClick={() => setShowSign(false)} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium">?띯뫁??/button>
+                <button onClick={() => setShowSign(false)} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium">취소</button>
               </div>
               <button onClick={handleSubmitWithSign} disabled={processing}
                 className="w-full py-3.5 rounded-xl text-white font-medium text-sm disabled:opacity-50"
