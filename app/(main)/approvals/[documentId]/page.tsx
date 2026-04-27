@@ -122,7 +122,7 @@ function PhotoViewer({ documentId }: { documentId: string }) {
       {previewUrl && (
         <div className="fixed inset-0 bg-black/95 z-[100] flex flex-col items-center justify-center" onClick={() => setPreviewUrl(null)}>
           <button className="absolute top-4 right-4 text-white p-2 z-10"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-          <img src={previewUrl} alt="미리보기" className="max-w-full max-h-[85vh] object-contain" onClick={e=>e.stopPropagation()} /></div>}
+          <img src={previewUrl} alt="미리보기" className="max-w-full max-h-[85vh] object-contain" onClick={e=>e.stopPropagation()} />
         </div>
       )}
     </div>
