@@ -592,11 +592,11 @@ function GasRowInput({ row, idx, onChange }: { row: any; idx: number; onChange: 
       <div>
         <p className="text-xs font-medium text-gray-600 mb-2">측정 농도</p>
         <div className="grid grid-cols-2 gap-2">
-          <GasField field="o2"  label="산소 O₂"      unit="%" placeholder="18~23.5" onCommit={v => onChange(idx, "o2",  v)} />
-          <GasField field="co2" label="이산화탄소 CO₂" unit="%" placeholder="1.5미만"  onCommit={v => onChange(idx, "co2", v)} />
-          <GasField field="h2s" label="황화수소 H₂S"   unit="ppm" placeholder="10미만" onCommit={v => onChange(idx, "h2s", v)} />
-          <GasField field="co"  label="일산화탄소 CO"  unit="ppm" placeholder="30미만" onCommit={v => onChange(idx, "co",  v)} />
-          <GasField field="ex"  label="폭발하한 EX"    unit="%" placeholder="10미만"   onCommit={v => onChange(idx, "ex",  v)} />
+          <GasValueInput initialValue={row.o2||""}  label="산소 O₂"       unit="%" placeholder="18~23.5" onCommit={v=>onChange(idx,"o2",v)} />
+          <GasValueInput initialValue={row.co2||""} label="이산화탄소 CO₂" unit="%" placeholder="1.5미만"  onCommit={v=>onChange(idx,"co2",v)} />
+          <GasValueInput initialValue={row.h2s||""} label="황화수소 H₂S"   unit="ppm" placeholder="10미만" onCommit={v=>onChange(idx,"h2s",v)} />
+          <GasValueInput initialValue={row.co||""}  label="일산화탄소 CO"  unit="ppm" placeholder="30미만" onCommit={v=>onChange(idx,"co",v)} />
+          <GasValueInput initialValue={row.ex||""}  label="폭발하한 EX"    unit="%" placeholder="10미만"   onCommit={v=>onChange(idx,"ex",v)} />
         </div>
       </div>
       {/* 측정자 + 인원 */}
