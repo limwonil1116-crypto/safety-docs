@@ -202,7 +202,7 @@ function ApprovalFlow({ doc, approvalLines, writerName, applicantSignature }: { 
     return "pending";
   };
   const roleLabels = ROLE_LABELS[doc.documentType] ?? {};
-  const finalLabel = FINAL_ROLE_LABELS[doc.documentType] ?? "理쒖쥌 ?덇???;
+  const finalLabel = FINAL_ROLE_LABELS[doc.documentType] ?? "최종 허가자";
   const fd = doc.formDataJson ?? {};
   let steps: Array<{ icon: React.ReactNode; label: string; name: string; comment?: string; actedAt?: string; signatureData?: string; status: string }>;
   if (isConfined) {
@@ -213,11 +213,11 @@ function ApprovalFlow({ doc, approvalLines, writerName, applicantSignature }: { 
       return { icon: <StepIcon type={type} status={status} />, label, name: line?.approverName ?? name, comment: line?.comment, actedAt: line?.actedAt, signatureData: line?.signatureData, status };
     };
     steps = [
-      { icon: <StepIcon type="submit" status={isSubmitted?"done":"active"} />, label: "?좎껌??, name: writerName, signatureData: isSubmitted?applicantSignature:undefined, status: isSubmitted?"done":"active" },
+      { icon: <StepIcon type="submit" status={isSubmitted?"done":"active"} />, label: "신청자", name: writerName, signatureData: isSubmitted?applicantSignature:undefined, status: isSubmitted?"done":"active" },
       mkStep(1, "감시인", "review", (fd.monitorName as string)||""),
-      mkStep(2, "(怨꾪쉷?뺤씤)?덇???, "approve", ""),
-      mkStep(3, "痢≪젙?대떦??, "review", (fd.measurerName as string)||""),
-      mkStep(4, "(?댄뻾?뺤씤)?뺤씤??, "approve", ""),
+      mkStep(2, "(계획확인)허가자", "approve", ""),
+      mkStep(3, "측정담당자", "review", (fd.measurerName as string)||""),
+      mkStep(4, "(이행확인)확인자", "approve", ""),
     ];
   } else {
     const line1 = approvalLines.find(l => l.approvalOrder===1);
