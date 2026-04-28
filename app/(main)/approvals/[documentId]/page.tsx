@@ -463,6 +463,7 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
           <Field label="작업내용" value={(fd.workContent ?? fd.workContents) as string} />
           {!Array.isArray(fd.participants) && fd.participants && <Field label="작업참여자" value={fd.participants as string} />}
           <Field label="입장자 명단" value={fd.entryList as string} />
+          {(isForm1 || isForm2 || isForm4) && fd.facilityName && <Field label="시설물명" value={fd.facilityName as string} />}
           {isForm3 && <Field label="시설물명" value={fd.facilityName as string} />}
           {isForm3 && <Field label="시설 관리자" value={fd.facilityManager as string} />}
           {isForm3 && <Field label="관리자 직급" value={fd.facilityManagerGrade as string} />}

@@ -754,7 +754,7 @@ interface RiskRow { riskFactor: string; improvement: string; disasterType: strin
 interface Form1 {
   requestDate: string; workStartDate: string; workEndDate: string; workStartTime: string; workEndTime: string;
   projectName: string; applicantCompany: string; applicantTitle: string; applicantName: string;
-  workLocation: string; workContent: string; participants: string;
+  workLocation: string; workContent: string; participants: string; facilityName: string;
   riskHighPlace: boolean; riskHighPlaceDetail: string; riskHighPlaceItems: string[];
   riskWaterWork: boolean; riskWaterWorkDetail: string; riskWaterWorkItems: string[];
   riskConfinedSpace: boolean; riskConfinedSpaceDetail: string;
@@ -771,7 +771,7 @@ const defaultForm1: Form1 = {
   requestDate: new Date().toISOString().split("T")[0],
   workStartDate: "", workEndDate: "", workStartTime: "09:00", workEndTime: "18:00",
   projectName: "", applicantCompany: "", applicantTitle: "", applicantName: "",
-  workLocation: "", workContent: "", participants: "",
+  workLocation: "", workContent: "", participants: "", facilityName: "",
   riskHighPlace: false, riskHighPlaceDetail: "", riskHighPlaceItems: [],
   riskWaterWork: false, riskWaterWorkDetail: "", riskWaterWorkItems: [],
   riskConfinedSpace: false, riskConfinedSpaceDetail: "",
@@ -838,6 +838,7 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             <input type="text" value={form.workLocation} onChange={e => onChange("workLocation", e.target.value)} className={inputClass + " mb-1.5"} />
             <LocationField workLatitude={workLatitude} workAddress={workAddress} onOpenLocation={onOpenLocation} onClearLocation={onClearLocation} />
           </FormInput>
+          <FormInput label="시설물명"><input type="text" value={form.facilityName||""} onChange={e => onChange("facilityName", e.target.value)} className={inputClass} placeholder="시설물명을 입력하세요" /></FormInput>
           <FormInput label="작업 내용" required><textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} /></FormInput>
           <FormInput label="작업참여자"><textarea value={form.participants} onChange={e => onChange("participants", e.target.value)} rows={2} className={textareaClass} /></FormInput>
         </div>
@@ -1005,7 +1006,7 @@ interface GasMeasureRow { time: string; hour: string; minute: string; substances
 interface Form2 {
   requestDate: string; workStartDate: string; workEndDate: string; workStartTime: string; workEndTime: string;
   serviceName: string; applicantCompany: string; applicantTitle: string; applicantName: string;
-  workLocation: string; workContent: string; entryList: string;
+  workLocation: string; workContent: string; entryList: string; facilityName: string;
   needFireWork: string; useInternalEngine: string; safetyChecks: SafetyCheckItem[];
   gasMeasureRows: GasMeasureRow[]; specialMeasures: string;
   monitorName: string; monitorUserId: string;
@@ -1018,7 +1019,7 @@ const defaultGasMeasureRows: GasMeasureRow[] = [
 ];
 const defaultForm2: Form2 = {
   requestDate: new Date().toISOString().split("T")[0], workStartDate: "", workEndDate: "", workStartTime: "09:00", workEndTime: "18:00",
-  serviceName: "", applicantCompany: "", applicantTitle: "", applicantName: "", workLocation: "", workContent: "", entryList: "",
+  serviceName: "", applicantCompany: "", applicantTitle: "", applicantName: "", workLocation: "", workContent: "", entryList: "", facilityName: "",
   needFireWork: "", useInternalEngine: "", safetyChecks: CONFINED_CHECKS.map(c => ({ ...c })),
   gasMeasureRows: defaultGasMeasureRows.map(r => ({ ...r })), specialMeasures: "",
   monitorName: "", monitorUserId: "", measurerName: "", measurerUserId: "",
@@ -1091,6 +1092,7 @@ function Form2Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             <input type="text" value={form.workLocation} onChange={e => onChange("workLocation", e.target.value)} className={inputClass + " mb-1.5"} />
             <LocationField workLatitude={workLatitude} workAddress={workAddress} onOpenLocation={onOpenLocation} onClearLocation={onClearLocation} />
           </FormInput>
+          <FormInput label="시설물명"><input type="text" value={form.facilityName||""} onChange={e => onChange("facilityName", e.target.value)} className={inputClass} placeholder="시설물명을 입력하세요" /></FormInput>
           <FormInput label="작업 내용" required><textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} /></FormInput>
           <FormInput label="출입자 명단"><textarea value={form.entryList} onChange={e => onChange("entryList", e.target.value)} rows={2} className={textareaClass} /></FormInput>
           <ConfinedPersonPicker form={form} onChange={onChange} />
@@ -1243,13 +1245,13 @@ interface InspectionItem { equipment: string; cutoffConfirmer: string; electrici
 interface Form4 {
   requestDate: string; workStartDate: string; workEndDate: string; workStartTime: string; workEndTime: string;
   serviceName: string; applicantCompany: string; applicantTitle: string; applicantName: string;
-  workLocation: string; workContent: string; entryList: string;
+  workLocation: string; workContent: string; entryList: string; facilityName: string;
   needConfinedSpace: string; needFireWork: string; safetyChecks: SafetyCheckItem[];
   inspectionItems: InspectionItem[]; specialMeasures: string;
 }
 const defaultForm4: Form4 = {
   requestDate: new Date().toISOString().split("T")[0], workStartDate: "", workEndDate: "", workStartTime: "09:00", workEndTime: "18:00",
-  serviceName: "", applicantCompany: "", applicantTitle: "", applicantName: "", workLocation: "", workContent: "", entryList: "",
+  serviceName: "", applicantCompany: "", applicantTitle: "", applicantName: "", workLocation: "", workContent: "", entryList: "", facilityName: "",
   needConfinedSpace: "", needFireWork: "", safetyChecks: POWER_CHECKS.map(c => ({ ...c })),
   inspectionItems: [{ equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" }], specialMeasures: "",
 };
@@ -1279,6 +1281,7 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             <input type="text" value={form.workLocation} onChange={e => onChange("workLocation", e.target.value)} className={inputClass + " mb-1.5"} />
             <LocationField workLatitude={workLatitude} workAddress={workAddress} onOpenLocation={onOpenLocation} onClearLocation={onClearLocation} />
           </FormInput>
+          <FormInput label="시설물명"><input type="text" value={form.facilityName||""} onChange={e => onChange("facilityName", e.target.value)} className={inputClass} placeholder="시설물명을 입력하세요" /></FormInput>
           <FormInput label="작업 내용" required><textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} /></FormInput>
           <FormInput label="출입자 명단"><textarea value={form.entryList} onChange={e => onChange("entryList", e.target.value)} rows={2} className={textareaClass} /></FormInput>
         </div>
