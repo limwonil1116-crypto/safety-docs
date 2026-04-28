@@ -303,7 +303,7 @@ function ConfinedNextModal({ documentId, action, onClose, onAssigned }: { docume
   const label = action === "PLAN_APPROVER" ? "(계획확인) 허가자" : "(이행확인) 확인자";
   const nextOrder = action === "PLAN_APPROVER" ? 2 : 4;
   const nextTitle = action === "PLAN_APPROVER" ? "밀폐공간 작업허가 - (계획확인) 허가자 서명 요청" : "밀폐공간 작업허가 - (이행확인) 최종 확인 요청";
-  useEffect(() => { const q = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""; fetch(`/api/users?krcOnly=true${q}`).then(r => r.json()).then(d => setUsers(d.users ?? [])); }, [keyword]);
+  useEffect(() => { const q = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""; fetch(`/api/users?krcOnly=true&role=FINAL_APPROVER${q}`).then(r => r.json()).then(d => setUsers(d.users ?? [])); }, [keyword]);
   const handleAssign = async () => {
     if (!selected) { setError("결재자를 선택해주세요."); return; }
     setLoading(true); setError("");
@@ -345,7 +345,8 @@ function FinalApproverModal({ documentId, documentType, onClose, onAssigned }: {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const finalRoleLabel = FINAL_ROLE_LABELS[documentType] ?? "최종 허가자";
-  useEffect(() => { const q = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""; fetch(`/api/users?krcOnly=true${q}`).then(r => r.json()).then(d => setUsers(d.users ?? [])); }, [keyword]);
+  const needFinalApprover = documentType !== "HOLIDAY_WORK";
+  useEffect(() => { const q = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""; const roleQ = needFinalApprover ? "&role=FINAL_APPROVER" : ""; fetch(`/api/users?krcOnly=true${q}${roleQ}`).then(r => r.json()).then(d => setUsers(d.users ?? [])); }, [keyword, needFinalApprover]);
   const handleAssign = async () => {
     if (!selected) { setError("결재자를 선택해주세요."); return; }
     setLoading(true); setError("");

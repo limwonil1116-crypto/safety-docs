@@ -15,12 +15,16 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const keyword = searchParams.get("keyword") || "";
     const krcOnly = searchParams.get("krcOnly") === "true";
+    const roleFilter = searchParams.get("role") || "";
 
     const conditions = [];
 
     // 공사직원만 필터 (organization이 한국농어촌공사)
     if (krcOnly) {
       conditions.push(eq(users.organization, "한국농어촌공사"));
+    }
+    if (roleFilter) {
+      conditions.push(eq(users.role, roleFilter as any));
     }
 
     // 활성 사용자만
