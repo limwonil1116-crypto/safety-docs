@@ -593,10 +593,10 @@ function GasRowInput({ row, idx, onChange }: { row: any; idx: number; onChange: 
 }
 
 function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any[]) => void }) {
-  const rowsRef = React.useRef(rows);
+  const rowsRef = useRef(rows);
   rowsRef.current = rows;
 
-  const update = React.useCallback((idx: number, field: string, value: string) => {
+  const update = useCallback((idx: number, field: string, value: string) => {
     const next = rowsRef.current.map((r, i) => i === idx ? { ...r, [field]: value } : r);
     onChange(next);
   }, [onChange]);
