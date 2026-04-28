@@ -639,6 +639,173 @@ function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any
 
 export default function ApprovalDetailPage() {
 
+  const params = useParams();
+  const router = useRouter();
+  const documentId = params.documentId as string;
+  const [doc, setDoc] = useState<DocumentDetail | null>(null);
+  const [approvalLines, setApprovalLines] = useState<ApprovalLine[]>([]);
+  const [taskName, setTaskName] = useState("");
+  const [writerName, setWriterName] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [isMyTurn, setIsMyTurn] = useState(false);
+  const [myUserId, setMyUserId] = useState("");
+  const [myRole, setMyRole] = useState("");
+  const [activeTab, setActiveTab] = useState("내용");
+  const [reviewOpinion, setReviewOpinion] = useState("");
+  const [reviewResult, setReviewResult] = useState("");
+  const reviewOpinionRef = useRef<HTMLTextAreaElement>(null);
+  const reviewResultRef = useRef<HTMLTextAreaElement>(null);
+  const [dataKey, setDataKey] = useState(0);
+  const [step1ApproverName, setStep1ApproverName] = useState("");
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [showSign, setShowSign] = useState(false);
+  const [showFinalApprover, setShowFinalApprover] = useState(false);
+  const [showConfinedNextModal, setShowConfinedNextModal] = useState(false);
+  const [confinedNextAction, setConfinedNextAction] = useState<"PLAN_APPROVER"|"FINAL_CONFIRMER"|null>(null);
+  const [specialMeasuresInput, setSpecialMeasuresInput] = useState("");
+  const [gasMeasureRowsInput, setGasMeasureRowsInput] = useState<any[]>([]);
+  const [pendingAction, setPendingAction] = useState<"APPROVE"|"REJECT"|null>(null);
+  const [pendingOpinion, setPendingOpinion] = useState("");
+  const [pendingResult, setPendingResult] = useState("");
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isDrawing = useRef(false);
+  const signModalRef = useRef<HTMLDivElement>(null);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true); setError("");
+    try {
+      const [docRes, linesRes] = await Promise.all([
+        fetch(`/api/documents/${documentId}`),
+        fetch(`/api/documents/${documentId}/approval-lines`),
+      ]);
+      const docData = await docRes.json();
+      const linesData = await linesRes.json();
+      if (!docRes.ok) throw new Error(docData.error || "데이터 오류");
+      const docObj = docData.document;
+      setDoc(docObj);
+      const lines = linesData.approvalLines ?? [];
+      setApprovalLines(lines);
+      const line1 = lines.find((l: ApprovalLine) => l.approvalOrder === 1);
+      if (line1?.approverName) setStep1ApproverName(line1.approverName);
+      const fd = docObj.formDataJson ?? {};
+      const line1Data = lines.find((l: ApprovalLine) => l.approvalOrder === 1);
+      const initialOpinion = (line1Data?.comment || fd.reviewOpinion || "") as string;
+      const initialResult = (fd.reviewResult || "") as string;
+      setReviewOpinion(initialOpinion);
+      setReviewResult(initialResult);
+      setDataKey(prev => prev + 1);
+      const taskRes = await fetch(`/api/tasks/${docObj.taskId}`);
+      const taskData = await taskRes.json();
+      if (taskRes.ok) setTaskName(taskData.task?.name ?? "");
+      const meRes = await fetch("/api/users/me");
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        const myId = meData.user?.id;
+        setMyUserId(myId); setMyRole(meData.user?.role ?? ""); setWriterName(meData.user?.name ?? "");
+        setIsMyTurn(docObj.currentApproverUserId === myId);
+      }
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : "오류가 발생했습니다."); }
+    finally { setLoading(false); }
+  }, [documentId]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    if (showSign) {
+      const scrollY = window.scrollY;
+      document.body.style.position = "fixed"; document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = "100%"; document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.position = ""; document.body.style.top = "";
+        document.body.style.width = ""; document.body.style.overflow = "";
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [showSign]);
+
+  const handleCancelApproval = async () => {
+    if (!confirm("결재를 취소하고 작성중 상태로 되돌리시겠습니까?")) return;
+    setCancelling(true);
+    try {
+      const res = await fetch(`/api/documents/${documentId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "오류 발생");
+      alert("결재가 취소됩니다. 문서탭에서 다시 작성할 수 있습니다.");
+      router.back();
+    } catch (e: unknown) { alert(e instanceof Error ? e.message : "취소에 실패했습니다."); }
+    finally { setCancelling(false); }
+  };
+
+  const getPos = (e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) => {
+    const rect = canvas.getBoundingClientRect();
+    if ("touches" in e) return { x: (e.touches[0].clientX - rect.left) * (canvas.width / rect.width), y: (e.touches[0].clientY - rect.top) * (canvas.height / rect.height) };
+    return { x: (e.clientX - rect.left) * (canvas.width / rect.width), y: (e.clientY - rect.top) * (canvas.height / rect.height) };
+  };
+  const startDraw = (e: React.MouseEvent | React.TouchEvent) => { const canvas = canvasRef.current; if (!canvas) return; e.preventDefault(); isDrawing.current = true; const ctx = canvas.getContext("2d"); if (!ctx) return; const pos = getPos(e, canvas); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); };
+  const draw = (e: React.MouseEvent | React.TouchEvent) => { if (!isDrawing.current) return; const canvas = canvasRef.current; if (!canvas) return; e.preventDefault(); const ctx = canvas.getContext("2d"); if (!ctx) return; const pos = getPos(e, canvas); ctx.lineTo(pos.x, pos.y); ctx.stroke(); };
+  const endDraw = (e: React.MouseEvent | React.TouchEvent) => { e.preventDefault(); isDrawing.current = false; };
+  const clearCanvas = () => { const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext("2d"); if (!ctx) return; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); };
+  const initCanvas = () => { setTimeout(() => { const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext("2d"); if (!ctx) return; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.strokeStyle = "#1e3a5f"; ctx.lineWidth = 2.5; ctx.lineCap = "round"; }, 100); };
+
+  const handleAction = async (action: "APPROVE" | "REJECT") => {
+    const opinionVal = (reviewOpinionRef.current?.value ?? reviewOpinion).trim();
+    const resultVal = (reviewResultRef.current?.value ?? reviewResult).trim();
+    if (action === "REJECT" && !opinionVal) { alert("반려 사유를 검토의견란에 입력해주세요."); return; }
+    setPendingOpinion(opinionVal); setPendingResult(resultVal);
+    setReviewOpinion(opinionVal); setReviewResult(resultVal);
+    setPendingAction(action); setShowRejectConfirm(false); setShowApproveConfirm(false);
+    setShowSign(true); initCanvas();
+  };
+
+  const handleSubmitWithSign = async () => {
+    if (!pendingAction) return;
+    setProcessing(true);
+    try {
+      const canvas = canvasRef.current;
+      const signatureData = canvas ? canvas.toDataURL("image/png") : null;
+      const extraBody: Record<string, unknown> = {};
+      const isConfinedSpace = doc?.documentType === "CONFINED_SPACE";
+      const confinedOrder = doc?.currentApprovalOrder ?? 0;
+      if (isConfinedSpace && confinedOrder === 2 && specialMeasuresInput) extraBody.specialMeasures = specialMeasuresInput;
+      if (isConfinedSpace && confinedOrder === 3 && gasMeasureRowsInput.length > 0) extraBody.gasMeasureRows = gasMeasureRowsInput;
+      const res = await fetch(`/api/documents/${documentId}/approve`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: pendingAction, comment: pendingOpinion || null, reviewResult: pendingResult || null, signatureData, ...extraBody }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "오류 발생");
+      setShowSign(false);
+      if (data.action === "NEED_FINAL_APPROVER") { setShowFinalApprover(true); }
+      else if (data.action === "NEED_PLAN_APPROVER") { setConfinedNextAction("PLAN_APPROVER"); setShowConfinedNextModal(true); }
+      else if (data.action === "NEED_MEASUREMENT") { alert("(계획확인) 서명이 완료됩니다."); router.push("/approvals"); }
+      else if (data.action === "NEED_FINAL_CONFIRMER") { setConfinedNextAction("FINAL_CONFIRMER"); setShowConfinedNextModal(true); }
+      else if (data.action === "APPROVED") { alert("최종 승인이 완료됩니다."); router.push("/approvals"); }
+      else { alert("처리됩니다."); router.push("/approvals"); }
+    } catch (e: unknown) { alert(e instanceof Error ? e.message : "오류가 발생했습니다."); }
+    finally { setProcessing(false); }
+  };
+
+  if (loading) return <div className="p-4 space-y-4">{[1,2,3].map(i => (<div key={i} className="bg-white rounded-2xl p-4 animate-pulse"><div className="h-4 bg-gray-200 rounded w-1/3 mb-3"/><div className="h-10 bg-gray-100 rounded w-full"/></div>))}</div>;
+  if (error || !doc) return <div className="p-4 text-center py-12 text-red-500 text-sm">{error || "문서를 찾을 수 없습니다."}<button onClick={fetchData} className="block mx-auto mt-3 text-blue-500 underline text-xs">다시 시도</button></div>;
+
+  const fd = doc.formDataJson;
+  const statusKey = getStatusKey(doc);
+  const typeShort = DOCUMENT_TYPE_SHORT[doc.documentType] ?? doc.documentType;
+  const typeLabel = DOCUMENT_TYPE_LABELS[doc.documentType] ?? doc.documentType;
+  const statusStyle = STATUS_STYLE[statusKey] ?? STATUS_STYLE.SUBMITTED;
+  const isOwner = myUserId && doc.createdBy && String(doc.createdBy).toLowerCase() === String(myUserId).toLowerCase();
+  const isStaff = ["REVIEWER", "FINAL_APPROVER", "ADMIN"].includes(myRole);
+  const canCancel = doc.status !== "DRAFT" && (isOwner || isStaff);
+  const isApproved = doc.status === "APPROVED";
+  const isConfinedSpace = doc.documentType === "CONFINED_SPACE";
+  const confinedOrder = doc.currentApprovalOrder ?? 0;
+  const step1ApproverNameVal = step1ApproverName;
+  const reviewGuideText = doc.currentApprovalOrder === 2 ? `💡 ${step1ApproverNameVal || "1단계 검토자"}(검토자)가 작성한 내용을 확인하여 최종 결재해주세요.` : null;
+
   const ReviewInputSection = () => {
     // 밀폐공간 단계별 UI
     const isConfinedSpace = doc?.documentType === "CONFINED_SPACE";
