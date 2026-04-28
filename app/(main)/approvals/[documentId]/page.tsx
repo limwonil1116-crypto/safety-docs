@@ -543,7 +543,7 @@ function GasRowInput({ row, idx, onChange }: { row: any; idx: number; onChange: 
     );
   };
 
-  const GasField = ({ field, label, unit, placeholder }: { field: string; label: string; unit: string; placeholder?: string }) => {
+  const GasField = ({ field, label, unit, placeholder, onCommit }: { field: string; label: string; unit: string; placeholder?: string; onCommit?: (v: string) => void }) => (
     const ref = useRef<HTMLInputElement>(null);
     const comp = useRef(false);
     useEffect(() => { if (ref.current) ref.current.value = row[field] || ""; }, []);
