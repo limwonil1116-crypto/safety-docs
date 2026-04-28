@@ -6,7 +6,20 @@ declare global { interface Window { kakao: any; } }
 
 const RISK_TYPES = ["2.0m 이상 고소작업","1.5m 이상 굴착·가설공사","철골 구조물 공사","2.0m이상 외부 도장공사","승강기 설치공사","취수탑 공사","복통, 잠관 공사","이외의 작업계획서작성 대상","해당없음"];
 
-interface TaskItem { id: string; name: string; taskType?: string; }
+interface TaskItem { id: string; name: string; }
+
+// 팅김 없는 텍스트 입력 컴포넌트
+function TextInput({ value, onChange, placeholder, className }: { value: string; onChange: (v: string) => void; placeholder?: string; className?: string }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (ref.current && ref.current !== document.activeElement) ref.current.value = value; }, [value]);
+  return <input ref={ref} defaultValue={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={className} />;
+}
+
+function TextArea({ value, onChange, placeholder, className, rows }: { value: string; onChange: (v: string) => void; placeholder?: string; className?: string; rows?: number }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => { if (ref.current && ref.current !== document.activeElement) ref.current.value = value; }, [value]);
+  return <textarea ref={ref} defaultValue={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={className} rows={rows} />;
+}
 
 function TbmNewInner() {
   const router = useRouter();
@@ -24,7 +37,8 @@ function TbmNewInner() {
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [customProjectName, setCustomProjectName] = useState(false);
 
-  const [form, setForm] = useState({
+  // 리렌더링 최소화를 위해 자주 바뀌는 값만 state로, 나머지는 ref
+  const formRef = useRef({
     reportDate: new Date().toISOString().split("T")[0],
     eduStartTime: "09:00", eduEndTime: "09:10",
     projectName: "", contractorName: "", facilityName: "",
@@ -40,14 +54,24 @@ function TbmNewInner() {
     otherContent: "", instructorName: "", instructorPhone: "",
   });
 
-  const set = useCallback((k: string, v: any) => setForm(p => ({ ...p, [k]: v })), []);
+  // AI 생성 후 input 리셋용 key
+  const [aiKey, setAiKey] = useState(0);
+  // 지도 주소 표시용
+  const [workAddressDisplay, setWorkAddressDisplay] = useState("");
+  const [hasLocation, setHasLocation] = useState(false);
+  // cctvUsed 표시용
+  const [cctvUsed, setCctvUsed] = useState(false);
+  // AI 결과 표시용 state (input에 반영)
+  const [aiResult, setAiResult] = useState<Record<string,string>>({});
 
-  // 과업 목록 로드
+  const setF = (k: string, v: any) => { (formRef.current as any)[k] = v; };
+
+  // 과업 목록
   useEffect(() => {
     fetch("/api/tasks").then(r => r.json()).then(d => setTasks(d.tasks ?? [])).catch(() => {});
   }, []);
 
-  // 카카오맵 로드
+  // 카카오맵
   const loadKakaoMap = useCallback(() => {
     const initMap = () => {
       if (!mapRef.current) return;
@@ -63,12 +87,14 @@ function TbmNewInner() {
           const lat = e.latLng.getLat();
           const lng = e.latLng.getLng();
           marker.setPosition(e.latLng);
-          set("workLatitude", String(lat));
-          set("workLongitude", String(lng));
+          setF("workLatitude", String(lat));
+          setF("workLongitude", String(lng));
           geocoder.coord2Address(lng, lat, (result: any, status: any) => {
             if (status === window.kakao.maps.services.Status.OK) {
               const addr = result[0].road_address?.address_name || result[0].address.address_name;
-              set("workAddress", addr);
+              setF("workAddress", addr);
+              setWorkAddressDisplay(addr);
+              setHasLocation(true);
             }
           });
         });
@@ -83,7 +109,7 @@ function TbmNewInner() {
     script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false&libraries=services`;
     script.onload = initMap;
     document.head.appendChild(script);
-  }, [set]);
+  }, []);
 
   const handleOpenMap = () => { setShowMap(true); setTimeout(loadKakaoMap, 100); };
 
@@ -94,43 +120,38 @@ function TbmNewInner() {
     const ps = new window.kakao.maps.services.Places();
     ps.keywordSearch(keyword, (data: any, status: any) => {
       if (status === window.kakao.maps.services.Status.OK && data.length > 0) {
-        const lat = parseFloat(data[0].y);
-        const lng = parseFloat(data[0].x);
+        const lat = parseFloat(data[0].y), lng = parseFloat(data[0].x);
         const pos = new window.kakao.maps.LatLng(lat, lng);
         mapObjRef.current.setCenter(pos); mapObjRef.current.setLevel(4);
         markerRef.current.setPosition(pos);
-        set("workLatitude", String(lat)); set("workLongitude", String(lng));
-        set("workAddress", data[0].road_address_name || data[0].address_name);
+        setF("workLatitude", String(lat)); setF("workLongitude", String(lng));
+        const addr = data[0].road_address_name || data[0].address_name;
+        setF("workAddress", addr);
+        setWorkAddressDisplay(addr);
+        setHasLocation(true);
       } else { alert("검색 결과가 없습니다."); }
     });
   };
 
   // AI 생성
   const handleAiGenerate = async () => {
-    if (!form.workToday && !form.workAddress && !form.facilityName) {
+    const f = formRef.current;
+    if (!f.workToday && !f.workAddress && !f.facilityName) {
       alert("작업내용, 주소, 시설물 중 하나 이상 입력해주세요."); return;
     }
     setAiLoading(true);
     try {
       const res = await fetch("/api/ai/tbm-risk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          workToday: form.workToday, workAddress: form.workAddress,
-          facilityName: form.facilityName, riskType: form.riskType,
-          reportDate: form.reportDate,
-        }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workToday: f.workToday, workAddress: f.workAddress, facilityName: f.facilityName, riskType: f.riskType, reportDate: f.reportDate }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "AI 오류");
       const r = data.result;
-      setForm(p => ({ ...p,
-        riskFactor1: r.riskFactor1||"", riskMeasure1: r.riskMeasure1||"",
-        riskFactor2: r.riskFactor2||"", riskMeasure2: r.riskMeasure2||"",
-        riskFactor3: r.riskFactor3||"", riskMeasure3: r.riskMeasure3||"",
-        mainRiskFactor: r.mainRiskFactor||"", mainRiskMeasure: r.mainRiskMeasure||"",
-        riskElement1: r.riskElement1||"", riskElement2: r.riskElement2||"", riskElement3: r.riskElement3||"",
-      }));
+      // formRef에 저장
+      Object.keys(r).forEach(k => setF(k, r[k]));
+      setAiResult(r);
+      setAiKey(k => k + 1); // input 리렌더링 트리거
     } catch (e: any) { alert(e.message || "AI 생성 오류"); }
     finally { setAiLoading(false); }
   };
@@ -144,8 +165,8 @@ function TbmNewInner() {
   }, []);
   const getPos = (e: any, c: HTMLCanvasElement) => {
     const r = c.getBoundingClientRect();
-    if (e.touches) return { x: (e.touches[0].clientX-r.left)*(c.width/r.width), y: (e.touches[0].clientY-r.top)*(c.height/r.height) };
-    return { x: (e.clientX-r.left)*(c.width/r.width), y: (e.clientY-r.top)*(c.height/r.height) };
+    if (e.touches) return { x:(e.touches[0].clientX-r.left)*(c.width/r.width), y:(e.touches[0].clientY-r.top)*(c.height/r.height) };
+    return { x:(e.clientX-r.left)*(c.width/r.width), y:(e.clientY-r.top)*(c.height/r.height) };
   };
   const startDraw = (e: any) => { e.preventDefault(); isDrawing.current=true; const c=canvasRef.current!; const ctx=c.getContext("2d")!; const p=getPos(e,c); ctx.beginPath(); ctx.moveTo(p.x,p.y); };
   const draw = (e: any) => { if(!isDrawing.current)return; e.preventDefault(); const c=canvasRef.current!; const ctx=c.getContext("2d")!; const p=getPos(e,c); ctx.lineTo(p.x,p.y); ctx.stroke(); };
@@ -153,14 +174,15 @@ function TbmNewInner() {
   const clearCanvas = () => { const c=canvasRef.current!; const ctx=c.getContext("2d")!; ctx.fillStyle="#fff"; ctx.fillRect(0,0,c.width,c.height); };
 
   const handleSubmit = async () => {
-    if (!form.contractorName) { alert("시공사명을 입력해주세요."); return; }
-    if (!form.instructorName) { alert("성함을 입력해주세요."); return; }
+    const f = formRef.current;
+    if (!f.contractorName) { alert("시공사명을 입력해주세요."); return; }
+    if (!f.instructorName) { alert("성함을 입력해주세요."); return; }
     setLoading(true);
     try {
       const signatureData = canvasRef.current?.toDataURL("image/png")||"";
       const res = await fetch("/api/tbm", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, taskId, signatureData, workerCount: parseInt(form.workerCount)||0, newWorkerCount: parseInt(form.newWorkerCount)||0 }),
+        body: JSON.stringify({ ...f, cctvUsed, taskId, signatureData, workerCount: parseInt(f.workerCount)||0, newWorkerCount: parseInt(f.newWorkerCount)||0 }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -197,20 +219,19 @@ function TbmNewInner() {
         <Section title="📋 기본정보">
           <div className="grid grid-cols-3 gap-2">
             <Field label="교육 일자" required>
-              <input type="date" value={form.reportDate} onChange={e => set("reportDate", e.target.value)} className={inputCls} />
+              <input type="date" defaultValue={formRef.current.reportDate} onChange={e => setF("reportDate", e.target.value)} className={inputCls} />
             </Field>
             <Field label="시작">
-              <input type="time" value={form.eduStartTime} onChange={e => set("eduStartTime", e.target.value)} className={inputCls} />
+              <input type="time" defaultValue={formRef.current.eduStartTime} onChange={e => setF("eduStartTime", e.target.value)} className={inputCls} />
             </Field>
             <Field label="종료">
-              <input type="time" value={form.eduEndTime} onChange={e => set("eduEndTime", e.target.value)} className={inputCls} />
+              <input type="time" defaultValue={formRef.current.eduEndTime} onChange={e => setF("eduEndTime", e.target.value)} className={inputCls} />
             </Field>
           </div>
-
           <Field label="용역명 / 자체진단명">
             {!customProjectName ? (
               <div className="space-y-2">
-                <select value={form.projectName} onChange={e => set("projectName", e.target.value)} className={inputCls}>
+                <select defaultValue="" onChange={e => setF("projectName", e.target.value)} className={inputCls}>
                   <option value="">-- 선택해주세요 --</option>
                   {tasks.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                 </select>
@@ -218,55 +239,53 @@ function TbmNewInner() {
               </div>
             ) : (
               <div className="space-y-2">
-                <input value={form.projectName} onChange={e => set("projectName", e.target.value)} className={inputCls} placeholder="용역명 또는 자체진단명 입력" />
+                <input defaultValue={formRef.current.projectName} onChange={e => setF("projectName", e.target.value)} className={inputCls} placeholder="용역명 또는 자체진단명 입력" />
                 <button onClick={() => setCustomProjectName(false)} className="text-xs text-blue-500 underline">목록에서 선택</button>
               </div>
             )}
           </Field>
-
           <Field label="시공사명" required>
-            <input value={form.contractorName} onChange={e => set("contractorName", e.target.value)} className={inputCls} placeholder="시공사명" />
+            <input defaultValue={formRef.current.contractorName} onChange={e => setF("contractorName", e.target.value)} className={inputCls} placeholder="시공사명" />
           </Field>
           <Field label="시설물명">
-            <input value={form.facilityName} onChange={e => set("facilityName", e.target.value)} className={inputCls} placeholder="예: 예당저수지 복통" />
+            <input defaultValue={formRef.current.facilityName} onChange={e => setF("facilityName", e.target.value)} className={inputCls} placeholder="예: 예당저수지 복통" />
           </Field>
         </Section>
 
         <Section title="🏗️ 작업정보">
           <Field label="금일작업">
-            <textarea value={form.workToday} onChange={e => set("workToday", e.target.value)} className={inputCls} rows={3} placeholder="금일 작업내용" />
+            <textarea defaultValue={formRef.current.workToday} onChange={e => setF("workToday", e.target.value)} className={inputCls} rows={3} placeholder="금일 작업내용" />
           </Field>
           <Field label="실제 작업주소">
             <div className="space-y-2">
-              <input value={form.workAddress} onChange={e => set("workAddress", e.target.value)} className={inputCls} placeholder="주소 직접 입력 또는 지도 선택" />
+              <input defaultValue={formRef.current.workAddress} onChange={e => { setF("workAddress", e.target.value); setWorkAddressDisplay(e.target.value); }} className={inputCls} placeholder="주소 직접 입력 또는 지도 선택" />
               <button onClick={handleOpenMap} className="w-full py-2.5 rounded-xl border-2 border-blue-200 text-blue-600 text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-50">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                 🗺️ 지도에서 위치 선택
               </button>
-              {form.workLatitude && <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">✅ {form.workAddress}</p>}
+              {hasLocation && <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">✅ {workAddressDisplay}</p>}
             </div>
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="투입인원(명)">
-              <input type="number" min="0" value={form.workerCount} onChange={e => set("workerCount", e.target.value)} className={inputCls} />
+              <input type="number" min="0" defaultValue="0" onChange={e => setF("workerCount", e.target.value)} className={inputCls} />
             </Field>
             <Field label="신규근로자(명)">
-              <input type="number" min="0" value={form.newWorkerCount} onChange={e => set("newWorkerCount", e.target.value)} className={inputCls} />
+              <input type="number" min="0" defaultValue="0" onChange={e => setF("newWorkerCount", e.target.value)} className={inputCls} />
             </Field>
           </div>
           <Field label="투입장비">
-            <input value={form.equipment} onChange={e => set("equipment", e.target.value)} className={inputCls} placeholder="투입장비 목록" />
+            <input defaultValue={formRef.current.equipment} onChange={e => setF("equipment", e.target.value)} className={inputCls} placeholder="투입장비 목록" />
           </Field>
           <Field label="위험공종">
-            <select value={form.riskType} onChange={e => set("riskType", e.target.value)} className={inputCls}>
+            <select defaultValue="해당없음" onChange={e => setF("riskType", e.target.value)} className={inputCls}>
               {RISK_TYPES.map(t => <option key={t}>{t}</option>)}
             </select>
           </Field>
           <Field label="CCTV 사용여부">
             <div className="flex gap-3">
               {["사용중","사용안함"].map(v => (
-                <button key={v} type="button" onClick={() => set("cctvUsed", v==="사용중")}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium border-2 ${(form.cctvUsed?"사용중":"사용안함")===v?"border-blue-500 bg-blue-50 text-blue-600":"border-gray-200 text-gray-500"}`}>
+                <button key={v} type="button" onClick={() => { setCctvUsed(v==="사용중"); setF("cctvUsed", v==="사용중"); }}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium border-2 ${(cctvUsed?"사용중":"사용안함")===v?"border-blue-500 bg-blue-50 text-blue-600":"border-gray-200 text-gray-500"}`}>
                   {v}
                 </button>
               ))}
@@ -281,42 +300,43 @@ function TbmNewInner() {
             {aiLoading ? <><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>AI 분석 중...</> : <>✨ AI 위험요인·대책 자동 생성</>}
           </button>
           <p className="text-xs text-gray-400 text-center">작업내용, 주소, 시설물, 위험공종 입력 후 클릭</p>
+
           {([1,2,3] as const).map(n => (
             <div key={n} className="bg-gray-50 rounded-xl p-3 space-y-2">
               <p className="text-xs font-semibold text-gray-600">잠재위험요인 {n}</p>
-              <input value={(form as any)[`riskFactor${n}`]} onChange={e => set(`riskFactor${n}`, e.target.value)} className={inputCls} placeholder={`위험요인 ${n}`} />
-              <input value={(form as any)[`riskMeasure${n}`]} onChange={e => set(`riskMeasure${n}`, e.target.value)} className={inputCls} placeholder={`대책 ${n}`} />
+              <input key={`rf${n}-${aiKey}`} defaultValue={aiResult[`riskFactor${n}`]||""} onChange={e => setF(`riskFactor${n}`, e.target.value)} className={inputCls} placeholder={`위험요인 ${n}`} />
+              <input key={`rm${n}-${aiKey}`} defaultValue={aiResult[`riskMeasure${n}`]||""} onChange={e => setF(`riskMeasure${n}`, e.target.value)} className={inputCls} placeholder={`대책 ${n}`} />
             </div>
           ))}
           <div className="bg-amber-50 rounded-xl p-3 space-y-2 border border-amber-200">
             <p className="text-xs font-semibold text-amber-700">⭐ 중점위험요인</p>
-            <input value={form.mainRiskFactor} onChange={e => set("mainRiskFactor", e.target.value)} className={inputCls} placeholder="중점위험요인" />
-            <input value={form.mainRiskMeasure} onChange={e => set("mainRiskMeasure", e.target.value)} className={inputCls} placeholder="중점위험요인 대책" />
+            <input key={`mrf-${aiKey}`} defaultValue={aiResult.mainRiskFactor||""} onChange={e => setF("mainRiskFactor", e.target.value)} className={inputCls} placeholder="중점위험요인" />
+            <input key={`mrm-${aiKey}`} defaultValue={aiResult.mainRiskMeasure||""} onChange={e => setF("mainRiskMeasure", e.target.value)} className={inputCls} placeholder="중점위험요인 대책" />
           </div>
           <div className="space-y-2">
             <p className="text-xs font-semibold text-gray-600">잠재위험요소</p>
             {([1,2,3] as const).map(n => (
-              <input key={n} value={(form as any)[`riskElement${n}`]} onChange={e => set(`riskElement${n}`, e.target.value)} className={inputCls} placeholder={`잠재위험요소 ${n}`} />
+              <input key={`re${n}-${aiKey}`} defaultValue={aiResult[`riskElement${n}`]||""} onChange={e => setF(`riskElement${n}`, e.target.value)} className={inputCls} placeholder={`잠재위험요소 ${n}`} />
             ))}
           </div>
         </Section>
 
         <Section title="📝 기타사항">
           <Field label="기타사항 (교육내용, 제안제도, 아차사고 등)">
-            <textarea value={form.otherContent} onChange={e => set("otherContent", e.target.value)} className={inputCls} rows={4} placeholder="위험성평가 내용 전달 등" />
+            <textarea defaultValue={formRef.current.otherContent} onChange={e => setF("otherContent", e.target.value)} className={inputCls} rows={4} placeholder="위험성평가 내용 전달 등" />
           </Field>
         </Section>
 
         <Section title="✍️ 교육담당자">
           <div className="grid grid-cols-2 gap-3">
             <Field label="성함" required>
-              <input value={form.instructorName} onChange={e => set("instructorName", e.target.value)} className={inputCls} placeholder="교육담당자 이름" />
+              <input defaultValue={formRef.current.instructorName} onChange={e => setF("instructorName", e.target.value)} className={inputCls} placeholder="교육담당자 이름" />
             </Field>
             <Field label="연락처">
-              <input value={form.instructorPhone} onChange={e => {
+              <input defaultValue={formRef.current.instructorPhone} onChange={e => {
                 const v = e.target.value.replace(/\D/g,"");
                 const f = v.length<=3?v:v.length<=7?v.slice(0,3)+"-"+v.slice(3):v.slice(0,3)+"-"+v.slice(3,7)+"-"+v.slice(7,11);
-                set("instructorPhone", f);
+                setF("instructorPhone", f);
               }} className={inputCls} placeholder="010-0000-0000" maxLength={13} />
             </Field>
           </div>
@@ -333,9 +353,8 @@ function TbmNewInner() {
         </Section>
       </div>
 
-      {/* 지도 모달 */}
       {showMap && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex flex-col" style={{ touchAction:"none" }}>
+        <div className="fixed inset-0 z-50 bg-black/60 flex flex-col">
           <div className="bg-white px-4 py-3 flex items-center justify-between">
             <h2 className="text-base font-bold text-gray-900">위치 선택</h2>
             <button onClick={() => setShowMap(false)} className="text-gray-400">
@@ -346,7 +365,7 @@ function TbmNewInner() {
             <button onClick={handleAddressSearch} className="flex-1 py-2 rounded-xl bg-blue-50 text-blue-600 text-sm font-medium">🔍 주소 검색</button>
             <button onClick={() => setShowMap(false)} className="flex-1 py-2 rounded-xl bg-green-50 text-green-600 text-sm font-medium">✅ 선택 완료</button>
           </div>
-          {form.workAddress && <div className="bg-white px-4 py-2 text-xs text-gray-600 border-b border-gray-100">📍 {form.workAddress}</div>}
+          {workAddressDisplay && <div className="bg-white px-4 py-2 text-xs text-gray-600 border-b border-gray-100">📍 {workAddressDisplay}</div>}
           <div ref={mapRef} className="flex-1" style={{ minHeight:"400px" }}>
             {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-50"><p className="text-sm text-gray-400">지도 로딩 중...</p></div>}
           </div>
