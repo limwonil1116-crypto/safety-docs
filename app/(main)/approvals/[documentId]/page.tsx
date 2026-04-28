@@ -518,73 +518,49 @@ const DEFAULT_GAS_ROWS = [
   { time: "중", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
 ];
 
-function GasRowInput({ row, idx, onChange }: { row: any; idx: number; onChange: (idx: number, field: string, value: string) => void }) {
-  const commit = (field: string, value: string) => onChange(idx, field, value);
+function GasRowInput({ row, onChange }: { row: any; onChange: (field: string, value: string) => void }) {
   const numVal = (f: string) => parseInt(row[f] || "0", 10) || 0;
-
   return (
     <div className="bg-gray-50 rounded-xl p-3 space-y-3 border border-gray-100">
-      {/* 시/분 스피너 */}
       <div className="flex items-center gap-3">
         <span className="text-xs font-semibold text-gray-700 w-6 shrink-0">{row.time}</span>
         <div className="flex gap-4">
           {(["hour","minute"] as const).map(f => (
             <div key={f} className="flex flex-col items-center gap-0.5">
-              <button type="button" onMouseDown={e=>{e.preventDefault(); commit(f, String(numVal(f)+1));}} className="w-8 h-7 flex items-center justify-center rounded-t-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-500 text-xs select-none">▲</button>
-              <input
-                type="number" min="0"
-                defaultValue={row[f] || ""}
-                key={`${idx}-${f}-${row[f]}`}
-                onBlur={e => commit(f, e.target.value)}
-                className="w-12 h-8 text-center text-sm border-x border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
-              <button type="button" onMouseDown={e=>{e.preventDefault(); commit(f, String(Math.max(0,numVal(f)-1)));}} className="w-8 h-7 flex items-center justify-center rounded-b-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-500 text-xs select-none">▼</button>
+              <button type="button" onMouseDown={e=>{e.preventDefault(); onChange(f, String(numVal(f)+1));}} className="w-8 h-7 flex items-center justify-center rounded-t-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-500 text-xs select-none">▲</button>
+              <input type="number" min="0" value={row[f] || ""} onChange={e => onChange(f, e.target.value)} className="w-12 h-8 text-center text-sm border-x border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+              <button type="button" onMouseDown={e=>{e.preventDefault(); onChange(f, String(Math.max(0,numVal(f)-1)));}} className="w-8 h-7 flex items-center justify-center rounded-b-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-500 text-xs select-none">▼</button>
               <span className="text-xs text-gray-500">{f==="hour"?"시":"분"}</span>
             </div>
           ))}
         </div>
       </div>
-      {/* 가스 농도 */}
       <div>
         <p className="text-xs font-medium text-gray-600 mb-2">측정 농도</p>
         <div className="grid grid-cols-2 gap-2">
           {([
-            {f:"o2",  label:"산소 O\u2082",       unit:"%",   ph:"18~23.5"},
-            {f:"co2", label:"이산화탄소 CO\u2082", unit:"%",   ph:"1.5미만"},
-            {f:"h2s", label:"황화수소 H\u2082S",   unit:"ppm", ph:"10미만"},
-            {f:"co",  label:"일산화탄소 CO",        unit:"ppm", ph:"30미만"},
-            {f:"ex",  label:"폭발하한 EX",          unit:"%",   ph:"10미만"},
+            {f:"o2",  label:"산소 O₂",        unit:"%",   ph:"18~23.5"},
+            {f:"co2", label:"이산화탄소 CO₂",  unit:"%",   ph:"1.5미만"},
+            {f:"h2s", label:"황화수소 H₂S",    unit:"ppm", ph:"10미만"},
+            {f:"co",  label:"일산화탄소 CO",         unit:"ppm", ph:"30미만"},
+            {f:"ex",  label:"폭발하한 EX",           unit:"%",   ph:"10미만"},
           ] as const).map(({f,label,unit,ph}) => (
             <div key={f} className="flex flex-col gap-0.5">
               <label className="text-[10px] text-gray-500">{label} ({unit})</label>
-              <div className="flex items-center gap-1">
-                <input
-                  type="text"
-                  defaultValue={row[f] || ""}
-                  placeholder={ph}
-                  onBlur={e => commit(f, e.target.value)}
-                  className="flex-1 px-2 py-1.5 text-sm text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white placeholder:text-gray-300"
-                />
-              </div>
+              <input type="text" value={row[f] || ""} placeholder={ph} onChange={e => onChange(f, e.target.value)} className="px-2 py-1.5 text-sm text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white placeholder:text-gray-300" />
             </div>
           ))}
         </div>
       </div>
-      {/* 측정자/입장/퇴장 */}
       <div className="grid grid-cols-3 gap-2">
         {([
-          {f:"measurer",   label:"측정자",  type:"text"},
-          {f:"entryCount", label:"입장(명)", type:"number"},
-          {f:"exitCount",  label:"퇴장(명)", type:"number"},
+          {f:"measurer",   label:"측정자",   type:"text"},
+          {f:"entryCount", label:"입장(명)",  type:"number"},
+          {f:"exitCount",  label:"퇴장(명)",  type:"number"},
         ] as const).map(({f,label,type}) => (
           <div key={f}>
             <label className="text-xs text-gray-500 mb-1 block">{label}</label>
-            <input
-              type={type} min={type==="number"?"0":undefined}
-              defaultValue={row[f] || ""}
-              onBlur={e => commit(f, e.target.value)}
-              className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
-            />
+            <input type={type} min={type==="number"?"0":undefined} value={row[f] || ""} onChange={e => onChange(f, e.target.value)} className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
           </div>
         ))}
       </div>
@@ -593,21 +569,21 @@ function GasRowInput({ row, idx, onChange }: { row: any; idx: number; onChange: 
 }
 
 function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any[]) => void }) {
-  const rowsRef = useRef(rows);
-  rowsRef.current = rows;
-
-  const update = useCallback((idx: number, field: string, value: string) => {
-    const next = rowsRef.current.map((r, i) => i === idx ? { ...r, [field]: value } : r);
-    onChange(next);
-  }, [onChange]);
-
+  const [localRows, setLocalRows] = useState<any[]>(() => rows);
+  const handleChange = (idx: number, field: string, value: string) => {
+    setLocalRows(prev => {
+      const next = prev.map((r, i) => i === idx ? { ...r, [field]: value } : r);
+      onChange(next);
+      return next;
+    });
+  };
   return (
     <div className="space-y-3">
       <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
-        적정수치: O\u2082(18~23.5%) CO\u2082(1.5%미만) H\u2082S(10ppm미만) CO(30ppm미만) EX(10%미만)
+        적정수치: O₂(18~23.5%) CO₂(1.5%미만) H₂S(10ppm미만) CO(30ppm미만) EX(10%미만)
       </p>
-      {rows.map((row, idx) => (
-        <GasRowInput key={`row-${idx}`} row={row} idx={idx} onChange={update} />
+      {localRows.map((row, idx) => (
+        <GasRowInput key={`row-${idx}`} row={row} onChange={(field, value) => handleChange(idx, field, value)} />
       ))}
     </div>
   );
