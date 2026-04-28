@@ -1,12 +1,12 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 const HEADQUARTERS = ["본사","경기","강원","충북","충남","전북","전남","경북","경남","제주","화안","금강","새만금","영산강","새만금산업단지","토지개발","기타"];
 const PROJECT_TYPES = ["생산기반사업","지역개발사업","유지관리사업","조사사업","스마트팜사업","지하수지질","기타사업"];
 const RISK_TYPES = ["2.0m 이상 고소작업","1.5m 이상 굴착·가설공사","철골 구조물 공사","2.0m이상 외부 도장공사","승강기 설치공사","취수탑 공사","복통, 잠관 공사","이외의 작업계획서작성 대상","해당없음"];
 
-export default function TbmNewPage() {
+function TbmNewInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const taskId = searchParams.get("taskId");
@@ -195,5 +195,13 @@ export default function TbmNewPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function TbmNewPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-gray-400 text-sm">로딩 중...</div>}>
+      <TbmNewInner />
+    </Suspense>
   );
 }
