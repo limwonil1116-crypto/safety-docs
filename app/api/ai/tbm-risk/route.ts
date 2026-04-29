@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
 
     const { workToday, workAddress, facilityName, riskType, reportDate } = await req.json();
 
-    const prompt = [
+    const lines = [
       "당신은 한국농어초공사 건설현장 안전관리 전문가입니다.",
       "다음 정보를 바탕으로 TBM 위험요인과 안전대책을 작성해주세요.",
       "",
@@ -32,7 +32,8 @@ export async function POST(req: NextRequest) {
       '  "riskElement2": "잔재위험요소 2",',
       '  "riskElement3": "잔재위험요소 3"',
       "}",
-    ].join("\n");
+    ];
+    const prompt = lines.join("\n");
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return NextResponse.json({ error: "GEMINI_API_KEY가 없습니다." }, { status: 500 });
@@ -52,23 +53,21 @@ export async function POST(req: NextRequest) {
     if (!res.ok) {
       const err = await res.json();
       console.error("Gemini error:", err);
-      return NextResponse.json({ error: "AI API 오류" }, { status: 500 });
+      return NextResponse.json({ error: "AI API 오류: " + JSON.stringify(err) }, { status: 500 });
     }
 
     const data = await res.json();
     const parts = data.candidates?.[0]?.content?.parts || [];
     const fullText = parts.map((p: any) => p.text || "").join("");
-    
-    // ```json ... ``` 또는 { } 추출
+
     const jsonStart = fullText.indexOf("{");
     const jsonEnd = fullText.lastIndexOf("}");
     if (jsonStart === -1 || jsonEnd === -1) {
-      console.error("No JSON braces found:", fullText.substring(0, 300));
+      console.error("No JSON found:", fullText.substring(0, 300));
       return NextResponse.json({ error: "AI 응답 파싱 오류" }, { status: 500 });
     }
-    
-    const jsonStr = fullText.substring(jsonStart, jsonEnd + 1);
-    const result = JSON.parse(jsonStr);
+
+    const result = JSON.parse(fullText.substring(jsonStart, jsonEnd + 1));
     return NextResponse.json({ result });
   } catch (e) {
     console.error("TBM AI error:", e);
