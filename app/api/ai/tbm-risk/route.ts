@@ -58,8 +58,9 @@ export async function POST(req: NextRequest) {
     const parts = data.candidates?.[0]?.content?.parts || [];
     const text = parts.map((p: any) => p.text || "").join("");
     
-    // JSON 블록 추출
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    // JSON 블록 추출 (```json 마크다운 제거 후)
+    const cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error("No JSON found in response:", text.substring(0, 500));
       return NextResponse.json({ error: "AI 응답 파싱 오류" }, { status: 500 });
