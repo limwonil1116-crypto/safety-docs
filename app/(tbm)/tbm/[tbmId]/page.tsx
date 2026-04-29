@@ -32,13 +32,24 @@ export default function TbmDetailPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "#f0f4f8" }}>
-      <div className="px-4 pt-4 pb-3 bg-white border-b border-gray-100 flex items-center gap-3">
-        <button onClick={() => router.back()} className="text-gray-400">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
-        <div>
-          <h1 className="text-base font-bold text-gray-900">TBM 보고서</h1>
-          <p className="text-xs text-gray-500">{report.reportDate}</p>
+      <div className="px-4 pt-4 pb-3 bg-white border-b border-gray-100 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={() => router.back()} className="text-gray-400">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div>
+            <h1 className="text-base font-bold text-gray-900">TBM 보고서</h1>
+            <p className="text-xs text-gray-500">{report.reportDate}</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => router.push(`/tbm/new?editId=${tbmId}`)}
+            className="px-3 py-1.5 rounded-lg border border-blue-200 text-blue-600 text-xs font-medium">수정</button>
+          <button onClick={async () => {
+            if (!confirm("삭제하시겠습니까?")) return;
+            await fetch(`/api/tbm/${tbmId}`, { method: "DELETE" });
+            router.push("/tbm");
+          }} className="px-3 py-1.5 rounded-lg border border-red-200 text-red-500 text-xs font-medium">삭제</button>
         </div>
       </div>
 

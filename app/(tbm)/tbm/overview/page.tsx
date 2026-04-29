@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from "react";
 
 declare global { interface Window { kakao: any; } }
 
+const HIGH_RISK_TYPES = ["2.0m 이상 고소작업","1.5m 이상 굴착·가설공사","철곸 구조물 공사","2.0m이상 외부 도장공사","승강기 설치공사","취수탑 공사","복통, 잠관 공사","이외의 작업계획서작성 대상"];
+
 const REGIONS = [
   { name: "서울", lat: 37.5665, lng: 126.9780 },
   { name: "부산", lat: 35.1796, lng: 129.0756 },
@@ -51,6 +53,7 @@ interface RegionStat {
   count: number;
   workerCount: number;
   cctvCount: number;
+  highRiskCount: number;
   reports: TbmReport[];
 }
 
@@ -90,9 +93,12 @@ export default function TbmOverviewPage() {
       count: rps.length,
       workerCount: rps.reduce((s, t) => s + (t.workerCount || 0), 0),
       cctvCount: rps.filter(t => t.cctvUsed).length,
+      highRiskCount: rps.filter(t => HIGH_RISK_TYPES.includes(t.riskType)).length,
       reports: rps,
     };
   });
+
+  const totalHighRisk = reports.filter(r => HIGH_RISK_TYPES.includes(r.riskType)).length;
 
   const totalCount = reports.length;
   const totalWorkers = reports.reduce((s, r) => s + (r.workerCount || 0), 0);
@@ -135,10 +141,20 @@ export default function TbmOverviewPage() {
   return (
     <div className="min-h-screen" style={{ background: "#f0f4f8" }}>
       <div className="bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-3">
           <h1 className="text-base font-bold text-gray-900">TBM 현황 관제</h1>
+        </div>
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <button onClick={() => { const d=new Date(date); d.setDate(d.getDate()-1); setDate(d.toISOString().split("T")[0]); }}
+            className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
-            className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="text-sm font-bold text-gray-900 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <button onClick={() => { const d=new Date(date); d.setDate(d.getDate()+1); setDate(d.toISOString().split("T")[0]); }}
+            className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
         </div>
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-blue-50 rounded-xl p-2.5 text-center">
@@ -149,9 +165,9 @@ export default function TbmOverviewPage() {
             <p className="text-xl font-bold text-green-600">{totalWorkers}</p>
             <p className="text-xs text-green-500">투입인원(명)</p>
           </div>
-          <div className="bg-purple-50 rounded-xl p-2.5 text-center">
-            <p className="text-xl font-bold text-purple-600">{reports.filter(r => r.cctvUsed).length}</p>
-            <p className="text-xs text-purple-500">CCTV 사용</p>
+          <div className="bg-red-50 rounded-xl p-2.5 text-center">
+            <p className="text-xl font-bold text-red-500">{totalHighRisk}</p>
+            <p className="text-xs text-red-400">고위험공종</p>
           </div>
         </div>
       </div>
@@ -175,6 +191,7 @@ export default function TbmOverviewPage() {
                 <th className="text-left px-3 py-2.5 text-gray-600 font-semibold">지역</th>
                 <th className="text-center px-3 py-2.5 text-gray-600 font-semibold">TBM</th>
                 <th className="text-center px-3 py-2.5 text-gray-600 font-semibold">투입인원</th>
+                <th className="text-center px-3 py-2.5 text-gray-600 font-semibold">고위험</th>
                 <th className="text-center px-3 py-2.5 text-gray-600 font-semibold">CCTV</th>
               </tr>
             </thead>

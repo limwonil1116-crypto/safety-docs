@@ -4,27 +4,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 declare global { interface Window { kakao: any; } }
 
-const RISK_TYPES = ["2.0m 이상 고소작업","1.5m 이상 굴착·가설공사","철골 구조물 공사","2.0m이상 외부 도장공사","승강기 설치공사","취수탑 공사","복통, 잠관 공사","이외의 작업계획서작성 대상","해당없음"];
+const RISK_TYPES = ["2.0m 이상 고소작업","1.5m 이상 굴착·가설공사","철곸 구조물 공사","2.0m이상 외부 도장공사","승강기 설치공사","취수탑 공사","복통, 잠관 공사","이외의 작업계획서작성 대상","해당없음"];
 
 interface TaskItem { id: string; name: string; }
-
-// 팅김 없는 텍스트 입력 컴포넌트
-function TextInput({ value, onChange, placeholder, className }: { value: string; onChange: (v: string) => void; placeholder?: string; className?: string }) {
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => { if (ref.current && ref.current !== document.activeElement) ref.current.value = value; }, [value]);
-  return <input ref={ref} defaultValue={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={className} />;
-}
-
-function TextArea({ value, onChange, placeholder, className, rows }: { value: string; onChange: (v: string) => void; placeholder?: string; className?: string; rows?: number }) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => { if (ref.current && ref.current !== document.activeElement) ref.current.value = value; }, [value]);
-  return <textarea ref={ref} defaultValue={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} className={className} rows={rows} />;
-}
 
 function TbmNewInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const taskId = searchParams.get("taskId");
+  const editId = searchParams.get("editId");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
   const mapRef = useRef<HTMLDivElement>(null);
@@ -36,8 +24,14 @@ function TbmNewInner() {
   const [aiLoading, setAiLoading] = useState(false);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [customProjectName, setCustomProjectName] = useState(false);
+  const [taskCategory, setTaskCategory] = useState<"" | "용역" | "자체진단">("");
+  const [taskBand, setTaskBand] = useState("");
+  const [workAddressDisplay, setWorkAddressDisplay] = useState("");
+  const [hasLocation, setHasLocation] = useState(false);
+  const [cctvUsed, setCctvUsed] = useState(false);
+  const [aiKey, setAiKey] = useState(0);
+  const [aiResult, setAiResult] = useState<Record<string,string>>({});
 
-  // 리렌더링 최소화를 위해 자주 바뀌는 값만 state로, 나머지는 ref
   const formRef = useRef({
     reportDate: new Date().toISOString().split("T")[0],
     eduStartTime: "09:00", eduEndTime: "09:10",
@@ -54,29 +48,39 @@ function TbmNewInner() {
     otherContent: "", instructorName: "", instructorPhone: "",
   });
 
-  // AI 생성 후 input 리셋용 key
-  const [aiKey, setAiKey] = useState(0);
-  // 지도 주소 표시용
-  const [workAddressDisplay, setWorkAddressDisplay] = useState("");
-  const [hasLocation, setHasLocation] = useState(false);
-  // cctvUsed 표시용
-  const [cctvUsed, setCctvUsed] = useState(false);
-  // AI 결과 표시용 state (input에 반영)
-  const [aiResult, setAiResult] = useState<Record<string,string>>({});
-
   const setF = (k: string, v: any) => { (formRef.current as any)[k] = v; };
 
-  // 과업 목록
+  // 과업 목록 + 수정 시 기존 데이터 로드
   useEffect(() => {
     fetch("/api/tasks").then(r => r.json()).then(d => setTasks(d.tasks ?? [])).catch(() => {});
-  }, []);
+    if (editId) {
+      fetch(`/api/tbm/${editId}`).then(r => r.json()).then(d => {
+        const r = d.tbmReport;
+        if (!r) return;
+        Object.keys(formRef.current).forEach(k => {
+          if (r[k] !== undefined) setF(k, r[k]);
+        });
+        setWorkAddressDisplay(r.workAddress || "");
+        setHasLocation(!!r.workLatitude);
+        setCctvUsed(r.cctvUsed || false);
+        // 캔버스 서명 복원
+        if (r.signatureData && canvasRef.current) {
+          const img = new Image();
+          img.onload = () => {
+            const ctx = canvasRef.current?.getContext("2d");
+            if (ctx) ctx.drawImage(img, 0, 0);
+          };
+          img.src = r.signatureData;
+        }
+      }).catch(() => {});
+    }
+  }, [editId]);
 
-  // 카카오맵
+  // 카카오맵 로드
   const loadKakaoMap = useCallback(() => {
     const initMap = () => {
       if (!mapRef.current) return;
       window.kakao.maps.load(() => {
-        setMapLoaded(true);
         const center = new window.kakao.maps.LatLng(36.5, 127.5);
         const map = new window.kakao.maps.Map(mapRef.current, { center, level: 7 });
         mapObjRef.current = map;
@@ -84,17 +88,13 @@ function TbmNewInner() {
         markerRef.current = marker;
         const geocoder = new window.kakao.maps.services.Geocoder();
         window.kakao.maps.event.addListener(map, "click", (e: any) => {
-          const lat = e.latLng.getLat();
-          const lng = e.latLng.getLng();
+          const lat = e.latLng.getLat(), lng = e.latLng.getLng();
           marker.setPosition(e.latLng);
-          setF("workLatitude", String(lat));
-          setF("workLongitude", String(lng));
+          setF("workLatitude", String(lat)); setF("workLongitude", String(lng));
           geocoder.coord2Address(lng, lat, (result: any, status: any) => {
             if (status === window.kakao.maps.services.Status.OK) {
               const addr = result[0].road_address?.address_name || result[0].address.address_name;
-              setF("workAddress", addr);
-              setWorkAddressDisplay(addr);
-              setHasLocation(true);
+              setF("workAddress", addr); setWorkAddressDisplay(addr); setHasLocation(true);
             }
           });
         });
@@ -113,6 +113,36 @@ function TbmNewInner() {
 
   const handleOpenMap = () => { setShowMap(true); setTimeout(loadKakaoMap, 100); };
 
+  // GPS 내 위치
+  const handleGps = () => {
+    if (!navigator.geolocation) { alert("이 브라우저는 GPS를 지원하지 않습니다."); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude, lng = pos.coords.longitude;
+        setF("workLatitude", String(lat)); setF("workLongitude", String(lng));
+        if (mapObjRef.current) {
+          const latlng = new window.kakao.maps.LatLng(lat, lng);
+          mapObjRef.current.setCenter(latlng);
+          mapObjRef.current.setLevel(4);
+          markerRef.current?.setPosition(latlng);
+        }
+        if (window.kakao?.maps?.services) {
+          const geocoder = new window.kakao.maps.services.Geocoder();
+          geocoder.coord2Address(lng, lat, (result: any, status: any) => {
+            if (status === window.kakao.maps.services.Status.OK) {
+              const addr = result[0].road_address?.address_name || result[0].address.address_name;
+              setF("workAddress", addr); setWorkAddressDisplay(addr); setHasLocation(true);
+            }
+          });
+        } else {
+          setWorkAddressDisplay(`${lat.toFixed(5)}, ${lng.toFixed(5)}`); setHasLocation(true);
+        }
+      },
+      () => alert("GPS 위치를 가져오지 못했습니다. 위치 권한을 허용해주세요."),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   const handleAddressSearch = () => {
     if (!mapObjRef.current) return;
     const keyword = prompt("주소를 입력하세요:");
@@ -126,9 +156,7 @@ function TbmNewInner() {
         markerRef.current.setPosition(pos);
         setF("workLatitude", String(lat)); setF("workLongitude", String(lng));
         const addr = data[0].road_address_name || data[0].address_name;
-        setF("workAddress", addr);
-        setWorkAddressDisplay(addr);
-        setHasLocation(true);
+        setF("workAddress", addr); setWorkAddressDisplay(addr); setHasLocation(true);
       } else { alert("검색 결과가 없습니다."); }
     });
   };
@@ -148,10 +176,8 @@ function TbmNewInner() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "AI 오류");
       const r = data.result;
-      // formRef에 저장
       Object.keys(r).forEach(k => setF(k, r[k]));
-      setAiResult(r);
-      setAiKey(k => k + 1); // input 리렌더링 트리거
+      setAiResult(r); setAiKey(k => k + 1);
     } catch (e: any) { alert(e.message || "AI 생성 오류"); }
     finally { setAiLoading(false); }
   };
@@ -180,17 +206,32 @@ function TbmNewInner() {
     setLoading(true);
     try {
       const signatureData = canvasRef.current?.toDataURL("image/png")||"";
-      const res = await fetch("/api/tbm", {
-        method: "POST", headers: { "Content-Type": "application/json" },
+      const url = editId ? `/api/tbm/${editId}` : "/api/tbm";
+      const method = editId ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method, headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...f, cctvUsed, taskId, signatureData, workerCount: parseInt(f.workerCount)||0, newWorkerCount: parseInt(f.newWorkerCount)||0 }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      alert("TBM 보고서가 제출됩니다.");
+      alert(editId ? "TBM 보고서가 수정되었습니다." : "TBM 보고서가 제출되었습니다.");
       router.push("/tbm");
     } catch (e: any) { alert(e.message||"오류가 발생했습니다."); }
     finally { setLoading(false); }
   };
+
+  const bandOptions = taskCategory === "용역"
+    ? ["전체","1반","2반","3반","4반","5반"]
+    : taskCategory === "자체진단"
+    ? ["전체","1반","2반","3반","4반","5반","6반","7반","8반","9반","10반"]
+    : [];
+
+  const filteredTasks = tasks.filter(t => {
+    if (!taskCategory) return true;
+    if (taskCategory === "용역" && !taskBand) return true;
+    if (taskCategory === "자체진단" && !taskBand) return true;
+    return true; // 실제로는 task에 band 컬럼 없으므로 전체 표시
+  });
 
   const inputCls = "w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white";
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -212,11 +253,11 @@ function TbmNewInner() {
         <button onClick={() => router.back()} className="text-gray-400">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <h1 className="text-base font-bold text-gray-900">TBM 보고서 작성</h1>
+        <h1 className="text-base font-bold text-gray-900">{editId ? "TBM 보고서 수정" : "TBM 보고서 작성"}</h1>
       </div>
 
       <div className="p-4 space-y-4 pb-32">
-        <Section title="📋 기본정보">
+        <Section title="기본정보">
           <div className="grid grid-cols-3 gap-2">
             <Field label="교육 일자" required>
               <input type="date" defaultValue={formRef.current.reportDate} onChange={e => setF("reportDate", e.target.value)} className={inputCls} />
@@ -228,22 +269,44 @@ function TbmNewInner() {
               <input type="time" defaultValue={formRef.current.eduEndTime} onChange={e => setF("eduEndTime", e.target.value)} className={inputCls} />
             </Field>
           </div>
+
           <Field label="용역명 / 자체진단명">
-            {!customProjectName ? (
-              <div className="space-y-2">
-                <select defaultValue="" onChange={e => setF("projectName", e.target.value)} className={inputCls}>
-                  <option value="">-- 선택해주세요 --</option>
-                  {tasks.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                </select>
-                <button onClick={() => setCustomProjectName(true)} className="text-xs text-blue-500 underline">직접 입력</button>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                {(["", "용역", "자체진단"] as const).map(cat => (
+                  <button key={cat} type="button" onClick={() => { setTaskCategory(cat); setTaskBand(""); }}
+                    className={`flex-1 py-2 rounded-xl text-xs font-medium border-2 ${taskCategory === cat ? "border-blue-500 bg-blue-50 text-blue-600" : "border-gray-200 text-gray-500"}`}>
+                    {cat || "전체"}
+                  </button>
+                ))}
               </div>
-            ) : (
-              <div className="space-y-2">
-                <input defaultValue={formRef.current.projectName} onChange={e => setF("projectName", e.target.value)} className={inputCls} placeholder="용역명 또는 자체진단명 입력" />
-                <button onClick={() => setCustomProjectName(false)} className="text-xs text-blue-500 underline">목록에서 선택</button>
-              </div>
-            )}
+              {taskCategory && (
+                <div className="flex gap-1.5 flex-wrap">
+                  {bandOptions.map(b => (
+                    <button key={b} type="button" onClick={() => setTaskBand(b)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${taskBand === b ? "border-blue-500 bg-blue-50 text-blue-600" : "border-gray-200 text-gray-500"}`}>
+                      {b}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {!customProjectName ? (
+                <div className="space-y-1.5">
+                  <select defaultValue="" onChange={e => setF("projectName", e.target.value)} className={inputCls}>
+                    <option value="">-- 선택해주세요 --</option>
+                    {filteredTasks.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                  </select>
+                  <button onClick={() => setCustomProjectName(true)} className="text-xs text-blue-500 underline">직접 입력</button>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <input defaultValue={formRef.current.projectName} onChange={e => setF("projectName", e.target.value)} className={inputCls} placeholder="용역명 또는 자체진단명 입력" />
+                  <button onClick={() => setCustomProjectName(false)} className="text-xs text-blue-500 underline">목록에서 선택</button>
+                </div>
+              )}
+            </div>
           </Field>
+
           <Field label="시공사명" required>
             <input defaultValue={formRef.current.contractorName} onChange={e => setF("contractorName", e.target.value)} className={inputCls} placeholder="시공사명" />
           </Field>
@@ -252,30 +315,30 @@ function TbmNewInner() {
           </Field>
         </Section>
 
-        <Section title="🏗️ 작업정보">
+        <Section title="작업정보">
           <Field label="금일작업">
             <textarea defaultValue={formRef.current.workToday} onChange={e => setF("workToday", e.target.value)} className={inputCls} rows={3} placeholder="금일 작업내용" />
           </Field>
           <Field label="실제 작업주소">
             <div className="space-y-2">
               <input defaultValue={formRef.current.workAddress} onChange={e => { setF("workAddress", e.target.value); setWorkAddressDisplay(e.target.value); }} className={inputCls} placeholder="주소 직접 입력 또는 지도 선택" />
-              <button onClick={handleOpenMap} className="w-full py-2.5 rounded-xl border-2 border-blue-200 text-blue-600 text-sm font-medium flex items-center justify-center gap-2 hover:bg-blue-50">
-                🗺️ 지도에서 위치 선택
-              </button>
-              {hasLocation && <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">✅ {workAddressDisplay}</p>}
+              <div className="flex gap-2">
+                <button onClick={handleOpenMap} className="flex-1 py-2.5 rounded-xl border-2 border-blue-200 text-blue-600 text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-blue-50">
+                  지도에서 위치 선택
+                </button>
+                <button onClick={handleGps} className="px-4 py-2.5 rounded-xl border-2 border-green-200 text-green-600 text-sm font-medium flex items-center gap-1.5 hover:bg-green-50">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+                  GPS
+                </button>
+              </div>
+              {hasLocation && <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">{workAddressDisplay}</p>}
             </div>
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="투입인원(명)">
-              <input type="number" min="0" defaultValue="0" onChange={e => setF("workerCount", e.target.value)} className={inputCls} />
-            </Field>
-            <Field label="신규근로자(명)">
-              <input type="number" min="0" defaultValue="0" onChange={e => setF("newWorkerCount", e.target.value)} className={inputCls} />
-            </Field>
+            <Field label="투입인원(명)"><input type="number" min="0" defaultValue="0" onChange={e => setF("workerCount", e.target.value)} className={inputCls} /></Field>
+            <Field label="신규근로자(명)"><input type="number" min="0" defaultValue="0" onChange={e => setF("newWorkerCount", e.target.value)} className={inputCls} /></Field>
           </div>
-          <Field label="투입장비">
-            <input defaultValue={formRef.current.equipment} onChange={e => setF("equipment", e.target.value)} className={inputCls} placeholder="투입장비 목록" />
-          </Field>
+          <Field label="투입장비"><input defaultValue={formRef.current.equipment} onChange={e => setF("equipment", e.target.value)} className={inputCls} placeholder="투입장비 목록" /></Field>
           <Field label="위험공종">
             <select defaultValue="해당없음" onChange={e => setF("riskType", e.target.value)} className={inputCls}>
               {RISK_TYPES.map(t => <option key={t}>{t}</option>)}
@@ -293,14 +356,12 @@ function TbmNewInner() {
           </Field>
         </Section>
 
-        <Section title="⚠️ 위험요인 및 대책">
+        <Section title="위험요인 및 대책">
           <button onClick={handleAiGenerate} disabled={aiLoading}
             className="w-full py-3 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
-            style={{ background: aiLoading?"#6b7280":"linear-gradient(135deg, #7c3aed, #2563eb)" }}>
-            {aiLoading ? <><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>AI 분석 중...</> : <>✨ AI 위험요인·대책 자동 생성</>}
+            style={{ background: aiLoading?"#6b7280":"linear-gradient(135deg,#7c3aed,#2563eb)" }}>
+            {aiLoading ? <><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>AI 분석 중...</> : <>AI 위험요인·대책 자동 생성</>}
           </button>
-          <p className="text-xs text-gray-400 text-center">작업내용, 주소, 시설물, 위험공종 입력 후 클릭</p>
-
           {([1,2,3] as const).map(n => (
             <div key={n} className="bg-gray-50 rounded-xl p-3 space-y-2">
               <p className="text-xs font-semibold text-gray-600">잠재위험요인 {n}</p>
@@ -309,7 +370,7 @@ function TbmNewInner() {
             </div>
           ))}
           <div className="bg-amber-50 rounded-xl p-3 space-y-2 border border-amber-200">
-            <p className="text-xs font-semibold text-amber-700">⭐ 중점위험요인</p>
+            <p className="text-xs font-semibold text-amber-700">중점위험요인</p>
             <input key={`mrf-${aiKey}`} defaultValue={aiResult.mainRiskFactor||""} onChange={e => setF("mainRiskFactor", e.target.value)} className={inputCls} placeholder="중점위험요인" />
             <input key={`mrm-${aiKey}`} defaultValue={aiResult.mainRiskMeasure||""} onChange={e => setF("mainRiskMeasure", e.target.value)} className={inputCls} placeholder="중점위험요인 대책" />
           </div>
@@ -321,24 +382,16 @@ function TbmNewInner() {
           </div>
         </Section>
 
-        <Section title="📝 기타사항">
+        <Section title="기타사항">
           <Field label="기타사항 (교육내용, 제안제도, 아차사고 등)">
             <textarea defaultValue={formRef.current.otherContent} onChange={e => setF("otherContent", e.target.value)} className={inputCls} rows={4} placeholder="위험성평가 내용 전달 등" />
           </Field>
         </Section>
 
-        <Section title="✍️ 교육담당자">
+        <Section title="교육담당자">
           <div className="grid grid-cols-2 gap-3">
-            <Field label="성함" required>
-              <input defaultValue={formRef.current.instructorName} onChange={e => setF("instructorName", e.target.value)} className={inputCls} placeholder="교육담당자 이름" />
-            </Field>
-            <Field label="연락처">
-              <input defaultValue={formRef.current.instructorPhone} onChange={e => {
-                const v = e.target.value.replace(/\D/g,"");
-                const f = v.length<=3?v:v.length<=7?v.slice(0,3)+"-"+v.slice(3):v.slice(0,3)+"-"+v.slice(3,7)+"-"+v.slice(7,11);
-                setF("instructorPhone", f);
-              }} className={inputCls} placeholder="010-0000-0000" maxLength={13} />
-            </Field>
+            <Field label="성함" required><input defaultValue={formRef.current.instructorName} onChange={e => setF("instructorName", e.target.value)} className={inputCls} placeholder="교육담당자 이름" /></Field>
+            <Field label="연락처"><input defaultValue={formRef.current.instructorPhone} onChange={e => { const v=e.target.value.replace(/\D/g,""); const f=v.length<=3?v:v.length<=7?v.slice(0,3)+"-"+v.slice(3):v.slice(0,3)+"-"+v.slice(3,7)+"-"+v.slice(7,11); setF("instructorPhone",f); }} className={inputCls} placeholder="010-0000-0000" maxLength={13} /></Field>
           </div>
           <Field label="서명">
             <div className="border-2 border-gray-200 rounded-2xl overflow-hidden bg-white relative" style={{ touchAction:"none" }}>
@@ -362,10 +415,11 @@ function TbmNewInner() {
             </button>
           </div>
           <div className="bg-white px-4 py-2 flex gap-2 border-b border-gray-100">
-            <button onClick={handleAddressSearch} className="flex-1 py-2 rounded-xl bg-blue-50 text-blue-600 text-sm font-medium">🔍 주소 검색</button>
-            <button onClick={() => setShowMap(false)} className="flex-1 py-2 rounded-xl bg-green-50 text-green-600 text-sm font-medium">✅ 선택 완료</button>
+            <button onClick={handleAddressSearch} className="flex-1 py-2 rounded-xl bg-blue-50 text-blue-600 text-sm font-medium">주소 검색</button>
+            <button onClick={handleGps} className="px-4 py-2 rounded-xl bg-green-50 text-green-600 text-sm font-medium">GPS</button>
+            <button onClick={() => setShowMap(false)} className="flex-1 py-2 rounded-xl bg-green-50 text-green-600 text-sm font-medium">선택 완료</button>
           </div>
-          {workAddressDisplay && <div className="bg-white px-4 py-2 text-xs text-gray-600 border-b border-gray-100">📍 {workAddressDisplay}</div>}
+          {workAddressDisplay && <div className="bg-white px-4 py-2 text-xs text-gray-600 border-b border-gray-100">{workAddressDisplay}</div>}
           <div ref={mapRef} className="flex-1" style={{ minHeight:"400px" }}>
             {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-50"><p className="text-sm text-gray-400">지도 로딩 중...</p></div>}
           </div>
@@ -377,7 +431,7 @@ function TbmNewInner() {
         <button onClick={handleSubmit} disabled={loading}
           className="w-full py-3.5 rounded-xl text-white font-medium text-sm disabled:opacity-50"
           style={{ background:"#2563eb" }}>
-          {loading ? "제출 중..." : "✅ TBM 보고서 제출"}
+          {loading ? "제출 중..." : editId ? "수정 완료" : "TBM 보고서 제출"}
         </button>
       </div>
     </div>
