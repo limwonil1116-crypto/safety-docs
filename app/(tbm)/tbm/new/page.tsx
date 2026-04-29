@@ -15,11 +15,7 @@ function TbmNewInner() {
   const editId = searchParams.get("editId");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
-  const mapRef = useRef<HTMLDivElement>(null);
-  const markerRef = useRef<any>(null);
-  const mapObjRef = useRef<any>(null);
 
-  const [mapLoaded, setMapLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
@@ -77,79 +73,7 @@ function TbmNewInner() {
   }, [editId]);
 
   // 카카오맵 로드
-  const loadKakaoMap = useCallback(() => {
-    const initMap = () => {
-      if (!mapRef.current) return;
-      window.kakao.maps.load(() => {
-        const center = new window.kakao.maps.LatLng(36.5, 127.5);
-        const map = new window.kakao.maps.Map(mapRef.current, { center, level: 7 });
-        mapObjRef.current = map;
-        const marker = new window.kakao.maps.Marker({ position: center, map });
-        markerRef.current = marker;
-        const geocoder = new window.kakao.maps.services.Geocoder();
-        window.kakao.maps.event.addListener(map, "click", (e: any) => {
-          const lat = e.latLng.getLat(), lng = e.latLng.getLng();
-          marker.setPosition(e.latLng);
-          setF("workLatitude", String(lat)); setF("workLongitude", String(lng));
-          geocoder.coord2Address(lng, lat, (result: any, status: any) => {
-            if (status === window.kakao.maps.services.Status.OK) {
-              const addr = result[0].road_address?.address_name || result[0].address.address_name;
-              setF("workAddress", addr); setWorkAddressDisplay(addr); setHasLocation(true);
-            }
-          });
-        });
-      });
-    };
-    if (window.kakao?.maps?.services) { initMap(); return; }
-    if (window.kakao?.maps) { initMap(); return; }
-    const existing = document.getElementById("kakao-map-script");
-    if (existing) { const check = setInterval(() => { if (window.kakao?.maps) { clearInterval(check); initMap(); } }, 200); return; }
-    const script = document.createElement("script");
-    script.id = "kakao-map-script";
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false&libraries=services`;
-    script.onload = initMap;
-    document.head.appendChild(script);
-  }, []);
 
-  // 지도는 컴포넌트 마운트 시 자동 로드
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      loadKakaoMap();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [loadKakaoMap]);
-
-  // GPS 내 위치
-  const handleGps = () => {
-    if (!navigator.geolocation) { alert("이 브라우저는 GPS를 지원하지 않습니다."); return; }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude, lng = pos.coords.longitude;
-        setF("workLatitude", String(lat)); setF("workLongitude", String(lng));
-        if (mapObjRef.current) {
-          const latlng = new window.kakao.maps.LatLng(lat, lng);
-          mapObjRef.current.setCenter(latlng);
-          mapObjRef.current.setLevel(4);
-          markerRef.current?.setPosition(latlng);
-        }
-        if (window.kakao?.maps?.services) {
-          const geocoder = new window.kakao.maps.services.Geocoder();
-          geocoder.coord2Address(lng, lat, (result: any, status: any) => {
-            if (status === window.kakao.maps.services.Status.OK) {
-              const addr = result[0].road_address?.address_name || result[0].address.address_name;
-              setF("workAddress", addr); setWorkAddressDisplay(addr); setHasLocation(true);
-            }
-          });
-        } else {
-          setWorkAddressDisplay(`${lat.toFixed(5)}, ${lng.toFixed(5)}`); setHasLocation(true);
-        }
-      },
-      () => alert("GPS 위치를 가져오지 못했습니다. 위치 권한을 허용해주세요."),
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  };
-
-  const handleAddressSearch = () => {
     if (!mapObjRef.current) return;
     const keyword = prompt("주소를 입력하세요:");
     if (!keyword) return;
@@ -327,15 +251,12 @@ function TbmNewInner() {
           </Field>
           <Field label="실제 작업주소">
             <div className="space-y-2">
-              <input defaultValue={formRef.current.workAddress} onChange={e => { setF("workAddress", e.target.value); setWorkAddressDisplay(e.target.value); }} className={inputCls} placeholder="주소 직접 입력 또는 지도에서 선택" />
-              <button onClick={handleGps} className="w-full py-2 rounded-xl border border-green-200 text-green-600 text-xs font-medium flex items-center justify-center gap-1.5 hover:bg-green-50">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-                내 위치 GPS로 자동입력
+              <input defaultValue={formRef.current.workAddress} onChange={e => { setF("workAddress", e.target.value); setWorkAddressDisplay(e.target.value); }} className={inputCls} placeholder="주소 직접 입력" />
+              <button onClick={() => setShowLocationPicker(true)}
+                className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium ${hasLocation ? "border-blue-400 bg-blue-50 text-blue-600" : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"}`}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                {hasLocation ? workAddressDisplay || "위치 선택됨" : "지도에서 위치 선택 (GPS 자동설정)"}
               </button>
-              <div ref={mapRef} className="rounded-xl overflow-hidden border border-gray-200" style={{ height: "200px" }}>
-                {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-50"><p className="text-xs text-gray-400">지도 로딩 중...</p></div>}
-              </div>
-              <p className="text-xs text-gray-400 text-center">지도를 클릭하면 위치가 선택됩니다</p>
             </div>
           </Field>
           <div className="grid grid-cols-2 gap-3">
@@ -412,6 +333,22 @@ function TbmNewInner() {
 
       
 
+      {showLocationPicker && (
+        <LocationPickerModal
+          initialAddress={formRef.current.workAddress}
+          initialLat={formRef.current.workLatitude ? parseFloat(formRef.current.workLatitude) : null}
+          initialLng={formRef.current.workLongitude ? parseFloat(formRef.current.workLongitude) : null}
+          onConfirm={(addr, lat, lng) => {
+            setF("workAddress", addr);
+            setF("workLatitude", String(lat));
+            setF("workLongitude", String(lng));
+            setWorkAddressDisplay(addr);
+            setHasLocation(true);
+            setShowLocationPicker(false);
+          }}
+          onClose={() => setShowLocationPicker(false)}
+        />
+      )}
       <div className="fixed bottom-16 left-0 right-0 px-4 py-3 bg-white border-t border-gray-200">
         <button onClick={handleSubmit} disabled={loading}
           className="w-full py-3.5 rounded-xl text-white font-medium text-sm disabled:opacity-50"
@@ -422,6 +359,146 @@ function TbmNewInner() {
     </div>
   );
 }
+
+function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm, onClose }: {
+  initialAddress: string; initialLat: number | null; initialLng: number | null;
+  onConfirm: (address: string, lat: number, lng: number) => void; onClose: () => void;
+}) {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markerRef = useRef<any>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [address, setAddress] = useState(initialAddress);
+  const [lat, setLat] = useState<number | null>(initialLat);
+  const [lng, setLng] = useState<number | null>(initialLng);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  // ✅ 클로저 문제 해결: setAddress를 ref로 저장
+  const setAddressRef = useRef(setAddress);
+  const setLatRef = useRef(setLat);
+  const setLngRef = useRef(setLng);
+  useEffect(() => { setAddressRef.current = setAddress; setLatRef.current = setLat; setLngRef.current = setLng; });
+
+  useEffect(() => {
+    const initMap = () => { window.kakao.maps.load(() => setMapLoaded(true)); };
+    if (window.kakao?.maps?.services) { setMapLoaded(true); return; }
+    if (window.kakao?.maps) { initMap(); return; }
+    const existing = document.getElementById("kakao-map-script");
+    if (existing) { const check = setInterval(() => { if (window.kakao?.maps?.services) { setMapLoaded(true); clearInterval(check); } else if (window.kakao?.maps) { initMap(); clearInterval(check); } }, 200); return; }
+    const script = document.createElement("script");
+    script.id = "kakao-map-script";
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false&libraries=services`;
+    script.onload = initMap; document.head.appendChild(script);
+  }, []);
+
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current || !window.kakao?.maps) return;
+    // ✅ 1번: GPS 없을 때 기본 위치를 대한민국 중심(서울)으로, GPS 응답 후 이동
+    const defaultLat = lat ?? 36.5, defaultLng = lng ?? 127.5;
+    const center = new window.kakao.maps.LatLng(defaultLat, defaultLng);
+    const map = new window.kakao.maps.Map(mapRef.current, { center, level: lat ? 5 : 13 });
+    mapInstanceRef.current = map;
+    const marker = new window.kakao.maps.Marker({ position: center, map });
+    markerRef.current = marker;
+    if (!initialLat && !initialLng && navigator.geolocation) {
+      setGpsLoading(true);
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const gLat = pos.coords.latitude; const gLng = pos.coords.longitude;
+        setLat(gLat); setLng(gLng);
+        const ll = new window.kakao.maps.LatLng(gLat, gLng);
+        map.setCenter(ll); map.setLevel(3); marker.setPosition(ll); // GPS 위치 확대
+        if (window.kakao.maps.services) {
+          const geocoder = new window.kakao.maps.services.Geocoder();
+          geocoder.coord2Address(gLng, gLat, (result: any, status: any) => {
+            if (status === window.kakao.maps.services.Status.OK) {
+              const addr = result[0].road_address
+                ? result[0].road_address.address_name
+                : result[0].address.address_name;
+              setAddressRef.current(addr);
+            }
+          });
+        }
+        setGpsLoading(false);
+      }, (err) => { setGpsLoading(false); console.warn("GPS 실패:", err.message); }, { timeout: 8000, enableHighAccuracy: true });
+    }
+    window.kakao.maps.event.addListener(map, "click", (mouseEvent: any) => {
+      const latlng = mouseEvent.latLng; marker.setPosition(latlng);
+      const newLat = latlng.getLat(); const newLng = latlng.getLng();
+      // ✅ ref 사용으로 클로저 문제 해결
+      setLatRef.current(newLat); setLngRef.current(newLng);
+      if (!window.kakao.maps.services) { return; }
+      const geocoder = new window.kakao.maps.services.Geocoder();
+      geocoder.coord2Address(newLng, newLat, (result: any, status: any) => {
+        if (status === window.kakao.maps.services.Status.OK) {
+          const addr = result[0].road_address
+            ? result[0].road_address.address_name
+            : result[0].address.address_name;
+          // ✅ ref로 최신 setter 호출 → 상단 input 주소 업데이트
+          setAddressRef.current(addr);
+        }
+      });
+    });
+  }, [mapLoaded]);
+
+  const handleAddressSearch = () => {
+    const load = () => { new window.daum.Postcode({ oncomplete: (data: any) => {
+      const addr = data.roadAddress || data.jibunAddress; setAddress(addr);
+      const gc = new window.kakao.maps.services.Geocoder();
+      gc.addressSearch(addr, (result: any, status: any) => {
+        if (status === window.kakao.maps.services.Status.OK) {
+          const nLat = parseFloat(result[0].y); const nLng = parseFloat(result[0].x);
+          setLat(nLat); setLng(nLng);
+          const ll = new window.kakao.maps.LatLng(nLat, nLng);
+          mapInstanceRef.current?.setCenter(ll); markerRef.current?.setPosition(ll);
+        }
+      });
+    }}).open(); };
+    if (window.daum?.Postcode) load();
+    else { const s = document.createElement("script"); s.src = "//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"; s.onload = load; document.head.appendChild(s); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+      <div className="bg-white w-full rounded-t-3xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+          <h2 className="text-base font-bold text-gray-900">작업 위치 지정</h2>
+          <button onClick={onClose} className="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div className="p-5 pb-28 space-y-4">
+          <div className="flex gap-2">
+            <input type="text" value={address} readOnly className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-700" />
+            <button onClick={handleAddressSearch} className="px-4 py-2.5 rounded-xl text-white text-sm font-medium" style={{ background: "#2563eb" }}>주소 검색</button>
+          </div>
+          {gpsLoading && (
+            <div className="bg-blue-50 rounded-xl px-3 py-2 text-xs text-blue-600 flex items-center gap-2">
+              <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              현재 위치를 가져오는 중...
+            </div>
+          )}
+          <div className="rounded-2xl overflow-hidden border border-gray-200">
+            <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 text-xs text-gray-500">📍 지도를 탭하면 위치 지정 · 마커 위에 주소가 표시됩니다</div>
+            <div ref={mapRef} style={{ width: "100%", height: "280px" }}>
+              {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-50"><p className="text-sm text-gray-400">지도 로딩 중...</p></div>}
+            </div>
+          </div>
+          {lat && lng && address && !address.match(/^[0-9]/) && (
+            <div className="bg-gray-50 rounded-xl px-3 py-2 text-xs text-gray-900 font-medium flex items-center gap-2 border border-gray-200">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              {address}
+            </div>
+          )}
+          <button onClick={() => { if (lat && lng) onConfirm(address, lat, lng); }} disabled={!lat || !lng}
+            className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-40" style={{ background: "#2563eb" }}>
+            ✓ 위치로 설정
+          </button>
+          <div className="h-4" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// 사용자 선택 모달 (감시인/측정담당자 지정용)
 
 export default function TbmNewPage() {
   return (
