@@ -128,7 +128,7 @@ export default function SelectPage() {
           <div className="relative z-10 flex items-center justify-center"
             style={{ width: 80, height: 80 }}>
             <img src="/logo.png" alt="로고"
-              style={{ width: 80, height: 80, objectFit: "contain" }} />
+              style={{ width: 80, height: 80, objectFit: "contain", mixBlendMode: "screen", background: "transparent" }} />
           </div>
         </div>
 
