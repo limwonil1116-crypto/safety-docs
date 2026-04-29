@@ -11,8 +11,10 @@ export async function GET(req: NextRequest) {
     if (!session?.user) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
     const { searchParams } = new URL(req.url);
     const taskId = searchParams.get("taskId");
+    const dateFilter = searchParams.get("date");
     const conditions: any[] = [];
     if (taskId) conditions.push(eq(tbmReports.taskId, taskId));
+    if (dateFilter) conditions.push(eq(tbmReports.reportDate, dateFilter));
     const list = await db.select().from(tbmReports)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(tbmReports.reportDate), desc(tbmReports.createdAt));

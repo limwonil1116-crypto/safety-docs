@@ -465,6 +465,7 @@ export const tbmReports = pgTable("tbm_reports", {
   instructorName: varchar("instructor_name", { length: 100 }),
   instructorPhone: varchar("instructor_phone", { length: 30 }),
   signatureData: text("signature_data"),
+  region: varchar("region", { length: 50 }),
   photoUrl: text("photo_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),

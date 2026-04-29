@@ -28,6 +28,11 @@ export default function TbmPage() {
           <h1 className="text-lg font-bold text-gray-900">TBM 보고서</h1>
           <p className="text-xs text-gray-500 mt-0.5">일일 안전교육 보고</p>
         </div>
+        <button onClick={() => router.push("/tbm/overview")}
+          className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-blue-600 text-sm font-medium border border-blue-200 mr-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          관제
+        </button>
         <button onClick={() => router.push("/tbm/new")}
           className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-white text-sm font-medium"
           style={{ background: "#2563eb" }}>
@@ -55,7 +60,12 @@ export default function TbmPage() {
               </svg>
             </div>
             <p className="text-gray-500 text-sm">등록된 TBM 보고서가 없습니다.</p>
-            <button onClick={() => router.push("/tbm/new")}
+            <button onClick={() => router.push("/tbm/overview")}
+          className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-blue-600 text-sm font-medium border border-blue-200 mr-2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          관제
+        </button>
+        <button onClick={() => router.push("/tbm/new")}
               className="mt-4 px-6 py-2.5 rounded-xl text-white text-sm font-medium"
               style={{ background: "#2563eb" }}>
               첫 TBM 작성하기
