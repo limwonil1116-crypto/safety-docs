@@ -59,9 +59,12 @@ export async function POST(req: NextRequest) {
 
     let result;
     try {
-      result = JSON.parse(clean);
+      // JSON 블록만 추출 (thinking 모드 대응)
+      const jsonMatch = clean.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("JSON not found");
+      result = JSON.parse(jsonMatch[0]);
     } catch {
-      console.error("JSON parse error:", clean);
+      console.error("JSON parse error:", text.substring(0, 500));
       return NextResponse.json({ error: "AI 응답 파싱 오류" }, { status: 500 });
     }
 
