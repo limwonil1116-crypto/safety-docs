@@ -18,7 +18,7 @@ function TbmNewInner() {
   const mapRef = useRef<HTMLDivElement>(null);
   const markerRef = useRef<any>(null);
   const mapObjRef = useRef<any>(null);
-  const [showMap, setShowMap] = useState(false);
+
   const [mapLoaded, setMapLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -111,38 +111,13 @@ function TbmNewInner() {
     document.head.appendChild(script);
   }, []);
 
-  const handleOpenMap = () => {
-    setShowMap(true);
-    setTimeout(() => {
+  // 지도는 컴포넌트 마운트 시 자동 로드
+  useEffect(() => {
+    const timer = setTimeout(() => {
       loadKakaoMap();
-      // GPS 자동 실행
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            const lat = pos.coords.latitude, lng = pos.coords.longitude;
-            setF("workLatitude", String(lat)); setF("workLongitude", String(lng));
-            const tryMove = () => {
-              if (mapObjRef.current && markerRef.current && window.kakao?.maps?.services) {
-                const latlng = new window.kakao.maps.LatLng(lat, lng);
-                mapObjRef.current.setCenter(latlng);
-                mapObjRef.current.setLevel(4);
-                markerRef.current.setPosition(latlng);
-                const geocoder = new window.kakao.maps.services.Geocoder();
-                geocoder.coord2Address(lng, lat, (result: any, status: any) => {
-                  if (status === window.kakao.maps.services.Status.OK) {
-                    const addr = result[0].road_address?.address_name || result[0].address.address_name;
-                    setF("workAddress", addr); setWorkAddressDisplay(addr); setHasLocation(true);
-                  }
-                });
-              } else { setTimeout(tryMove, 300); }
-            };
-            tryMove();
-          },
-          () => {}, { enableHighAccuracy: true, timeout: 10000 }
-        );
-      }
-    }, 100);
-  };
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [loadKakaoMap]);
 
   // GPS 내 위치
   const handleGps = () => {
@@ -352,33 +327,15 @@ function TbmNewInner() {
           </Field>
           <Field label="실제 작업주소">
             <div className="space-y-2">
-              <input defaultValue={formRef.current.workAddress} onChange={e => { setF("workAddress", e.target.value); setWorkAddressDisplay(e.target.value); }} className={inputCls} placeholder="주소 직접 입력 또는 지도 선택" />
-              <div className="flex gap-2">
-                <button onClick={handleOpenMap} className="flex-1 py-2.5 rounded-xl border-2 border-blue-200 text-blue-600 text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-blue-50">
-                  지도에서 위치 선택
-                </button>
-                <button onClick={handleGps} className="px-4 py-2.5 rounded-xl border-2 border-green-200 text-green-600 text-sm font-medium flex items-center gap-1.5 hover:bg-green-50">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-                  GPS
-                </button>
+              <input defaultValue={formRef.current.workAddress} onChange={e => { setF("workAddress", e.target.value); setWorkAddressDisplay(e.target.value); }} className={inputCls} placeholder="주소 직접 입력 또는 지도에서 선택" />
+              <button onClick={handleGps} className="w-full py-2 rounded-xl border border-green-200 text-green-600 text-xs font-medium flex items-center justify-center gap-1.5 hover:bg-green-50">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+                내 위치 GPS로 자동입력
+              </button>
+              <div ref={mapRef} className="rounded-xl overflow-hidden border border-gray-200" style={{ height: "200px" }}>
+                {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-50"><p className="text-xs text-gray-400">지도 로딩 중...</p></div>}
               </div>
-              {hasLocation && (
-                <div className="space-y-2">
-                  <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2 flex items-center gap-1">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                    {workAddressDisplay}
-                  </p>
-                  {formRef.current.workLatitude && (
-                    <div className="rounded-xl overflow-hidden border border-gray-200" style={{ height: "160px" }}>
-                      <iframe
-                        src={`https://map.kakao.com/link/map/선택위치,${formRef.current.workLatitude},${formRef.current.workLongitude}`}
-                        className="w-full h-full border-0"
-                        title="선택위치"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
+              <p className="text-xs text-gray-400 text-center">지도를 클릭하면 위치가 선택됩니다</p>
             </div>
           </Field>
           <div className="grid grid-cols-2 gap-3">
@@ -453,26 +410,7 @@ function TbmNewInner() {
         </Section>
       </div>
 
-      {showMap && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex flex-col">
-          <div className="bg-white px-4 py-3 flex items-center justify-between">
-            <h2 className="text-base font-bold text-gray-900">위치 선택</h2>
-            <button onClick={() => setShowMap(false)} className="text-gray-400">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-          <div className="bg-white px-4 py-2 flex gap-2 border-b border-gray-100">
-            <button onClick={handleAddressSearch} className="flex-1 py-2 rounded-xl bg-blue-50 text-blue-600 text-sm font-medium">주소 검색</button>
-            <button onClick={handleGps} className="px-4 py-2 rounded-xl bg-green-50 text-green-600 text-sm font-medium">GPS</button>
-            <button onClick={() => setShowMap(false)} className="flex-1 py-2 rounded-xl bg-green-50 text-green-600 text-sm font-medium">선택 완료</button>
-          </div>
-          {workAddressDisplay && <div className="bg-white px-4 py-2 text-xs text-gray-600 border-b border-gray-100">{workAddressDisplay}</div>}
-          <div ref={mapRef} className="flex-1" style={{ minHeight:"400px" }}>
-            {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-50"><p className="text-sm text-gray-400">지도 로딩 중...</p></div>}
-          </div>
-          <p className="bg-white text-center text-xs text-gray-400 py-2">지도를 클릭하면 위치가 선택됩니다</p>
-        </div>
-      )}
+      
 
       <div className="fixed bottom-16 left-0 right-0 px-4 py-3 bg-white border-t border-gray-200">
         <button onClick={handleSubmit} disabled={loading}
