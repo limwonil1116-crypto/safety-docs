@@ -4,6 +4,14 @@ import { useState, useEffect, useRef } from "react";
 declare global { interface Window { kakao: any; } }
 
 const REGIONS = [
+  { name: "서울", lat: 37.5665, lng: 126.9780 },
+  { name: "부산", lat: 35.1796, lng: 129.0756 },
+  { name: "대구", lat: 35.8714, lng: 128.6014 },
+  { name: "인천", lat: 37.4563, lng: 126.7052 },
+  { name: "광주", lat: 35.1595, lng: 126.8526 },
+  { name: "대전", lat: 36.3504, lng: 127.3845 },
+  { name: "울산", lat: 35.5384, lng: 129.3114 },
+  { name: "세종", lat: 36.4800, lng: 127.2890 },
   { name: "경기", lat: 37.4138, lng: 127.5183 },
   { name: "강원", lat: 37.8228, lng: 128.1555 },
   { name: "충북", lat: 36.6357, lng: 127.4912 },

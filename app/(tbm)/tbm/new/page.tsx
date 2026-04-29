@@ -78,7 +78,7 @@ function TbmNewInner() {
       window.kakao.maps.load(() => {
         setMapLoaded(true);
         const center = new window.kakao.maps.LatLng(36.5, 127.5);
-        const map = new window.kakao.maps.Map(mapRef.current, { center, level: 13 });
+        const map = new window.kakao.maps.Map(mapRef.current, { center, level: 7 });
         mapObjRef.current = map;
         const marker = new window.kakao.maps.Marker({ position: center, map });
         markerRef.current = marker;
