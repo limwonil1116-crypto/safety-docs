@@ -111,7 +111,38 @@ function TbmNewInner() {
     document.head.appendChild(script);
   }, []);
 
-  const handleOpenMap = () => { setShowMap(true); setTimeout(loadKakaoMap, 100); };
+  const handleOpenMap = () => {
+    setShowMap(true);
+    setTimeout(() => {
+      loadKakaoMap();
+      // GPS 자동 실행
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const lat = pos.coords.latitude, lng = pos.coords.longitude;
+            setF("workLatitude", String(lat)); setF("workLongitude", String(lng));
+            const tryMove = () => {
+              if (mapObjRef.current && markerRef.current && window.kakao?.maps?.services) {
+                const latlng = new window.kakao.maps.LatLng(lat, lng);
+                mapObjRef.current.setCenter(latlng);
+                mapObjRef.current.setLevel(4);
+                markerRef.current.setPosition(latlng);
+                const geocoder = new window.kakao.maps.services.Geocoder();
+                geocoder.coord2Address(lng, lat, (result: any, status: any) => {
+                  if (status === window.kakao.maps.services.Status.OK) {
+                    const addr = result[0].road_address?.address_name || result[0].address.address_name;
+                    setF("workAddress", addr); setWorkAddressDisplay(addr); setHasLocation(true);
+                  }
+                });
+              } else { setTimeout(tryMove, 300); }
+            };
+            tryMove();
+          },
+          () => {}, { enableHighAccuracy: true, timeout: 10000 }
+        );
+      }
+    }, 100);
+  };
 
   // GPS 내 위치
   const handleGps = () => {
@@ -331,7 +362,23 @@ function TbmNewInner() {
                   GPS
                 </button>
               </div>
-              {hasLocation && <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">{workAddressDisplay}</p>}
+              {hasLocation && (
+                <div className="space-y-2">
+                  <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2 flex items-center gap-1">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    {workAddressDisplay}
+                  </p>
+                  {formRef.current.workLatitude && (
+                    <div className="rounded-xl overflow-hidden border border-gray-200" style={{ height: "160px" }}>
+                      <iframe
+                        src={`https://map.kakao.com/link/map/선택위치,${formRef.current.workLatitude},${formRef.current.workLongitude}`}
+                        className="w-full h-full border-0"
+                        title="선택위치"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </Field>
           <div className="grid grid-cols-2 gap-3">
