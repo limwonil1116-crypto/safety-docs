@@ -29,13 +29,14 @@ const REGIONS = [
 interface TbmReport {
   id: string; reportDate: string; contractorName: string; workToday: string;
   workerCount: number; newWorkerCount: number; instructorName: string;
-  headquarters: string; branch: string; projectName: string; facilityName: string;
-  workAddress: string; equipment: string; riskType: string; cctvUsed: boolean;
-  eduStartTime: string; eduEndTime: string; region: string; createdAt: string;
+  headquarters: string; projectName: string; facilityName: string;
+  workAddress: string; workLatitude: string; workLongitude: string;
+  equipment: string; riskType: string; cctvUsed: boolean;
+  eduStartTime: string; eduEndTime: string; region: string;
+  taskType: string; band: string;
   riskFactor1: string; riskMeasure1: string; riskFactor2: string; riskMeasure2: string;
   riskFactor3: string; riskMeasure3: string; mainRiskFactor: string; mainRiskMeasure: string;
-  riskElement1: string; riskElement2: string; riskElement3: string;
-  otherContent: string; instructorPhone: string; signatureData: string;
+  otherContent: string; instructorPhone: string; signatureData: string; createdAt: string;
 }
 
 interface RegionStat {
@@ -95,12 +96,14 @@ export default function TbmOverviewPage() {
     setDate(d.toISOString().split("T")[0]);
   };
 
+  // 지도 초기화
   useEffect(() => {
     const initMap = () => {
       if (!mapRef.current) return;
       window.kakao.maps.load(() => {
-        const center = new window.kakao.maps.LatLng(36.5, 127.8);
-        const map = new window.kakao.maps.Map(mapRef.current, { center, level: 8 });
+        // 전국이 보이도록 레벨 13
+        const center = new window.kakao.maps.LatLng(36.2, 127.8);
+        const map = new window.kakao.maps.Map(mapRef.current, { center, level: 13 });
         mapObjRef.current = map;
         setMapLoaded(true);
       });
@@ -115,39 +118,69 @@ export default function TbmOverviewPage() {
     document.head.appendChild(script);
   }, []);
 
+  // 마커 업데이트
   useEffect(() => {
     if (!mapLoaded || !mapObjRef.current) return;
     overlaysRef.current.forEach(o => o.setMap(null));
     overlaysRef.current = [];
     regionStats.forEach(region => {
       const pos = new window.kakao.maps.LatLng(region.lat, region.lng);
-      const color = region.count >= 5 ? "#dc2626" : region.count >= 3 ? "#d97706" : region.count > 0 ? "#2563eb" : "#9ca3af";
+      const color = region.count >= 5 ? "#dc2626" : region.count >= 3 ? "#d97706" : region.count > 0 ? "#2563eb" : "#d1d5db";
       const div = document.createElement("div");
-      div.innerHTML = `<div style="background:${color};color:white;border-radius:50%;width:44px;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;font-weight:bold;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3);border:2px solid white;"><span>${region.count}</span><span style="font-size:9px">${region.name}</span></div>`;
-      div.addEventListener("click", () => { if (region.count > 0) setSelectedRegion(region); });
+      div.innerHTML = `<div style="background:${color};color:white;border-radius:50%;width:40px;height:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;font-weight:bold;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.25);border:2px solid white;"><span>${region.count}</span><span style="font-size:8px;margin-top:-2px">${region.name}</span></div>`;
+      div.addEventListener("click", () => handleSelectRegion(region));
       const overlay = new window.kakao.maps.CustomOverlay({ position: pos, content: div, map: mapObjRef.current, zIndex: 3 });
       overlaysRef.current.push(overlay);
     });
   }, [mapLoaded, reports]);
 
-  const RF = ({ label, value }: { label: string; value?: any }) => {
+  const handleSelectRegion = (region: RegionStat) => {
+    if (region.count === 0) return;
+    setSelectedRegion(region);
+    setSelectedReport(null);
+    // 지도 해당 지역으로 이동 및 확대
+    if (mapObjRef.current) {
+      const pos = new window.kakao.maps.LatLng(region.lat, region.lng);
+      mapObjRef.current.setCenter(pos);
+      mapObjRef.current.setLevel(9);
+    }
+  };
+
+  const handleBackToAll = () => {
+    setSelectedRegion(null);
+    setSelectedReport(null);
+    // 전국뷰로 복귀
+    if (mapObjRef.current) {
+      mapObjRef.current.setCenter(new window.kakao.maps.LatLng(36.2, 127.8));
+      mapObjRef.current.setLevel(13);
+    }
+  };
+
+  const F = ({ label, value }: { label: string; value?: any }) => {
     if (!value && value !== 0) return null;
     const v = typeof value === "boolean" ? (value ? "사용중" : "사용안함") : String(value);
     return (
-      <div className="flex gap-3 py-1.5 border-b border-gray-50">
+      <div className="flex gap-2 py-1 border-b border-gray-50 last:border-0">
         <span className="text-xs text-gray-400 w-20 shrink-0">{label}</span>
-        <span className="text-xs text-gray-900 whitespace-pre-wrap">{v}</span>
+        <span className="text-xs text-gray-800 whitespace-pre-wrap">{v}</span>
       </div>
     );
   };
 
   return (
     <div className="min-h-screen" style={{ background: "#f0f4f8" }}>
+      {/* 헤더 */}
       <div className="bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2">
           <h1 className="text-base font-bold text-gray-900">TBM 현황 관제</h1>
+          {selectedRegion && (
+            <button onClick={handleBackToAll} className="text-xs text-blue-500 flex items-center gap-1">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+              전체보기
+            </button>
+          )}
         </div>
-        <div className="flex items-center justify-center gap-3 mb-2">
+        <div className="flex items-center justify-center gap-3">
           <button onClick={() => moveDate(-1)} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
@@ -159,20 +192,23 @@ export default function TbmOverviewPage() {
         </div>
       </div>
 
-      <div ref={mapRef} style={{ height: "240px" }}>
+      {/* 지도 */}
+      <div ref={mapRef} style={{ height: "260px" }}>
         {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-100"><p className="text-sm text-gray-400">지도 로딩 중...</p></div>}
       </div>
 
-      <div className="p-4">
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100">
-            <h2 className="text-sm font-bold text-gray-900">지역별 TBM 현황</h2>
-          </div>
-          <div className="overflow-x-auto">
+      {/* 선택된 지역 없음 - 전체 통계 테이블 */}
+      {!selectedRegion && (
+        <div className="p-4">
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="text-sm font-bold text-gray-900">지역별 TBM 현황</h2>
+              <span className="text-xs text-gray-400">지역 클릭 시 상세보기</span>
+            </div>
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="text-left px-2 py-2 text-gray-600 font-semibold">지역</th>
+                  <th className="text-left px-3 py-2 text-gray-600 font-semibold">지역</th>
                   <th className="text-center px-2 py-2 text-gray-600 font-semibold">TBM</th>
                   <th className="text-center px-2 py-2 text-gray-600 font-semibold">투입</th>
                   <th className="text-center px-2 py-2 text-gray-600 font-semibold">신규</th>
@@ -182,7 +218,7 @@ export default function TbmOverviewPage() {
               </thead>
               <tbody>
                 <tr className="border-b-2 border-blue-100 bg-blue-50 font-bold">
-                  <td className="px-2 py-2 text-blue-700">총계</td>
+                  <td className="px-3 py-2 text-blue-700">총계</td>
                   <td className="px-2 py-2 text-center text-blue-700">{totalCount}</td>
                   <td className="px-2 py-2 text-center text-blue-700">{totalWorkers}</td>
                   <td className="px-2 py-2 text-center text-blue-700">{totalNewWorkers}</td>
@@ -191,9 +227,9 @@ export default function TbmOverviewPage() {
                 </tr>
                 {regionStats.map(r => (
                   <tr key={r.name}
-                    className={`border-b border-gray-50 cursor-pointer ${selectedRegion?.name === r.name ? "bg-blue-50" : "hover:bg-gray-50"}`}
-                    onClick={() => setSelectedRegion(r.count > 0 ? r : null)}>
-                    <td className="px-2 py-2 font-medium text-gray-900">{r.name}</td>
+                    className={`border-b border-gray-50 cursor-pointer hover:bg-gray-50 ${r.count === 0 ? "opacity-40" : ""}`}
+                    onClick={() => handleSelectRegion(r)}>
+                    <td className="px-3 py-2 font-medium text-gray-900">{r.name}</td>
                     <td className="px-2 py-2 text-center">
                       {r.count > 0 ? <span className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 font-bold">{r.count}</span> : <span className="text-gray-300">-</span>}
                     </td>
@@ -207,115 +243,116 @@ export default function TbmOverviewPage() {
             </table>
           </div>
         </div>
-      </div>
+      )}
 
+      {/* 선택된 지역 - TBM 상세 리스트 */}
       {selectedRegion && !selectedReport && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-end">
-          <div className="bg-white w-full rounded-t-3xl max-h-[65vh] overflow-y-auto">
-            <div className="px-4 py-3 flex items-center justify-between border-b border-gray-100 sticky top-0 bg-white">
-              <div>
-                <h2 className="text-base font-bold text-gray-900">{selectedRegion.name} TBM</h2>
-                <p className="text-xs text-gray-500">{date} &middot; {selectedRegion.count}건 &middot; {selectedRegion.workerCount}명</p>
-              </div>
-              <button onClick={() => setSelectedRegion(null)} className="text-gray-400 p-2">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
-            </div>
-            <div className="p-4 pb-24 space-y-3">
-              {selectedRegion.reports.map(r => (
-                <div key={r.id} onClick={() => setSelectedReport(r)}
-                  className="bg-gray-50 rounded-2xl p-4 border border-gray-100 cursor-pointer active:opacity-80">
-                  <div className="flex items-start justify-between mb-1.5">
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">{r.contractorName || "시공사 미입력"}</p>
-                      <p className="text-xs text-gray-500">{r.facilityName || r.projectName || ""}</p>
-                    </div>
-                    <div className="flex gap-1 flex-wrap justify-end">
-                      {r.cctvUsed && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600">CCTV</span>}
-                      {HIGH_RISK_TYPES.includes(r.riskType) && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-500">고위험</span>}
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600">{r.workerCount}명</span>
-                    </div>
-                  </div>
-                  {r.workToday && <p className="text-xs text-gray-700 line-clamp-1 mb-1">{r.workToday}</p>}
-                  {r.workAddress && <p className="text-xs text-gray-400">{r.workAddress}</p>}
-                  <p className="text-[10px] text-blue-500 mt-1.5">터치하면 상세보기 &rarr;</p>
-                </div>
-              ))}
-            </div>
+        <div className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-gray-900">{selectedRegion.name} TBM 보고서</h2>
+            <span className="text-xs text-gray-500">{selectedRegion.count}건 · {selectedRegion.workerCount}명</span>
           </div>
+          <div className="grid grid-cols-4 gap-2">
+            {[
+              { label: "TBM", value: selectedRegion.count, color: "blue" },
+              { label: "투입", value: selectedRegion.workerCount, color: "green" },
+              { label: "고위험", value: selectedRegion.highRiskCount, color: "red" },
+              { label: "CCTV", value: selectedRegion.cctvCount, color: "purple" },
+            ].map(({ label, value, color }) => (
+              <div key={label} className={`bg-${color}-50 rounded-xl p-2 text-center`}>
+                <p className={`text-lg font-bold text-${color}-600`}>{value}</p>
+                <p className={`text-[10px] text-${color}-500`}>{label}</p>
+              </div>
+            ))}
+          </div>
+          {selectedRegion.reports.length === 0 ? (
+            <p className="text-center text-gray-400 py-8 text-sm">TBM 보고서가 없습니다.</p>
+          ) : selectedRegion.reports.map(r => (
+            <div key={r.id} onClick={() => setSelectedReport(r)}
+              className="bg-white rounded-2xl p-4 shadow-sm cursor-pointer active:opacity-80">
+              <div className="flex items-start justify-between mb-2">
+                <div>
+                  <p className="text-sm font-bold text-gray-900">{r.contractorName || "시공사 미입력"}</p>
+                  <p className="text-xs text-gray-500">{r.facilityName || r.projectName || ""}</p>
+                </div>
+                <div className="flex gap-1 flex-wrap justify-end">
+                  {r.cctvUsed && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600">CCTV</span>}
+                  {HIGH_RISK_TYPES.includes(r.riskType) && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-500">고위험</span>}
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600">{r.workerCount}명</span>
+                </div>
+              </div>
+              {r.workToday && <p className="text-xs text-gray-700 line-clamp-2 mb-1">{r.workToday}</p>}
+              {r.workAddress && <p className="text-xs text-gray-400">{r.workAddress}</p>}
+              <div className="flex items-center gap-2 mt-1.5">
+                {r.taskType && <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${r.taskType==="용역"?"bg-purple-50 text-purple-600":"bg-orange-50 text-orange-600"}`}>{r.taskType}{r.band&&r.band!=="전체"?" "+r.band:""}</span>}
+                <span className="text-[10px] text-blue-500">터치하면 상세보기 →</span>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
+      {/* 보고서 상세 */}
       {selectedReport && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-end">
-          <div className="bg-white w-full rounded-t-3xl max-h-[85vh] overflow-y-auto">
-            <div className="px-4 py-3 flex items-center justify-between border-b border-gray-100 sticky top-0 bg-white">
-              <div className="flex items-center gap-2">
-                <button onClick={() => setSelectedReport(null)} className="text-gray-400">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
-                </button>
-                <div>
-                  <h2 className="text-sm font-bold text-gray-900">TBM 보고서</h2>
-                  <p className="text-xs text-gray-400">{selectedReport.reportDate}</p>
+        <div className="p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <button onClick={() => setSelectedReport(null)} className="flex items-center gap-1 text-blue-500 text-sm">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+              {selectedRegion?.name} 목록
+            </button>
+            <button onClick={() => router.push(`/tbm/${selectedReport.id}`)}
+              className="text-xs text-blue-500 border border-blue-200 rounded-lg px-3 py-1.5">전체보기</button>
+          </div>
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <h3 className="text-xs font-bold text-gray-500 mb-2">기본정보</h3>
+            <F label="일자" value={selectedReport.reportDate} />
+            <F label="시공사" value={selectedReport.contractorName} />
+            <F label="시설물" value={selectedReport.facilityName} />
+            <F label="사업명" value={selectedReport.projectName} />
+            <F label="유형" value={selectedReport.taskType} />
+          </div>
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <h3 className="text-xs font-bold text-gray-500 mb-2">작업정보</h3>
+            <F label="금일작업" value={selectedReport.workToday} />
+            <F label="주소" value={selectedReport.workAddress} />
+            <F label="투입인원" value={selectedReport.workerCount ? `${selectedReport.workerCount}명` : null} />
+            <F label="신규근로자" value={selectedReport.newWorkerCount ? `${selectedReport.newWorkerCount}명` : null} />
+            <F label="투입장비" value={selectedReport.equipment} />
+            <F label="위험공종" value={selectedReport.riskType} />
+            <F label="CCTV" value={selectedReport.cctvUsed} />
+          </div>
+          {(selectedReport.riskFactor1 || selectedReport.mainRiskFactor) && (
+            <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <h3 className="text-xs font-bold text-gray-500 mb-2">위험요인 및 대책</h3>
+              {[1,2,3].map(n => (selectedReport as any)[`riskFactor${n}`] && (
+                <div key={n} className="mb-2 bg-gray-50 rounded-xl p-2.5">
+                  <p className="text-[10px] font-semibold text-gray-500">잠재위험요인 {n}</p>
+                  <p className="text-xs text-gray-800">{(selectedReport as any)[`riskFactor${n}`]}</p>
+                  {(selectedReport as any)[`riskMeasure${n}`] && <p className="text-[10px] text-blue-600">→ {(selectedReport as any)[`riskMeasure${n}`]}</p>}
                 </div>
-              </div>
-              <button onClick={() => router.push(`/tbm/${selectedReport.id}`)}
-                className="text-blue-500 text-xs font-medium px-3 py-1.5 rounded-lg border border-blue-200">
-                전체보기
-              </button>
-            </div>
-            <div className="p-4 pb-24 space-y-3">
-              <div className="bg-gray-50 rounded-2xl p-4">
-                <p className="text-xs font-bold text-gray-500 mb-2">기본정보</p>
-                <RF label="교육일자" value={selectedReport.reportDate} />
-                <RF label="교육시간" value={selectedReport.eduStartTime ? `${selectedReport.eduStartTime}~${selectedReport.eduEndTime}` : null} />
-                <RF label="시공사" value={selectedReport.contractorName} />
-                <RF label="시설물" value={selectedReport.facilityName} />
-                <RF label="사업명" value={selectedReport.projectName} />
-              </div>
-              <div className="bg-gray-50 rounded-2xl p-4">
-                <p className="text-xs font-bold text-gray-500 mb-2">작업정보</p>
-                <RF label="금일작업" value={selectedReport.workToday} />
-                <RF label="주소" value={selectedReport.workAddress} />
-                <RF label="투입인원" value={selectedReport.workerCount ? `${selectedReport.workerCount}명` : null} />
-                <RF label="신규근로자" value={selectedReport.newWorkerCount ? `${selectedReport.newWorkerCount}명` : null} />
-                <RF label="투입장비" value={selectedReport.equipment} />
-                <RF label="위험공종" value={selectedReport.riskType} />
-                <RF label="CCTV" value={selectedReport.cctvUsed} />
-              </div>
-              {(selectedReport.riskFactor1 || selectedReport.mainRiskFactor) && (
-                <div className="bg-gray-50 rounded-2xl p-4">
-                  <p className="text-xs font-bold text-gray-500 mb-2">위험요인 및 대책</p>
-                  {[1,2,3].map(n => (selectedReport as any)[`riskFactor${n}`] && (
-                    <div key={n} className="mb-2 bg-white rounded-xl p-2.5 border border-gray-100">
-                      <p className="text-[10px] font-semibold text-gray-500 mb-0.5">잠재위험요인 {n}</p>
-                      <p className="text-xs text-gray-800">{(selectedReport as any)[`riskFactor${n}`]}</p>
-                      {(selectedReport as any)[`riskMeasure${n}`] && <p className="text-[10px] text-blue-600">&rarr; {(selectedReport as any)[`riskMeasure${n}`]}</p>}
-                    </div>
-                  ))}
-                  {selectedReport.mainRiskFactor && (
-                    <div className="bg-amber-50 rounded-xl p-2.5 border border-amber-100">
-                      <p className="text-[10px] font-semibold text-amber-600 mb-0.5">중점위험요인</p>
-                      <p className="text-xs text-gray-800">{selectedReport.mainRiskFactor}</p>
-                      {selectedReport.mainRiskMeasure && <p className="text-[10px] text-amber-600">&rarr; {selectedReport.mainRiskMeasure}</p>}
-                    </div>
-                  )}
+              ))}
+              {selectedReport.mainRiskFactor && (
+                <div className="bg-amber-50 rounded-xl p-2.5 border border-amber-100">
+                  <p className="text-[10px] font-semibold text-amber-600">중점위험요인</p>
+                  <p className="text-xs text-gray-800">{selectedReport.mainRiskFactor}</p>
+                  {selectedReport.mainRiskMeasure && <p className="text-[10px] text-amber-600">→ {selectedReport.mainRiskMeasure}</p>}
                 </div>
               )}
-              {selectedReport.otherContent && (
-                <div className="bg-gray-50 rounded-2xl p-4">
-                  <p className="text-xs font-bold text-gray-500 mb-2">기타사항</p>
-                  <p className="text-xs text-gray-800 whitespace-pre-wrap">{selectedReport.otherContent}</p>
-                </div>
-              )}
-              <div className="bg-gray-50 rounded-2xl p-4">
-                <p className="text-xs font-bold text-gray-500 mb-2">교육담당자</p>
-                <p className="text-xs text-gray-800">{selectedReport.instructorName} {selectedReport.instructorPhone}</p>
-                {selectedReport.signatureData && (
-                  <img src={selectedReport.signatureData} alt="서명" className="h-12 mt-2 border border-gray-200 rounded-lg bg-white" />
-                )}
-              </div>
             </div>
+          )}
+          {selectedReport.otherContent && (
+            <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <h3 className="text-xs font-bold text-gray-500 mb-2">기타사항</h3>
+              <p className="text-xs text-gray-800 whitespace-pre-wrap">{selectedReport.otherContent}</p>
+            </div>
+          )}
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <h3 className="text-xs font-bold text-gray-500 mb-2">교육담당자</h3>
+            <F label="성함" value={selectedReport.instructorName} />
+            <F label="연락처" value={selectedReport.instructorPhone} />
+            {selectedReport.signatureData && (
+              <img src={selectedReport.signatureData} alt="서명" className="h-12 mt-2 border border-gray-200 rounded-lg bg-white" />
+            )}
           </div>
         </div>
       )}
