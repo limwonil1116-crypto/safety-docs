@@ -66,6 +66,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ tb
       instructorPhone: body.instructorPhone,
       signatureData: body.signatureData,
       photoUrl: body.photoUrl,
+      taskType: body.taskType || null,
+      band: body.band || null,
+      region: body.region || null,
       updatedAt: new Date(),
     }).where(eq(tbmReports.id, tbmId)).returning();
     return NextResponse.json({ tbmReport: report });

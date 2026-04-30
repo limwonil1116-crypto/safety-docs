@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
       branch: body.branch,
       projectName: body.projectName,
       projectType: body.projectType,
+      facilityName: body.facilityName,
       contractorName: body.contractorName,
       workToday: body.workToday,
       workAddress: body.workAddress,
@@ -66,6 +67,9 @@ export async function POST(req: NextRequest) {
       instructorPhone: body.instructorPhone,
       signatureData: body.signatureData,
       photoUrl: body.photoUrl,
+      taskType: body.taskType || null,
+      band: body.band || null,
+      region: body.region || null,
     }).returning();
     return NextResponse.json({ tbmReport: report });
   } catch (e) {

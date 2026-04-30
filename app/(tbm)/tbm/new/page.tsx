@@ -145,7 +145,6 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
 }
 
 
-// 사용자 선택 모달 (감시인/측정담당자 지정용)
 
 function TbmNewInner() {
   const router = useRouter();
@@ -169,6 +168,8 @@ function TbmNewInner() {
   const [photoUrl, setPhotoUrl] = useState("");
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  // ✅ 수정 시 기존값 복원을 위한 formKey - 데이터 로드 후 리렌더링
+  const [formKey, setFormKey] = useState(0);
 
   const formRef = useRef({
     reportDate: new Date().toISOString().split("T")[0],
@@ -193,11 +194,19 @@ function TbmNewInner() {
     if (editId) {
       fetch(`/api/tbm/${editId}`).then(r => r.json()).then(d => {
         const r = d.tbmReport; if (!r) return;
-        Object.keys(formRef.current).forEach(k => { if (r[k] !== undefined) setF(k, r[k]); });
+        // ✅ formRef에 기존값 복사
+        Object.keys(formRef.current).forEach(k => {
+          if (r[k] !== undefined && r[k] !== null) setF(k, String(r[k]));
+        });
+        // ✅ UI state도 동기화
         setWorkAddressDisplay(r.workAddress || "");
         setHasLocation(!!r.workLatitude);
         setCctvUsed(r.cctvUsed || false);
         if (r.photoUrl) setPhotoUrl(r.photoUrl);
+        if (r.taskType) setTaskCategory(r.taskType as "" | "용역" | "자체진단");
+        if (r.band) setTaskBand(r.band);
+        // ✅ formKey 증가 → defaultValue 기반 input 리렌더링
+        setFormKey(k => k + 1);
       }).catch(() => {});
     }
   }, [editId]);
@@ -259,7 +268,9 @@ function TbmNewInner() {
         </button>
         <h1 className="text-base font-bold text-gray-900">{editId ? "TBM 보고서 수정" : "TBM 보고서 작성"}</h1>
       </div>
-      <div className="p-4 space-y-4 pb-32">
+
+      {/* ✅ formKey로 전체 폼 리렌더링 → defaultValue 반영 */}
+      <div key={formKey} className="p-4 space-y-4 pb-32">
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3 pb-2 border-b border-gray-100">기본정보</h3>
           <div className="space-y-3">
@@ -272,13 +283,28 @@ function TbmNewInner() {
               <div className="space-y-2">
                 <div className="flex gap-2">{(["", "용역", "자체진단"] as const).map(cat => (<button key={cat} type="button" onClick={() => { setTaskCategory(cat); setTaskBand(""); setF("taskType", cat); setF("band", ""); }} className={`flex-1 py-2 rounded-xl text-xs font-medium border-2 ${taskCategory===cat?"border-blue-500 bg-blue-50 text-blue-600":"border-gray-200 text-gray-500"}`}>{cat||"전체"}</button>))}</div>
                 {taskCategory && <div className="flex gap-1.5 flex-wrap">{bandOptions.map(b => (<button key={b} type="button" onClick={() => { setTaskBand(b); setF("band", b); }} className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${taskBand===b?"border-blue-500 bg-blue-50 text-blue-600":"border-gray-200 text-gray-500"}`}>{b}</button>))}</div>}
-                {!customProjectName ? (<div className="space-y-1.5"><select defaultValue="" onChange={e => setF("projectName", e.target.value)} className={inputCls}><option value="">-- 선택해주세요 --</option>{filteredTasks.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}</select><button onClick={() => setCustomProjectName(true)} className="text-xs text-blue-500 underline">직접 입력</button></div>) : (<div className="space-y-1.5"><input defaultValue={formRef.current.projectName} onChange={e => setF("projectName", e.target.value)} className={inputCls} placeholder="용역명 또는 자체진단명 입력" /><button onClick={() => setCustomProjectName(false)} className="text-xs text-blue-500 underline">목록에서 선택</button></div>)}
+                {!customProjectName ? (
+                  <div className="space-y-1.5">
+                    <select defaultValue={formRef.current.projectName} onChange={e => setF("projectName", e.target.value)} className={inputCls}>
+                      <option value="">-- 선택해주세요 --</option>
+                      {filteredTasks.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                    </select>
+                    <button onClick={() => setCustomProjectName(true)} className="text-xs text-blue-500 underline">직접 입력</button>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {/* ✅ 직접입력 시 taskType 이미 버튼에서 setF로 저장됨 */}
+                    <input defaultValue={formRef.current.projectName} onChange={e => setF("projectName", e.target.value)} className={inputCls} placeholder="용역명 또는 자체진단명 입력" />
+                    <button onClick={() => setCustomProjectName(false)} className="text-xs text-blue-500 underline">목록에서 선택</button>
+                  </div>
+                )}
               </div>
             </div>
             <div><label className="block text-xs font-medium text-gray-600 mb-1.5">시공사명 <span className="text-red-500">*</span></label><input defaultValue={formRef.current.contractorName} onChange={e => setF("contractorName", e.target.value)} className={inputCls} placeholder="시공사명" /></div>
             <div><label className="block text-xs font-medium text-gray-600 mb-1.5">시설물명</label><input defaultValue={formRef.current.facilityName} onChange={e => setF("facilityName", e.target.value)} className={inputCls} placeholder="예: 예당저수지 복통" /></div>
           </div>
         </div>
+
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3 pb-2 border-b border-gray-100">작업정보</h3>
           <div className="space-y-3">
@@ -289,25 +315,50 @@ function TbmNewInner() {
                 <button onClick={() => setShowLocationPicker(true)} className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium ${hasLocation?"border-blue-400 bg-blue-50 text-blue-600":"border-gray-300 bg-white text-gray-600 hover:bg-gray-50"}`}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>{hasLocation ? workAddressDisplay||"위치 선택됨" : "지도에서 위치 선택 (GPS 자동설정)"}</button>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3"><div><label className="block text-xs font-medium text-gray-600 mb-1.5">투입인원(명)</label><input type="number" min="0" defaultValue="0" onChange={e => setF("workerCount", e.target.value)} className={inputCls} /></div><div><label className="block text-xs font-medium text-gray-600 mb-1.5">신규근로자(명)</label><input type="number" min="0" defaultValue="0" onChange={e => setF("newWorkerCount", e.target.value)} className={inputCls} /></div></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="block text-xs font-medium text-gray-600 mb-1.5">투입인원(명)</label><input type="number" min="0" defaultValue={formRef.current.workerCount} onChange={e => setF("workerCount", e.target.value)} className={inputCls} /></div>
+              <div><label className="block text-xs font-medium text-gray-600 mb-1.5">신규근로자(명)</label><input type="number" min="0" defaultValue={formRef.current.newWorkerCount} onChange={e => setF("newWorkerCount", e.target.value)} className={inputCls} /></div>
+            </div>
             <div><label className="block text-xs font-medium text-gray-600 mb-1.5">투입장비</label><input defaultValue={formRef.current.equipment} onChange={e => setF("equipment", e.target.value)} className={inputCls} placeholder="투입장비 목록" /></div>
-            <div><label className="block text-xs font-medium text-gray-600 mb-1.5">위험공종</label><select defaultValue="해당없음" onChange={e => setF("riskType", e.target.value)} className={inputCls}>{RISK_TYPES.map(t => <option key={t}>{t}</option>)}</select></div>
+            <div><label className="block text-xs font-medium text-gray-600 mb-1.5">위험공종</label>
+              <select defaultValue={formRef.current.riskType} onChange={e => setF("riskType", e.target.value)} className={inputCls}>
+                {RISK_TYPES.map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
             <div><label className="block text-xs font-medium text-gray-600 mb-1.5">CCTV 사용여부</label><div className="flex gap-3">{["사용중","사용안함"].map(v => (<button key={v} type="button" onClick={() => { setCctvUsed(v==="사용중"); setF("cctvUsed", v==="사용중"); }} className={`flex-1 py-2.5 rounded-xl text-sm font-medium border-2 ${(cctvUsed?"사용중":"사용안함")===v?"border-blue-500 bg-blue-50 text-blue-600":"border-gray-200 text-gray-500"}`}>{v}</button>))}</div></div>
           </div>
         </div>
+
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3 pb-2 border-b border-gray-100">위험요인 및 대책</h3>
           <div className="space-y-3">
             <button onClick={handleAiGenerate} disabled={aiLoading} className="w-full py-3 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50" style={{ background: aiLoading?"#6b7280":"linear-gradient(135deg,#7c3aed,#2563eb)" }}>{aiLoading ? <><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>AI 분석 중...</> : <>AI 위험요인·대책 자동 생성</>}</button>
-            {([1,2,3] as const).map(n => (<div key={n} className="bg-gray-50 rounded-xl p-3 space-y-2"><p className="text-xs font-semibold text-gray-600">잠재위험요인 {n}</p><input key={`rf${n}-${aiKey}`} defaultValue={aiResult[`riskFactor${n}`]||""} onChange={e => setF(`riskFactor${n}`, e.target.value)} className={inputCls} placeholder={`위험요인 ${n}`} /><input key={`rm${n}-${aiKey}`} defaultValue={aiResult[`riskMeasure${n}`]||""} onChange={e => setF(`riskMeasure${n}`, e.target.value)} className={inputCls} placeholder={`대책 ${n}`} /></div>))}
-            <div className="bg-amber-50 rounded-xl p-3 space-y-2 border border-amber-200"><p className="text-xs font-semibold text-amber-700">중점위험요인</p><input key={`mrf-${aiKey}`} defaultValue={aiResult.mainRiskFactor||""} onChange={e => setF("mainRiskFactor", e.target.value)} className={inputCls} placeholder="중점위험요인" /><input key={`mrm-${aiKey}`} defaultValue={aiResult.mainRiskMeasure||""} onChange={e => setF("mainRiskMeasure", e.target.value)} className={inputCls} placeholder="중점위험요인 대책" /></div>
-            <div className="space-y-2"><p className="text-xs font-semibold text-gray-600">잠재위험요소</p>{([1,2,3] as const).map(n => (<input key={`re${n}-${aiKey}`} defaultValue={aiResult[`riskElement${n}`]||""} onChange={e => setF(`riskElement${n}`, e.target.value)} className={inputCls} placeholder={`잠재위험요소 ${n}`} />))}</div>
+            {([1,2,3] as const).map(n => (
+              <div key={n} className="bg-gray-50 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-semibold text-gray-600">잠재위험요인 {n}</p>
+                <input key={`rf${n}-${aiKey}`} defaultValue={aiResult[`riskFactor${n}`]||(formRef.current as any)[`riskFactor${n}`]||""} onChange={e => setF(`riskFactor${n}`, e.target.value)} className={inputCls} placeholder={`위험요인 ${n}`} />
+                <input key={`rm${n}-${aiKey}`} defaultValue={aiResult[`riskMeasure${n}`]||(formRef.current as any)[`riskMeasure${n}`]||""} onChange={e => setF(`riskMeasure${n}`, e.target.value)} className={inputCls} placeholder={`대책 ${n}`} />
+              </div>
+            ))}
+            <div className="bg-amber-50 rounded-xl p-3 space-y-2 border border-amber-200">
+              <p className="text-xs font-semibold text-amber-700">중점위험요인</p>
+              <input key={`mrf-${aiKey}`} defaultValue={aiResult.mainRiskFactor||formRef.current.mainRiskFactor||""} onChange={e => setF("mainRiskFactor", e.target.value)} className={inputCls} placeholder="중점위험요인" />
+              <input key={`mrm-${aiKey}`} defaultValue={aiResult.mainRiskMeasure||formRef.current.mainRiskMeasure||""} onChange={e => setF("mainRiskMeasure", e.target.value)} className={inputCls} placeholder="중점위험요인 대책" />
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-gray-600">잠재위험요소</p>
+              {([1,2,3] as const).map(n => (
+                <input key={`re${n}-${aiKey}`} defaultValue={aiResult[`riskElement${n}`]||(formRef.current as any)[`riskElement${n}`]||""} onChange={e => setF(`riskElement${n}`, e.target.value)} className={inputCls} placeholder={`잠재위험요소 ${n}`} />
+              ))}
+            </div>
           </div>
         </div>
+
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3 pb-2 border-b border-gray-100">기타사항</h3>
-          <div><label className="block text-xs font-medium text-gray-600 mb-1.5">기타사항 (교육내용, 제안제도, 아차사고 등)</label><textarea defaultValue={formRef.current.otherContent} onChange={e => setF("otherContent", e.target.value)} className={inputCls} rows={4} placeholder="위험성평가 내용 전달 등" /></div>
+          <textarea defaultValue={formRef.current.otherContent} onChange={e => setF("otherContent", e.target.value)} className={inputCls} rows={4} placeholder="위험성평가 내용 전달 등" />
         </div>
+
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3 pb-2 border-b border-gray-100">TBM 실시사진</h3>
           <input ref={photoInputRef} type="file" accept="image/*" className="hidden"
@@ -327,10 +378,7 @@ function TbmNewInner() {
           {photoUrl ? (
             <div className="relative">
               <img src={photoUrl} alt="교육사진" className="w-full rounded-xl object-cover max-h-48" />
-              <button onClick={() => setPhotoUrl("")}
-                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center text-xs">
-                ✕
-              </button>
+              <button onClick={() => setPhotoUrl("")} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center text-xs">✕</button>
             </div>
           ) : (
             <button onClick={() => photoInputRef.current?.click()} disabled={photoUploading}
@@ -343,10 +391,14 @@ function TbmNewInner() {
             </button>
           )}
         </div>
+
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3 pb-2 border-b border-gray-100">교육담당자</h3>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3"><div><label className="block text-xs font-medium text-gray-600 mb-1.5">성함 <span className="text-red-500">*</span></label><input defaultValue={formRef.current.instructorName} onChange={e => setF("instructorName", e.target.value)} className={inputCls} placeholder="교육담당자 이름" /></div><div><label className="block text-xs font-medium text-gray-600 mb-1.5">연락처</label><input defaultValue={formRef.current.instructorPhone} onChange={e => { const v=e.target.value.replace(/\D/g,""); const f=v.length<=3?v:v.length<=7?v.slice(0,3)+"-"+v.slice(3):v.slice(0,3)+"-"+v.slice(3,7)+"-"+v.slice(7,11); setF("instructorPhone",f); }} className={inputCls} placeholder="010-0000-0000" maxLength={13} /></div></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="block text-xs font-medium text-gray-600 mb-1.5">성함 <span className="text-red-500">*</span></label><input defaultValue={formRef.current.instructorName} onChange={e => setF("instructorName", e.target.value)} className={inputCls} placeholder="교육담당자 이름" /></div>
+              <div><label className="block text-xs font-medium text-gray-600 mb-1.5">연락처</label><input defaultValue={formRef.current.instructorPhone} onChange={e => { const v=e.target.value.replace(/\D/g,""); const f=v.length<=3?v:v.length<=7?v.slice(0,3)+"-"+v.slice(3):v.slice(0,3)+"-"+v.slice(3,7)+"-"+v.slice(7,11); setF("instructorPhone",f); }} className={inputCls} placeholder="010-0000-0000" maxLength={13} /></div>
+            </div>
             <div><label className="block text-xs font-medium text-gray-600 mb-1.5">서명</label>
               <div className="border-2 border-gray-200 rounded-2xl overflow-hidden bg-white relative" style={{ touchAction:"none" }}>
                 <div className="absolute top-2 left-3 text-xs text-gray-300 pointer-events-none">아래에 서명해주세요</div>
@@ -357,6 +409,7 @@ function TbmNewInner() {
           </div>
         </div>
       </div>
+
       {showLocationPicker && (
         <LocationPickerModal
           initialAddress={formRef.current.workAddress}

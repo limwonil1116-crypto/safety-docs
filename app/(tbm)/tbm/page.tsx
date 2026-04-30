@@ -18,13 +18,25 @@ export default function TbmPage() {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [taskFilter, setTaskFilter] = useState<"" | "용역" | "자체진단">("");
+  const [highRiskOnly, setHighRiskOnly] = useState(false);
+  const [date, setDate] = useState(""); // 빈 문자열 = 전체 날짜
 
-  useEffect(() => {
-    fetch("/api/tbm").then(r => r.json()).then(d => {
-      setReports(d.tbmReports ?? []);
+  const loadReports = (d: string) => {
+    setLoading(true);
+    const url = d ? `/api/tbm?date=${d}` : "/api/tbm";
+    fetch(url).then(r => r.json()).then(data => {
+      setReports(data.tbmReports ?? []);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadReports(date); }, [date]);
+
+  const moveDate = (days: number) => {
+    const base = date || new Date().toISOString().split("T")[0];
+    const d = new Date(base); d.setDate(d.getDate() + days);
+    setDate(d.toISOString().split("T")[0]);
+  };
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -42,12 +54,17 @@ export default function TbmPage() {
     setMenuOpen(null);
   };
 
-  const filteredReports = taskFilter ? reports.filter(r => r.taskType === taskFilter) : reports;
-  const highRiskCount = filteredReports.filter(r => HIGH_RISK_TYPES.includes(r.riskType)).length;
+  const filtered = reports.filter(r => {
+    if (taskFilter && r.taskType !== taskFilter) return false;
+    if (highRiskOnly && !HIGH_RISK_TYPES.includes(r.riskType)) return false;
+    return true;
+  });
+  const highRiskCount = filtered.filter(r => HIGH_RISK_TYPES.includes(r.riskType)).length;
 
   return (
     <div className="min-h-screen" style={{ background: "#f0f4f8" }}>
       <div className="px-4 pt-4 pb-3 bg-white border-b border-gray-100">
+        {/* 헤더 */}
         <div className="flex items-center justify-between mb-3">
           <div>
             <h1 className="text-lg font-bold text-gray-900">TBM 보고서</h1>
@@ -68,27 +85,43 @@ export default function TbmPage() {
           </div>
         </div>
 
-        {/* 필터 드롭박스 */}
-        <div className="flex gap-2 mb-2">
+        {/* 날짜 네비 */}
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <button onClick={() => moveDate(-1)} className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <input type="date" value={date} onChange={e => setDate(e.target.value)}
+            className="text-sm text-gray-700 border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <button onClick={() => moveDate(1)} className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          {date && <button onClick={() => setDate("")} className="text-xs text-blue-500 underline">전체</button>}
+        </div>
+
+        {/* 필터 버튼 */}
+        <div className="flex gap-2 mb-2 flex-wrap">
           {(["", "용역", "자체진단"] as const).map(f => (
             <button key={f} onClick={() => setTaskFilter(f)}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium border transition-colors ${taskFilter === f ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-300 hover:border-blue-400"}`}>
+              className={`px-4 py-1.5 rounded-full text-xs font-medium border transition-colors ${taskFilter === f ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-300"}`}>
               {f || "전체"}
             </button>
           ))}
         </div>
 
+        {/* 통계 */}
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-blue-50 rounded-xl p-2.5 text-center">
-            <p className="text-xl font-bold text-blue-600">{filteredReports.length}</p>
+            <p className="text-xl font-bold text-blue-600">{filtered.length}</p>
             <p className="text-xs text-blue-500">전체</p>
           </div>
-          <div className="bg-red-50 rounded-xl p-2.5 text-center">
-            <p className="text-xl font-bold text-red-500">{highRiskCount}</p>
-            <p className="text-xs text-red-400">고위험공종</p>
+          {/* ✅ 고위험 클릭 시 필터 토글 */}
+          <div onClick={() => setHighRiskOnly(v => !v)}
+            className={`rounded-xl p-2.5 text-center cursor-pointer transition-colors ${highRiskOnly ? "bg-red-500 shadow-md" : "bg-red-50"}`}>
+            <p className={`text-xl font-bold ${highRiskOnly ? "text-white" : "text-red-500"}`}>{highRiskCount}</p>
+            <p className={`text-xs ${highRiskOnly ? "text-red-100 font-bold" : "text-red-400"}`}>고위험{highRiskOnly ? " ●" : ""}</p>
           </div>
           <div className="bg-green-50 rounded-xl p-2.5 text-center">
-            <p className="text-xl font-bold text-green-600">{filteredReports.reduce((s,r) => s+(r.workerCount||0), 0)}</p>
+            <p className="text-xl font-bold text-green-600">{filtered.reduce((s,r) => s+(r.workerCount||0), 0)}</p>
             <p className="text-xs text-green-500">투입인원</p>
           </div>
         </div>
@@ -102,12 +135,15 @@ export default function TbmPage() {
               <div className="h-3 bg-gray-100 rounded w-2/3"/>
             </div>
           ))
-        ) : filteredReports.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-gray-400 text-sm">해당 TBM이 없습니다.</p>
+            {!date && <button onClick={() => router.push("/tbm/new")}
+              className="mt-4 px-6 py-2.5 rounded-xl text-white text-sm font-medium"
+              style={{ background: "#2563eb" }}>첫 TBM 작성하기</button>}
           </div>
         ) : (
-          filteredReports.map(r => (
+          filtered.map(r => (
             <div key={r.id} className="relative">
               <Link href={`/tbm/${r.id}`}>
                 <div className="bg-white rounded-2xl p-4 shadow-sm active:opacity-80 pr-14">
@@ -124,7 +160,7 @@ export default function TbmPage() {
                     </div>
                     <span className="text-xs text-gray-400">{new Date(r.createdAt).toLocaleDateString("ko-KR")}</span>
                   </div>
-                  <p className="text-sm text-gray-700 font-medium mb-1">{r.contractorName || "시공사 미입력"}</p>
+                  <p className="text-sm text-gray-700 font-medium mb-1">{r.projectName || r.contractorName || "미입력"}</p>
                   {r.facilityName && <p className="text-xs text-blue-500 mb-0.5">{r.facilityName}</p>}
                   <p className="text-xs text-gray-500 line-clamp-1">{r.workToday || "작업내용 없음"}</p>
                   <div className="flex items-center gap-3 mt-2">
