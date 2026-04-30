@@ -166,6 +166,9 @@ function TbmNewInner() {
   const [cctvUsed, setCctvUsed] = useState(false);
   const [aiKey, setAiKey] = useState(0);
   const [aiResult, setAiResult] = useState<Record<string,string>>({});
+  const [photoUrl, setPhotoUrl] = useState("");
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const formRef = useRef({
     reportDate: new Date().toISOString().split("T")[0],
@@ -194,6 +197,7 @@ function TbmNewInner() {
         setWorkAddressDisplay(r.workAddress || "");
         setHasLocation(!!r.workLatitude);
         setCctvUsed(r.cctvUsed || false);
+        if (r.photoUrl) setPhotoUrl(r.photoUrl);
       }).catch(() => {});
     }
   }, [editId]);
@@ -234,7 +238,7 @@ function TbmNewInner() {
       const signatureData = canvasRef.current?.toDataURL("image/png")||"";
       const url = editId ? `/api/tbm/${editId}` : "/api/tbm";
       const method = editId ? "PATCH" : "POST";
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f, cctvUsed, taskId, signatureData, workerCount: parseInt(f.workerCount)||0, newWorkerCount: parseInt(f.newWorkerCount)||0 }) });
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f, cctvUsed, taskId, signatureData, photoUrl, workerCount: parseInt(f.workerCount)||0, newWorkerCount: parseInt(f.newWorkerCount)||0 }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       alert(editId ? "TBM 보고서가 수정되었습니다." : "TBM 보고서가 제출되었습니다.");
@@ -303,6 +307,41 @@ function TbmNewInner() {
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3 pb-2 border-b border-gray-100">기타사항</h3>
           <div><label className="block text-xs font-medium text-gray-600 mb-1.5">기타사항 (교육내용, 제안제도, 아차사고 등)</label><textarea defaultValue={formRef.current.otherContent} onChange={e => setF("otherContent", e.target.value)} className={inputCls} rows={4} placeholder="위험성평가 내용 전달 등" /></div>
+        </div>
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="text-sm font-bold text-gray-900 mb-3 pb-2 border-b border-gray-100">TBM 실시사진</h3>
+          <input ref={photoInputRef} type="file" accept="image/*" className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0]; if (!file) return;
+              setPhotoUploading(true);
+              try {
+                const fd = new FormData(); fd.append("file", file);
+                const res = await fetch("/api/upload", { method: "POST", body: fd });
+                const data = await res.json();
+                if (data.url) setPhotoUrl(data.url);
+                else alert("업로드 실패");
+              } catch { alert("업로드 오류"); }
+              finally { setPhotoUploading(false); }
+            }}
+          />
+          {photoUrl ? (
+            <div className="relative">
+              <img src={photoUrl} alt="교육사진" className="w-full rounded-xl object-cover max-h-48" />
+              <button onClick={() => setPhotoUrl("")}
+                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center text-xs">
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => photoInputRef.current?.click()} disabled={photoUploading}
+              className="w-full py-8 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center gap-2 text-gray-400 hover:border-blue-400 hover:text-blue-500 disabled:opacity-50">
+              {photoUploading ? (
+                <><svg className="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span className="text-sm">업로드 중...</span></>
+              ) : (
+                <><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span className="text-sm">사진 첨부</span><span className="text-xs">탭하여 사진을 선택하세요</span></>
+              )}
+            </button>
+          )}
         </div>
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3 pb-2 border-b border-gray-100">교육담당자</h3>

@@ -134,25 +134,68 @@ export default function TbmOverviewPage() {
     });
   }, [mapLoaded, reports]);
 
+  const markerRefs = useRef<any[]>([]);
+
+  const clearDetailMarkers = () => {
+    markerRefs.current.forEach(m => m.setMap(null));
+    markerRefs.current = [];
+  };
+
   const handleSelectRegion = (region: RegionStat) => {
     if (region.count === 0) return;
     setSelectedRegion(region);
     setSelectedReport(null);
-    // 지도 해당 지역으로 이동 및 확대
-    if (mapObjRef.current) {
-      const pos = new window.kakao.maps.LatLng(region.lat, region.lng);
-      mapObjRef.current.setCenter(pos);
-      mapObjRef.current.setLevel(9);
-    }
+    if (!mapObjRef.current) return;
+
+    // 전국 오버레이 숨기기
+    overlaysRef.current.forEach(o => o.setMap(null));
+
+    // 지역으로 이동 및 확대
+    const pos = new window.kakao.maps.LatLng(region.lat, region.lng);
+    mapObjRef.current.setCenter(pos);
+    mapObjRef.current.setLevel(9);
+
+    // 기존 상세 마커 제거
+    clearDetailMarkers();
+
+    // 해당 지역 TBM 개별 마커 표시
+    setTimeout(() => {
+      region.reports.forEach((r, i) => {
+        if (!r.workLatitude || !r.workLongitude) return;
+        const lat = parseFloat(r.workLatitude);
+        const lng = parseFloat(r.workLongitude);
+        if (isNaN(lat) || isNaN(lng)) return;
+        const mPos = new window.kakao.maps.LatLng(lat, lng);
+        const isHigh = HIGH_RISK_TYPES.includes(r.riskType);
+        const color = isHigh ? "#dc2626" : "#2563eb";
+        const div = document.createElement("div");
+        div.innerHTML = `<div style="background:${color};color:white;border-radius:20px;padding:4px 8px;font-size:10px;font-weight:bold;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.25);border:2px solid white;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;">${r.contractorName || (i+1)+"번"}</div>`;
+        div.addEventListener("click", () => setSelectedReport(r));
+        const overlay = new window.kakao.maps.CustomOverlay({ position: mPos, content: div, map: mapObjRef.current, zIndex: 5 });
+        markerRefs.current.push(overlay);
+      });
+
+      // 좌표 없는 건은 지역 중심에 하나로
+      const noCoord = region.reports.filter(r => !r.workLatitude || !r.workLongitude);
+      if (noCoord.length > 0) {
+        const div = document.createElement("div");
+        div.innerHTML = `<div style="background:#6b7280;color:white;border-radius:20px;padding:4px 8px;font-size:10px;font-weight:bold;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);border:2px solid white;">좌표없음 ${noCoord.length}건</div>`;
+        div.addEventListener("click", () => alert(noCoord.map(r=>r.contractorName).join(", ")+" - 위치 좌표가 없습니다."));
+        const overlay = new window.kakao.maps.CustomOverlay({ position: pos, content: div, map: mapObjRef.current, zIndex: 4 });
+        markerRefs.current.push(overlay);
+      }
+    }, 300);
   };
 
   const handleBackToAll = () => {
     setSelectedRegion(null);
     setSelectedReport(null);
-    // 전국뷰로 복귀
+    clearDetailMarkers();
+    // 전국뷰로 복귀 + 지역 오버레이 복원
     if (mapObjRef.current) {
       mapObjRef.current.setCenter(new window.kakao.maps.LatLng(36.2, 127.8));
       mapObjRef.current.setLevel(13);
+      overlaysRef.current.forEach(o => o.setMap(mapObjRef.current));
     }
   };
 
