@@ -181,6 +181,7 @@ function TbmNewInner() {
     mainRiskFactor: "", mainRiskMeasure: "",
     riskElement1: "", riskElement2: "", riskElement3: "",
     otherContent: "", instructorName: "", instructorPhone: "",
+    taskType: "", band: "",
   });
   const setF = (k: string, v: any) => { (formRef.current as any)[k] = v; };
 
@@ -265,8 +266,8 @@ function TbmNewInner() {
             </div>
             <div><label className="block text-xs font-medium text-gray-600 mb-1.5">용역명 / 자체진단명</label>
               <div className="space-y-2">
-                <div className="flex gap-2">{(["", "용역", "자체진단"] as const).map(cat => (<button key={cat} type="button" onClick={() => { setTaskCategory(cat); setTaskBand(""); }} className={`flex-1 py-2 rounded-xl text-xs font-medium border-2 ${taskCategory===cat?"border-blue-500 bg-blue-50 text-blue-600":"border-gray-200 text-gray-500"}`}>{cat||"전체"}</button>))}</div>
-                {taskCategory && <div className="flex gap-1.5 flex-wrap">{bandOptions.map(b => (<button key={b} type="button" onClick={() => setTaskBand(b)} className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${taskBand===b?"border-blue-500 bg-blue-50 text-blue-600":"border-gray-200 text-gray-500"}`}>{b}</button>))}</div>}
+                <div className="flex gap-2">{(["", "용역", "자체진단"] as const).map(cat => (<button key={cat} type="button" onClick={() => { setTaskCategory(cat); setTaskBand(""); setF("taskType", cat); setF("band", ""); }} className={`flex-1 py-2 rounded-xl text-xs font-medium border-2 ${taskCategory===cat?"border-blue-500 bg-blue-50 text-blue-600":"border-gray-200 text-gray-500"}`}>{cat||"전체"}</button>))}</div>
+                {taskCategory && <div className="flex gap-1.5 flex-wrap">{bandOptions.map(b => (<button key={b} type="button" onClick={() => { setTaskBand(b); setF("band", b); }} className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${taskBand===b?"border-blue-500 bg-blue-50 text-blue-600":"border-gray-200 text-gray-500"}`}>{b}</button>))}</div>}
                 {!customProjectName ? (<div className="space-y-1.5"><select defaultValue="" onChange={e => setF("projectName", e.target.value)} className={inputCls}><option value="">-- 선택해주세요 --</option>{filteredTasks.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}</select><button onClick={() => setCustomProjectName(true)} className="text-xs text-blue-500 underline">직접 입력</button></div>) : (<div className="space-y-1.5"><input defaultValue={formRef.current.projectName} onChange={e => setF("projectName", e.target.value)} className={inputCls} placeholder="용역명 또는 자체진단명 입력" /><button onClick={() => setCustomProjectName(false)} className="text-xs text-blue-500 underline">목록에서 선택</button></div>)}
               </div>
             </div>
