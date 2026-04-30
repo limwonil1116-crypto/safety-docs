@@ -6,7 +6,7 @@ import Link from "next/link";
 interface TbmReport {
   id: string; reportDate: string; contractorName: string; workToday: string;
   workerCount: number; instructorName: string; riskType: string;
-  facilityName: string; projectName: string; createdAt: string;
+  facilityName: string; projectName: string; createdAt: string; taskType: string;
 }
 
 const HIGH_RISK_TYPES = ["2.0m 이상 고소작업","1.5m 이상 굴착·가설공사","철곸 구조물 공사","2.0m이상 외부 도장공사","승강기 설치공사","취수탑 공사","복통, 잠관 공사","이외의 작업계획서작성 대상"];
@@ -17,6 +17,7 @@ export default function TbmPage() {
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [taskFilter, setTaskFilter] = useState<"" | "용역" | "자체진단">("");
 
   useEffect(() => {
     fetch("/api/tbm").then(r => r.json()).then(d => {
@@ -27,9 +28,7 @@ export default function TbmPage() {
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(null);
-      }
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(null);
     };
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -43,7 +42,8 @@ export default function TbmPage() {
     setMenuOpen(null);
   };
 
-  const highRiskCount = reports.filter(r => HIGH_RISK_TYPES.includes(r.riskType)).length;
+  const filteredReports = taskFilter ? reports.filter(r => r.taskType === taskFilter) : reports;
+  const highRiskCount = filteredReports.filter(r => HIGH_RISK_TYPES.includes(r.riskType)).length;
 
   return (
     <div className="min-h-screen" style={{ background: "#f0f4f8" }}>
@@ -67,9 +67,20 @@ export default function TbmPage() {
             </button>
           </div>
         </div>
+
+        {/* 필터 드롭박스 */}
+        <div className="flex gap-2 mb-2">
+          {(["", "용역", "자체진단"] as const).map(f => (
+            <button key={f} onClick={() => setTaskFilter(f)}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium border transition-colors ${taskFilter === f ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-300 hover:border-blue-400"}`}>
+              {f || "전체"}
+            </button>
+          ))}
+        </div>
+
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-blue-50 rounded-xl p-2.5 text-center">
-            <p className="text-xl font-bold text-blue-600">{reports.length}</p>
+            <p className="text-xl font-bold text-blue-600">{filteredReports.length}</p>
             <p className="text-xs text-blue-500">전체</p>
           </div>
           <div className="bg-red-50 rounded-xl p-2.5 text-center">
@@ -77,7 +88,7 @@ export default function TbmPage() {
             <p className="text-xs text-red-400">고위험공종</p>
           </div>
           <div className="bg-green-50 rounded-xl p-2.5 text-center">
-            <p className="text-xl font-bold text-green-600">{reports.reduce((s,r) => s+(r.workerCount||0), 0)}</p>
+            <p className="text-xl font-bold text-green-600">{filteredReports.reduce((s,r) => s+(r.workerCount||0), 0)}</p>
             <p className="text-xs text-green-500">투입인원</p>
           </div>
         </div>
@@ -91,20 +102,12 @@ export default function TbmPage() {
               <div className="h-3 bg-gray-100 rounded w-2/3"/>
             </div>
           ))
-        ) : reports.length === 0 ? (
+        ) : filteredReports.length === 0 ? (
           <div className="text-center py-16">
-            <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-4">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </div>
-            <p className="text-gray-500 text-sm">등록된 TBM 보고서가 없습니다.</p>
-            <button onClick={() => router.push("/tbm/new")}
-              className="mt-4 px-6 py-2.5 rounded-xl text-white text-sm font-medium"
-              style={{ background: "#2563eb" }}>
-              첫 TBM 작성하기
-            </button>
+            <p className="text-gray-400 text-sm">해당 TBM이 없습니다.</p>
           </div>
         ) : (
-          reports.map(r => (
+          filteredReports.map(r => (
             <div key={r.id} className="relative">
               <Link href={`/tbm/${r.id}`}>
                 <div className="bg-white rounded-2xl p-4 shadow-sm active:opacity-80 pr-14">
@@ -113,6 +116,9 @@ export default function TbmPage() {
                       <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">TBM</span>
                       {HIGH_RISK_TYPES.includes(r.riskType) && (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-500 font-medium">고위험</span>
+                      )}
+                      {r.taskType && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.taskType==="용역"?"bg-green-50 text-green-600":"bg-purple-50 text-purple-600"}`}>{r.taskType}</span>
                       )}
                       <span className="text-sm font-bold text-gray-900">{r.reportDate}</span>
                     </div>
@@ -129,12 +135,10 @@ export default function TbmPage() {
                 </div>
               </Link>
 
-              {/* ⋮ 메뉴 버튼 */}
               <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10">
                 <button
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(menuOpen === r.id ? null : r.id); }}
-                  className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400"
-                >
+                  className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                     <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
                   </svg>
@@ -143,16 +147,14 @@ export default function TbmPage() {
                   <div className="absolute right-0 top-10 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 w-28">
                     <button
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/tbm/new?editId=${r.id}`); setMenuOpen(null); }}
-                      className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                    >
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                       수정
                     </button>
                     <div className="border-t border-gray-100"/>
                     <button
                       onClick={(e) => handleDelete(e, r.id)}
-                      className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-500 hover:bg-red-50"
-                    >
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-red-500 hover:bg-red-50">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                       삭제
                     </button>
