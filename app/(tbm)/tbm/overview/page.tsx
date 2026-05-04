@@ -52,6 +52,7 @@ export default function TbmOverviewPage() {
   const [loading, setLoading] = useState(true);
   const [taskFilter, setTaskFilter] = useState<"" | "용역" | "자체진단">("");
   const [highRiskFilter, setHighRiskFilter] = useState(false);
+  const [mapTarget, setMapTarget] = useState<{address:string;lat:string;lng:string} | null>(null);
 
   useEffect(() => { loadTbm(); }, [date]);
 
@@ -67,7 +68,10 @@ export default function TbmOverviewPage() {
 
   // 필터 적용된 reports
   const filteredReports = reports.filter(r => {
-    if (taskFilter && r.taskType !== taskFilter) return false;
+    if (taskFilter) {
+      const t = r.taskType || "";
+      if (t !== taskFilter) return false;
+    }
     if (highRiskFilter && !HIGH_RISK_TYPES.includes(r.riskType)) return false;
     return true;
   });
@@ -161,12 +165,13 @@ export default function TbmOverviewPage() {
         const mPos = new window.kakao.maps.LatLng(lat, lng);
         const isHigh = HIGH_RISK_TYPES.includes(r.riskType);
         // 용역=초록, 자체진단=파랑, 기타=회색
-        const bgColor = r.taskType === "용역" ? "#16a34a" : r.taskType === "자체진단" ? "#2563eb" : "#6b7280";
-        const label = r.projectName || r.facilityName || r.contractorName || `${i+1}번`;
-        const textColor = isHigh ? "#ff0000" : "#ffffff";
-        const fontWeight = isHigh ? "900" : "bold";
+        // 용역=초록(#16a34a), 자체진단=파낙(#1d4ed8), 기타=회색
+        const bgColor = r.taskType === "자체진단" ? "#1d4ed8" : "#16a34a";
+        const typeTag = r.taskType === "자체진단" ? "[자체] " : "[용역] ";
+        const baseName = r.projectName || r.facilityName || r.contractorName || `${i+1}번`;
+        const label = typeTag + baseName;
         const div = document.createElement("div");
-        div.innerHTML = `<div style="background:${bgColor};color:${textColor};border-radius:20px;padding:4px 10px;font-size:11px;font-weight:${fontWeight};cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3);border:2px solid white;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;">${label}</div>`;
+        div.innerHTML = `<div style="background:${bgColor};color:${isHigh ? "#ffeb3b" : "white"};border-radius:20px;padding:5px 12px;font-size:11px;font-weight:bold;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,0.35);border:2.5px solid rgba(255,255,255,0.9);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis;">${label}${isHigh ? " ⚠" : ""}</div>`;
         div.addEventListener("click", () => setSelectedReport(r));
         const overlay = new window.kakao.maps.CustomOverlay({ position: mPos, content: div, map: mapObjRef.current, zIndex: 5 });
         markerRefs.current.push(overlay);
@@ -327,61 +332,109 @@ export default function TbmOverviewPage() {
             ))}
           </div>
 
-          {/* 상세 표 (첨부4 스타일) */}
+          {/* 상세 목록 테이블 - 세련된 디자인 */}
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-              <span className="text-xs font-bold text-gray-700">상세 목록</span>
-              <div className="flex gap-1">
-                <div className="flex items-center gap-1 text-[10px] text-green-600"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span>용역</div>
-                <div className="flex items-center gap-1 text-[10px] text-blue-600 ml-2"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span>자체진단</div>
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between" style={{background:"linear-gradient(135deg,#f8faff,#f0f4ff)"}}>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-gray-800">상세 목록</span>
+                <span className="text-xs text-gray-400">{regionDisplayReports.length}건</span>
+              </div>
+              <div className="flex gap-3">
+                <div className="flex items-center gap-1 text-[10px] text-green-700 font-medium"><span className="w-3 h-3 rounded-full bg-green-500 inline-block shadow-sm"></span>용역</div>
+                <div className="flex items-center gap-1 text-[10px] text-blue-700 font-medium"><span className="w-3 h-3 rounded-full bg-blue-600 inline-block shadow-sm"></span>자체진단</div>
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs min-w-[600px]">
+              <table className="w-full text-xs min-w-[700px]">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="text-left px-3 py-2 text-gray-600 font-semibold w-6">NO</th>
-                    <th className="text-left px-3 py-2 text-gray-600 font-semibold">용역/자체진단명</th>
-                    <th className="text-left px-3 py-2 text-gray-600 font-semibold">시공사</th>
-                    <th className="text-left px-3 py-2 text-gray-600 font-semibold">작업내용</th>
-                    <th className="text-center px-2 py-2 text-gray-600 font-semibold">투입</th>
-                    <th className="text-left px-3 py-2 text-gray-600 font-semibold">위험공종</th>
-                    <th className="text-left px-3 py-2 text-gray-600 font-semibold">투입장비</th>
-                    <th className="text-left px-3 py-2 text-gray-600 font-semibold">교육자</th>
+                  <tr style={{background:"#f1f5f9"}}>
+                    <th className="text-center px-3 py-2.5 text-gray-500 font-semibold border-b border-gray-200 w-8">NO</th>
+                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200">사업명</th>
+                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200">사진</th>
+                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200 min-w-[140px]">작업내용</th>
+                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200 min-w-[120px]">교육내용</th>
+                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200">회사명</th>
+                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200">주소</th>
+                    <th className="text-center px-2 py-2.5 text-gray-600 font-semibold border-b border-gray-200">투입인원</th>
+                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200">투입장비</th>
+                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200">위험공종</th>
+                    <th className="text-center px-2 py-2.5 text-gray-600 font-semibold border-b border-gray-200">소장</th>
                   </tr>
                 </thead>
                 <tbody>
                   {regionDisplayReports.length === 0 ? (
-                    <tr><td colSpan={8} className="text-center py-8 text-gray-400">TBM 보고서가 없습니다.</td></tr>
+                    <tr><td colSpan={11} className="text-center py-10 text-gray-400">TBM 보고서가 없습니다.</td></tr>
                   ) : regionDisplayReports.map((r, i) => {
                     const isHigh = HIGH_RISK_TYPES.includes(r.riskType);
                     const isYongYeok = r.taskType === "용역";
+                    const rowBg = isHigh ? "bg-red-50" : i % 2 === 0 ? "bg-white" : "bg-gray-50/50";
                     return (
                       <tr key={r.id}
                         onClick={() => setSelectedReport(r)}
-                        className={`border-b border-gray-100 cursor-pointer hover:bg-blue-50 ${isHigh ? "bg-red-50/30" : ""}`}>
-                        <td className="px-3 py-2 text-gray-500">{i + 1}</td>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-1.5">
-                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isYongYeok ? "bg-green-500" : "bg-blue-500"}`}></span>
-                            <span className={`font-medium ${isHigh ? "text-red-600" : "text-gray-800"} line-clamp-1`}>
-                              {r.projectName || r.facilityName || "-"}
-                            </span>
+                        className={`${rowBg} cursor-pointer hover:bg-blue-50/70 transition-colors border-b border-gray-100`}>
+                        <td className="px-3 py-3 text-center text-gray-400 font-medium">{i + 1}</td>
+                        <td className="px-3 py-3">
+                          <div className="flex items-start gap-1.5">
+                            <div>
+                              <span className={`text-[9px] px-1 py-0.5 rounded font-bold mr-1 ${isYongYeok ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                                {isYongYeok ? "[용역]" : "[자체진단]"}
+                              </span>
+                              <span className={`font-semibold text-xs leading-tight ${isHigh ? "text-red-600" : "text-gray-800"}`}>
+                                {r.projectName || r.facilityName || "-"}
+                              </span>
+                              {r.band && <p className="text-[10px] text-gray-400 mt-0.5">{r.band}</p>}
+                            </div>
                           </div>
-                          {r.band && <span className="text-[10px] text-gray-400 ml-3">{r.band}</span>}
                         </td>
-                        <td className="px-3 py-2 text-gray-700 whitespace-nowrap">{r.contractorName || "-"}</td>
-                        <td className="px-3 py-2 text-gray-600 max-w-[160px]">
-                          <p className="line-clamp-2">{r.workToday || "-"}</p>
+                        <td className="px-3 py-3">
+                          {(r as any).photoUrl
+                            ? <img src={(r as any).photoUrl} alt="사진" className="w-14 h-10 object-cover rounded-lg border border-gray-200" />
+                            : <div className="w-14 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-300 text-[9px]">없음</div>
+                          }
                         </td>
-                        <td className="px-2 py-2 text-center text-gray-700 whitespace-nowrap">{r.workerCount || 0}명</td>
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-3 text-gray-700 max-w-[160px]">
+                          <p className="line-clamp-3 text-[11px] leading-snug">{r.workToday || "-"}</p>
+                        </td>
+                        <td className="px-3 py-3 text-gray-600 max-w-[140px]">
+                          {(r.riskFactor1 || r.mainRiskFactor) ? (
+                            <div className="text-[10px] leading-snug space-y-0.5">
+                              {r.riskFactor1 && <p className="line-clamp-1">• {r.riskFactor1}</p>}
+                              {r.riskFactor2 && <p className="line-clamp-1">• {r.riskFactor2}</p>}
+                              {r.mainRiskFactor && <p className="text-amber-600 font-medium line-clamp-1">★ {r.mainRiskFactor}</p>}
+                            </div>
+                          ) : <span className="text-gray-300">-</span>}
+                        </td>
+                        <td className="px-3 py-3 text-gray-700 whitespace-nowrap text-[11px]">{r.contractorName || "-"}</td>
+                        <td className="px-3 py-3 text-[10px] max-w-[120px]">
+                          {r.workAddress ? (
+                            <button onClick={e => { e.stopPropagation(); setMapTarget({ address: r.workAddress, lat: r.workLatitude, lng: r.workLongitude }); }}
+                              className="text-blue-500 underline text-left line-clamp-2 hover:text-blue-700">
+                              {r.workAddress}
+                            </button>
+                          ) : <span className="text-gray-400">-</span>}
+                        </td>
+                        <td className="px-2 py-3 text-center">
+                          <span className="inline-flex items-center justify-center w-8 h-6 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold">{r.workerCount || 0}</span>
+                          {r.newWorkerCount > 0 && <p className="text-[9px] text-orange-500 mt-0.5">신규{r.newWorkerCount}</p>}
+                        </td>
+                        <td className="px-3 py-3 text-gray-500 text-[10px] max-w-[100px]">
+                          <p className="line-clamp-2">{r.equipment || "-"}</p>
+                        </td>
+                        <td className="px-3 py-3">
                           {isHigh
-                            ? <span className="text-red-500 font-bold text-[10px]">{r.riskType}</span>
-                            : <span className="text-gray-500 text-[10px]">{r.riskType || "-"}</span>}
+                            ? <span className="inline-block px-1.5 py-0.5 rounded bg-red-100 text-red-600 text-[10px] font-bold">{r.riskType}</span>
+                            : <span className="text-gray-400 text-[10px]">{r.riskType === "해당없음" ? "-" : r.riskType || "-"}</span>}
                         </td>
-                        <td className="px-3 py-2 text-gray-500 text-[10px] max-w-[100px] line-clamp-1">{r.equipment || "-"}</td>
-                        <td className="px-3 py-2 text-gray-600 whitespace-nowrap">{r.instructorName || "-"}</td>
+                        <td className="px-2 py-3 text-center text-[11px]">
+                          <div className="font-medium text-gray-700">{r.instructorName || "-"}</div>
+                          {r.instructorPhone && (
+                            <a href={`tel:${r.instructorPhone}`} onClick={e => e.stopPropagation()}
+                              className="text-blue-500 text-[10px] flex items-center justify-center gap-0.5 mt-0.5 hover:text-blue-700">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.6 19.79 19.79 0 0 1 1.62 5a2 2 0 0 1 1.99-2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.09a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 17.5v-.58z"/></svg>
+                              {r.instructorPhone}
+                            </a>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
