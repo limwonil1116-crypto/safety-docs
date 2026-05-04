@@ -225,12 +225,14 @@ function PhotoAttachSection({ documentId, canAdd = true }: { documentId: string;
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [mode, setMode] = useState<"normal" | "improve">("normal");
-  const cameraRef = useRef<HTMLInputElement>(null);
-  const galleryRef = useRef<HTMLInputElement>(null);
-  const beforeCamRef = useRef<HTMLInputElement>(null);
-  const beforeGalRef = useRef<HTMLInputElement>(null);
-  const afterCamRef = useRef<HTMLInputElement>(null);
-  const afterGalRef = useRef<HTMLInputElement>(null);
+  const [showPicker, setShowPicker] = useState<null | "normal" | "before" | "after">(null);
+  const [editImg, setEditImg] = useState<{ src: string; file: File; desc?: string } | null>(null);
+  const [rotation, setRotation] = useState(0);
+  const [scale, setScale] = useState(1);
+  const camRef = useRef<HTMLInputElement>(null);
+  const galRef = useRef<HTMLInputElement>(null);
+  const pendingDesc = useRef<string | undefined>(undefined);
+
   const fetchPhotos = useCallback(async () => {
     try {
       const res = await fetch(`/api/documents/${documentId}/attachments?type=PHOTO`);
@@ -242,6 +244,7 @@ function PhotoAttachSection({ documentId, canAdd = true }: { documentId: string;
     } catch {}
   }, [documentId]);
   useEffect(() => { fetchPhotos(); }, [fetchPhotos]);
+
   const uploadPhoto = async (file: File, descPrefix?: string) => {
     if (!file.type.startsWith("image/")) { alert("이미지 파일만 가능합니다."); return; }
     setUploading(true);
@@ -256,13 +259,48 @@ function PhotoAttachSection({ documentId, canAdd = true }: { documentId: string;
     } catch (e) { alert(`업로드 실패: ${e instanceof Error ? e.message : "오류"}`); }
     finally { setUploading(false); }
   };
+
   const handleDelete = async (id: string) => {
     if (!confirm("사진을 삭제하시겠습니까?")) return;
     await fetch(`/api/documents/${documentId}/attachments?attachmentId=${id}`, { method: "DELETE" });
     fetchPhotos();
   };
+
+  const openPicker = (target: "normal" | "before" | "after") => setShowPicker(target);
+
+  const handleFileSelected = (file: File) => {
+    const url = URL.createObjectURL(file);
+    setEditImg({ src: url, file, desc: pendingDesc.current });
+    setRotation(0); setScale(1);
+  };
+
+  const handleEditSave = () => {
+    if (!editImg) return;
+    const canvas = document.createElement("canvas");
+    const img = new Image();
+    img.onload = () => {
+      const rad = rotation * Math.PI / 180;
+      const sin = Math.abs(Math.sin(rad)); const cos = Math.abs(Math.cos(rad));
+      const w = img.width * scale; const h = img.height * scale;
+      canvas.width = Math.round(w * cos + h * sin);
+      canvas.height = Math.round(w * sin + h * cos);
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(rad); ctx.scale(scale, scale);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], editImg.file.name, { type: "image/jpeg" });
+        await uploadPhoto(file, editImg.desc);
+        setEditImg(null);
+      }, "image/jpeg", 0.92);
+    };
+    img.src = editImg.src;
+  };
+
   const PhotoGrid = ({ items }: { items: Attachment[] }) => (
-    <div className="grid grid-cols-3 gap-2 mb-2">
+    <div className="grid grid-cols-3 gap-2 mb-3">
       {items.map(photo => (
         <div key={photo.id} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
           <img src={photo.fileUrl} alt={photo.fileName} className="w-full h-full object-cover cursor-pointer" onClick={() => setPreviewUrl(photo.fileUrl)} />
@@ -275,18 +313,16 @@ function PhotoAttachSection({ documentId, canAdd = true }: { documentId: string;
       ))}
     </div>
   );
-  const UploadBtns = ({ onCam, onGal, label }: { onCam: ()=>void; onGal: ()=>void; label?: string }) => (
-    <div className="flex gap-2">
-      <button onClick={onCam} disabled={uploading} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-        {label ? `${label} 카메라` : "카메라"}
-      </button>
-      <button onClick={onGal} disabled={uploading} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        {label ? `${label} 갤러리` : "갤러리"}
-      </button>
-    </div>
+
+  const AddBtn = ({ target, color }: { target: "normal"|"before"|"after"; color: string }) => (
+    <button onClick={() => openPicker(target)} disabled={uploading}
+      className={`w-full py-3 rounded-xl border-2 border-dashed text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2
+        ${color === "orange" ? "border-orange-300 text-orange-500 hover:bg-orange-50" : color === "green" ? "border-green-300 text-green-600 hover:bg-green-50" : "border-blue-300 text-blue-500 hover:bg-blue-50"}`}>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      {uploading ? "업로드 중..." : "사진 추가"}
+    </button>
   );
+
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm">
       <div className="flex items-center justify-between mb-3">
@@ -294,37 +330,112 @@ function PhotoAttachSection({ documentId, canAdd = true }: { documentId: string;
         <span className="text-xs text-gray-400">{photos.length + beforePhotos.length + afterPhotos.length}장</span>
       </div>
       {canAdd && (
-        <div className="flex gap-2 mb-3">
-          <button onClick={() => setMode("normal")} className={`flex-1 py-2 rounded-xl text-xs font-medium border transition-colors ${mode==="normal"?"bg-blue-600 text-white border-blue-600":"bg-white text-gray-600 border-gray-300"}`}>현장사진</button>
-          <button onClick={() => setMode("improve")} className={`flex-1 py-2 rounded-xl text-xs font-medium border transition-colors ${mode==="improve"?"bg-orange-500 text-white border-orange-500":"bg-white text-gray-600 border-gray-300"}`}>개선사항 (조치전·후)</button>
+        <div className="flex gap-2 mb-4">
+          <button onClick={() => setMode("normal")}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium border-2 transition-colors ${mode==="normal"?"bg-blue-600 text-white border-blue-600":"bg-white text-gray-600 border-gray-200"}`}>
+            현장사진
+          </button>
+          <button onClick={() => setMode("improve")}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium border-2 transition-colors ${mode==="improve"?"bg-orange-500 text-white border-orange-500":"bg-white text-gray-600 border-gray-200"}`}>
+            개선사항 (조치전·후)
+          </button>
         </div>
       )}
       {mode === "normal" ? (
         <>
           <PhotoGrid items={photos} />
-          {canAdd && <UploadBtns onCam={() => cameraRef.current?.click()} onGal={() => galleryRef.current?.click()} />}
-          {photos.length === 0 && !canAdd && <div className="text-center py-6 text-gray-400 text-sm">등록된 사진이 없습니다.</div>}
+          {canAdd && <AddBtn target="normal" color="blue" />}
+          {photos.length === 0 && !canAdd && <p className="text-center py-6 text-gray-400 text-sm">등록된 사진이 없습니다.</p>}
         </>
       ) : (
         <div className="space-y-4">
           <div>
-            <p className="text-xs font-semibold text-orange-600 mb-2">조치 전 사진</p>
+            <p className="text-xs font-semibold text-orange-500 mb-2">■ 조치 전</p>
             <PhotoGrid items={beforePhotos} />
-            {canAdd && <UploadBtns onCam={() => beforeCamRef.current?.click()} onGal={() => beforeGalRef.current?.click()} label="조치전" />}
+            {canAdd && <AddBtn target="before" color="orange" />}
           </div>
           <div className="border-t border-dashed border-gray-200 pt-4">
-            <p className="text-xs font-semibold text-green-600 mb-2">조치 후 사진</p>
+            <p className="text-xs font-semibold text-green-600 mb-2">■ 조치 후</p>
             <PhotoGrid items={afterPhotos} />
-            {canAdd && <UploadBtns onCam={() => afterCamRef.current?.click()} onGal={() => afterGalRef.current?.click()} label="조치후" />}
+            {canAdd && <AddBtn target="after" color="green" />}
           </div>
         </div>
       )}
-      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { const f=e.target.files?.[0]; if(f) uploadPhoto(f); e.target.value=""; }} />
-      <input ref={galleryRef} type="file" accept="image/*" multiple className="hidden" onChange={e => { Array.from(e.target.files??[]).forEach(f=>uploadPhoto(f)); e.target.value=""; }} />
-      <input ref={beforeCamRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { const f=e.target.files?.[0]; if(f) uploadPhoto(f,"조치전:"); e.target.value=""; }} />
-      <input ref={beforeGalRef} type="file" accept="image/*" multiple className="hidden" onChange={e => { Array.from(e.target.files??[]).forEach(f=>uploadPhoto(f,"조치전:")); e.target.value=""; }} />
-      <input ref={afterCamRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={e => { const f=e.target.files?.[0]; if(f) uploadPhoto(f,"조치후:"); e.target.value=""; }} />
-      <input ref={afterGalRef} type="file" accept="image/*" multiple className="hidden" onChange={e => { Array.from(e.target.files??[]).forEach(f=>uploadPhoto(f,"조치후:")); e.target.value=""; }} />
+
+      {/* 숨겼진 input */}
+      <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={e => { const f=e.target.files?.[0]; if(f) handleFileSelected(f); e.target.value=""; }} />
+      <input ref={galRef} type="file" accept="image/*" className="hidden"
+        onChange={e => { const f=e.target.files?.[0]; if(f) handleFileSelected(f); e.target.value=""; }} />
+
+      {/* 카메라/갤러리 선택 팝업 */}
+      {showPicker && (
+        <div className="fixed inset-0 bg-black/60 z-[200] flex items-end justify-center" onClick={() => setShowPicker(null)}>
+          <div className="bg-white rounded-t-3xl w-full max-w-lg p-6" onClick={e => e.stopPropagation()}>
+            <p className="text-sm font-bold text-gray-900 mb-4 text-center">
+              {showPicker === "before" ? "조치 전 사진" : showPicker === "after" ? "조치 후 사진" : "현장사진"} 첨부
+            </p>
+            <div className="flex gap-3 mb-3">
+              <button onClick={() => {
+                pendingDesc.current = showPicker==="before" ? "조치전:" : showPicker==="after" ? "조치후:" : undefined;
+                setShowPicker(null);
+                setTimeout(() => camRef.current?.click(), 100);
+              }} className="flex-1 flex flex-col items-center gap-2 py-5 rounded-2xl border-2 border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                <span className="text-sm font-semibold">카메라</span>
+              </button>
+              <button onClick={() => {
+                pendingDesc.current = showPicker==="before" ? "조치전:" : showPicker==="after" ? "조치후:" : undefined;
+                setShowPicker(null);
+                setTimeout(() => galRef.current?.click(), 100);
+              }} className="flex-1 flex flex-col items-center gap-2 py-5 rounded-2xl border-2 border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                <span className="text-sm font-semibold">갤러리</span>
+              </button>
+            </div>
+            <button onClick={() => setShowPicker(null)} className="w-full py-3 rounded-2xl border border-gray-200 text-gray-500 text-sm">취소</button>
+          </div>
+        </div>
+      )}
+
+      {/* 사진 편집기 (회전/확대축소) */}
+      {editImg && (
+        <div className="fixed inset-0 bg-black/95 z-[300] flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 bg-black">
+            <button onClick={() => setEditImg(null)} className="text-white text-sm px-4 py-2 rounded-xl border border-white/30">취소</button>
+            <p className="text-white text-sm font-semibold">사진 편집</p>
+            <button onClick={handleEditSave} disabled={uploading}
+              className="text-white text-sm px-4 py-2 rounded-xl bg-blue-600 disabled:opacity-50">
+              {uploading ? "저장 중..." : "저장"}
+            </button>
+          </div>
+          <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+            <img src={editImg.src} alt="편집"
+              style={{ transform: `rotate(${rotation}deg) scale(${scale})`, maxWidth: "100%", maxHeight: "100%", objectFit: "contain", transition: "transform 0.2s" }} />
+          </div>
+          <div className="bg-black px-4 py-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <span className="text-white/70 text-xs w-8">회전</span>
+              <button onClick={() => setRotation(r => r - 90)} className="w-11 h-11 rounded-full bg-white/20 text-white text-xl flex items-center justify-center">↺</button>
+              <div className="flex-1 text-center text-white text-sm">{rotation}°</div>
+              <button onClick={() => setRotation(r => r + 90)} className="w-11 h-11 rounded-full bg-white/20 text-white text-xl flex items-center justify-center">↻</button>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-white/70 text-xs w-8">크기</span>
+              <button onClick={() => setScale(s => Math.max(0.3, parseFloat((s-0.1).toFixed(1))))} className="w-11 h-11 rounded-full bg-white/20 text-white text-xl font-bold flex items-center justify-center">−</button>
+              <input type="range" min="30" max="200" value={Math.round(scale*100)}
+                onChange={e => setScale(parseInt(e.target.value)/100)}
+                className="flex-1 accent-blue-500" />
+              <button onClick={() => setScale(s => Math.min(2, parseFloat((s+0.1).toFixed(1))))} className="w-11 h-11 rounded-full bg-white/20 text-white text-xl font-bold flex items-center justify-center">+</button>
+            </div>
+            <div className="flex items-center justify-between text-white/60 text-xs px-1">
+              <span>{Math.round(scale*100)}%</span>
+              <button onClick={() => { setRotation(0); setScale(1); }} className="text-white/60 underline">원본으로</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {previewUrl && (
         <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center" onClick={() => setPreviewUrl(null)}>
           <img src={previewUrl} alt="미리보기" className="max-w-full max-h-full object-contain" />
@@ -336,7 +447,6 @@ function PhotoAttachSection({ documentId, canAdd = true }: { documentId: string;
     </div>
   );
 }
-
 
 function SectionHeader({ num, title }: { num: number; title: string }) {
   return (
