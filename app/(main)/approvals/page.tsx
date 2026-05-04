@@ -123,13 +123,14 @@ function ApprovalStepFlow({ doc }: { doc: ApprovalDoc }) {
   } else if (doc.status === "APPROVED") { step2 = "done"; step3 = "done"; }
   else if (doc.status === "REJECTED") { step2 = "rejected"; }
 
+  const isSafetyPermit = doc.document_type === "SAFETY_WORK_PERMIT";
   return (
     <div className="flex items-center gap-1 mt-2.5">
       <StepDot s={step1} label="신청" type="doc" />
       <Line active={step2 === "done" || step2 === "active"} />
-      <StepDot s={step2} label="검토" type="search" />
+      <StepDot s={step2} label={isSafetyPermit ? "계획확인" : "검토"} type="search" />
       <Line active={step3 === "done" || step3 === "active"} />
-      <StepDot s={step3} label="허가" type="shield" />
+      <StepDot s={step3} label={isSafetyPermit ? "이행확인" : "허가"} type="shield" />
       {doc.current_approver_name && (
         <div className="ml-2 text-[10px] text-amber-600 font-medium shrink-0 max-w-[70px] truncate">{doc.current_approver_name}</div>
       )}
