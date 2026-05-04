@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 declare global { interface Window { kakao: any; daum: any; } }
 
 const RISK_TYPES = ["2.0m 이상 고소작업","1.5m 이상 굴착·가설공사","철곸 구조물 공사","2.0m이상 외부 도장공사","승강기 설치공사","취수탑 공사","복통, 잠관 공사","이외의 작업계획서작성 대상","해당없음"];
-interface TaskItem { id: string; name: string; }
+interface TaskItem { id: string; name: string; category: string; division: string; }
 
 function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm, onClose }: {
   initialAddress: string; initialLat: number | null; initialLng: number | null;
@@ -184,7 +184,15 @@ function TbmNewInner() {
   const setF = (k: string, v: any) => { (formRef.current as any)[k] = v; };
 
   useEffect(() => {
-    fetch("/api/tasks").then(r => r.json()).then(d => setTasks(d.tasks ?? [])).catch(() => {});
+    fetch("/api/tasks").then(r => r.json()).then(d => {
+      const parsed = (d.tasks ?? []).map((t: any) => {
+        try {
+          const meta = JSON.parse(t.description || "{}");
+          return { ...t, category: meta.category || "CONTRACTOR", division: meta.division || "" };
+        } catch { return { ...t, category: "CONTRACTOR", division: "" }; }
+      });
+      setTasks(parsed);
+    }).catch(() => {});
     if (editId) {
       fetch(`/api/tbm/${editId}`).then(r => r.json()).then(d => {
         const r = d.tbmReport; if (!r) return;
@@ -251,7 +259,15 @@ function TbmNewInner() {
   };
 
   const bandOptions = taskCategory === "용역" ? ["전체","1반","2반","3반","4반","5반"] : taskCategory === "자체진단" ? ["전체","1반","2반","3반","4반","5반","6반","7반","8반","9반","10반"] : [];
-  const filteredTasks = tasks;
+  // tasks 필터: 용역/자체진단 버튼 + 반 선택
+  const filteredTasks = tasks.filter((t: TaskItem) => {
+    // taskCategory 매핑: 용역=CONTRACTOR, 자체진단=SELF
+    if (taskCategory === "용역" && t.category !== "CONTRACTOR") return false;
+    if (taskCategory === "자체진단" && t.category !== "SELF") return false;
+    // 반 필터
+    if (taskBand && taskBand !== "전체" && t.division !== taskBand) return false;
+    return true;
+  });
   const inputCls = "w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white";
 
   return (
@@ -281,7 +297,7 @@ function TbmNewInner() {
                   <div className="space-y-1.5">
                     <select defaultValue={formRef.current.projectName} onChange={e => setF("projectName", e.target.value)} className={inputCls}>
                       <option value="">-- 선택해주세요 --</option>
-                      {filteredTasks.map(t => <option key={t.id} value={t.name}>{taskCategory === "용역" ? "[용역] " : taskCategory === "자체진단" ? "[자체진단] " : ""}{t.name}</option>)}
+                      {filteredTasks.map((t: TaskItem) => <option key={t.id} value={t.name}>{t.category === "SELF" ? "[자체진단] " : "[용역] "}{t.name}</option>)}
                     </select>
                     <button onClick={() => setCustomProjectName(true)} className="text-xs text-blue-500 underline">직접 입력</button>
                   </div>
