@@ -52,6 +52,7 @@ export default function TbmOverviewPage() {
   const [loading, setLoading] = useState(true);
   const [taskFilter, setTaskFilter] = useState<"" | "용역" | "자체진단">("");
   const [highRiskFilter, setHighRiskFilter] = useState(false);
+  const [mapTarget, setMapTarget] = useState<{address:string;lat:string;lng:string} | null>(null);
 
   useEffect(() => { loadTbm(); }, [date]);
 
@@ -164,12 +165,13 @@ export default function TbmOverviewPage() {
         const mPos = new window.kakao.maps.LatLng(lat, lng);
         const isHigh = HIGH_RISK_TYPES.includes(r.riskType);
         // 용역=초록, 자체진단=파랑, 기타=회색
-        const bgColor = r.taskType === "용역" ? "#16a34a" : r.taskType === "자체진단" ? "#1d4ed8" : "#7c3aed";
-        const label = r.projectName || r.facilityName || r.contractorName || `${i+1}번`;
-        const textColor = isHigh ? "#ff0000" : "#ffffff";
-        const fontWeight = isHigh ? "900" : "bold";
+        // 용역=초록(#16a34a), 자체진단=파낙(#1d4ed8), 기타=회색
+        const bgColor = r.taskType === "자체진단" ? "#1d4ed8" : "#16a34a";
+        const typeTag = r.taskType === "자체진단" ? "[자체] " : "[용역] ";
+        const baseName = r.projectName || r.facilityName || r.contractorName || `${i+1}번`;
+        const label = typeTag + baseName;
         const div = document.createElement("div");
-        div.innerHTML = `<div style="background:${bgColor};color:${isHigh ? "#ffeb3b" : "white"};border-radius:20px;padding:5px 12px;font-size:11px;font-weight:bold;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,0.35);border:2.5px solid rgba(255,255,255,0.8);white-space:nowrap;max-width:160px;overflow:hidden;text-overflow:ellipsis;text-shadow:${isHigh ? "0 0 4px rgba(0,0,0,0.5)" : "none"};">${label}${isHigh ? " ⚠" : ""}</div>`;
+        div.innerHTML = `<div style="background:${bgColor};color:${isHigh ? "#ffeb3b" : "white"};border-radius:20px;padding:5px 12px;font-size:11px;font-weight:bold;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,0.35);border:2.5px solid rgba(255,255,255,0.9);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis;">${label}${isHigh ? " ⚠" : ""}</div>`;
         div.addEventListener("click", () => setSelectedReport(r));
         const overlay = new window.kakao.maps.CustomOverlay({ position: mPos, content: div, map: mapObjRef.current, zIndex: 5 });
         markerRefs.current.push(overlay);
@@ -373,11 +375,13 @@ export default function TbmOverviewPage() {
                         <td className="px-3 py-3 text-center text-gray-400 font-medium">{i + 1}</td>
                         <td className="px-3 py-3">
                           <div className="flex items-start gap-1.5">
-                            <span className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${isYongYeok ? "bg-green-500" : "bg-blue-600"}`}></span>
                             <div>
-                              <p className={`font-semibold text-xs leading-tight ${isHigh ? "text-red-600" : "text-gray-800"}`}>
+                              <span className={`text-[9px] px-1 py-0.5 rounded font-bold mr-1 ${isYongYeok ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                                {isYongYeok ? "[용역]" : "[자체진단]"}
+                              </span>
+                              <span className={`font-semibold text-xs leading-tight ${isHigh ? "text-red-600" : "text-gray-800"}`}>
                                 {r.projectName || r.facilityName || "-"}
-                              </p>
+                              </span>
                               {r.band && <p className="text-[10px] text-gray-400 mt-0.5">{r.band}</p>}
                             </div>
                           </div>
@@ -401,8 +405,13 @@ export default function TbmOverviewPage() {
                           ) : <span className="text-gray-300">-</span>}
                         </td>
                         <td className="px-3 py-3 text-gray-700 whitespace-nowrap text-[11px]">{r.contractorName || "-"}</td>
-                        <td className="px-3 py-3 text-gray-500 text-[10px] max-w-[120px]">
-                          <p className="line-clamp-2">{r.workAddress || "-"}</p>
+                        <td className="px-3 py-3 text-[10px] max-w-[120px]">
+                          {r.workAddress ? (
+                            <button onClick={e => { e.stopPropagation(); setMapTarget({ address: r.workAddress, lat: r.workLatitude, lng: r.workLongitude }); }}
+                              className="text-blue-500 underline text-left line-clamp-2 hover:text-blue-700">
+                              {r.workAddress}
+                            </button>
+                          ) : <span className="text-gray-400">-</span>}
                         </td>
                         <td className="px-2 py-3 text-center">
                           <span className="inline-flex items-center justify-center w-8 h-6 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold">{r.workerCount || 0}</span>
@@ -416,7 +425,16 @@ export default function TbmOverviewPage() {
                             ? <span className="inline-block px-1.5 py-0.5 rounded bg-red-100 text-red-600 text-[10px] font-bold">{r.riskType}</span>
                             : <span className="text-gray-400 text-[10px]">{r.riskType === "해당없음" ? "-" : r.riskType || "-"}</span>}
                         </td>
-                        <td className="px-2 py-3 text-center text-gray-600 text-[11px] whitespace-nowrap">{r.instructorName || "-"}</td>
+                        <td className="px-2 py-3 text-center text-[11px]">
+                          <div className="font-medium text-gray-700">{r.instructorName || "-"}</div>
+                          {r.instructorPhone && (
+                            <a href={`tel:${r.instructorPhone}`} onClick={e => e.stopPropagation()}
+                              className="text-blue-500 text-[10px] flex items-center justify-center gap-0.5 mt-0.5 hover:text-blue-700">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.6 19.79 19.79 0 0 1 1.62 5a2 2 0 0 1 1.99-2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.09a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 17.5v-.58z"/></svg>
+                              {r.instructorPhone}
+                            </a>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
