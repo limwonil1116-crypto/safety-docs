@@ -23,9 +23,6 @@ const getTaskCategory = (desc?: string): "CONTRACTOR" | "SELF" => {
   try { return JSON.parse(desc || "{}").category === "SELF" ? "SELF" : "CONTRACTOR"; } catch { return "CONTRACTOR"; }
 };
 
-const getTaskCategory = (desc?: string): "CONTRACTOR" | "SELF" => {
-  try { return JSON.parse(desc || "{}").category === "SELF" ? "SELF" : "CONTRACTOR"; } catch { return "CONTRACTOR"; }
-};
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
   DRAFT:           { bg: "bg-gray-100",   text: "text-gray-500",   label: "작성중" },
@@ -320,9 +317,6 @@ export default function ApprovalsPage() {
                   <div className="flex items-start justify-between mb-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{typeShort}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 ${getTaskCategory(doc.task_description) === "SELF" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                        {getTaskCategory(doc.task_description) === "SELF" ? "[자체진단]" : "[용역]"}
-                      </span>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold mr-1 shrink-0 ${getTaskCategory((doc as any).task_description) === "SELF" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
                         {getTaskCategory((doc as any).task_description) === "SELF" ? "[자체진단]" : "[용역]"}
                       </span>
