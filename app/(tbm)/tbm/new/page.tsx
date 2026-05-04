@@ -127,12 +127,6 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
               {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-50"><p className="text-sm text-gray-400">지도 로딩 중...</p></div>}
             </div>
           </div>
-          {lat && lng && address && !address.match(/^[0-9]/) && (
-            <div className="bg-gray-50 rounded-xl px-3 py-2 text-xs text-gray-900 font-medium flex items-center gap-2 border border-gray-200">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              {address}
-            </div>
-          )}
           <button onClick={() => { if (lat && lng) onConfirm(address, lat, lng); }} disabled={!lat || !lng}
             className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-40" style={{ background: "#2563eb" }}>
             ✓ 위치로 설정
@@ -287,7 +281,7 @@ function TbmNewInner() {
                   <div className="space-y-1.5">
                     <select defaultValue={formRef.current.projectName} onChange={e => setF("projectName", e.target.value)} className={inputCls}>
                       <option value="">-- 선택해주세요 --</option>
-                      {filteredTasks.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
+                      {filteredTasks.map(t => <option key={t.id} value={t.name}>{taskCategory === "용역" ? "[용역] " : taskCategory === "자체진단" ? "[자체진단] " : ""}{t.name}</option>)}
                     </select>
                     <button onClick={() => setCustomProjectName(true)} className="text-xs text-blue-500 underline">직접 입력</button>
                   </div>
@@ -368,10 +362,14 @@ function TbmNewInner() {
               try {
                 const fd = new FormData(); fd.append("file", file);
                 const res = await fetch("/api/upload", { method: "POST", body: fd });
+                if (!res.ok) {
+                  const err = await res.json().catch(() => ({}));
+                  throw new Error(err.error || `업로드 실패 (${res.status})`);
+                }
                 const data = await res.json();
                 if (data.url) setPhotoUrl(data.url);
-                else alert("업로드 실패");
-              } catch { alert("업로드 오류"); }
+                else throw new Error("업로드 URL 없음");
+              } catch (err: any) { alert("사진 업로드 실패: " + (err.message || "알 수 없는 오류")); }
               finally { setPhotoUploading(false); }
             }}
           />
