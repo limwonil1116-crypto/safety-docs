@@ -97,7 +97,7 @@ function RiskAssessTable({ rows, onChange }: { rows: RiskAssessRow[]; onChange: 
 function RiskAssessSection({ documentId, riskAssessRows, onChangeRows }: {
   documentId: string; riskAssessRows: RiskAssessRow[]; onChangeRows: (rows: RiskAssessRow[]) => void;
 }) {
-  const [activeTab, setActiveTab] = useState<"table" | "excel" | "file">("table");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [docFiles, setDocFiles] = useState<Attachment[]>([]);
 
@@ -128,57 +128,43 @@ function RiskAssessSection({ documentId, riskAssessRows, onChangeRows }: {
     setDocFiles(prev => prev.filter(f => f.id !== id));
   };
 
-  const openFilePicker = (accept: string) => {
-    const input = document.createElement("input");
-    input.type = "file"; input.accept = accept;
-    input.onchange = (e) => { const file = (e.target as HTMLInputElement).files?.[0]; if (file) handleFileUpload(file); };
-    input.click();
-  };
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm">
-      <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-        <span className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-xs text-white">✅</span>
-        위험성평가표(붙임1)
-      </h3>
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-4">
-        {[{ key:"table",label:"직접 입력"},{key:"excel",label:"Excel"},{key:"file",label:"PDF/이미지"}].map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key as any)}
-            className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${activeTab === t.key ? "bg-white text-gray-900 shadow-sm" : "text-gray-500"}`}>
-            {t.label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-bold text-gray-900">위험성평가표 (붙임 1)</h3>
+        <span className="text-xs text-gray-400">{docFiles.length}개 첨부</span>
       </div>
-      {activeTab === "table" && <RiskAssessTable rows={riskAssessRows} onChange={onChangeRows} />}
-      {(activeTab === "excel" || activeTab === "file") && (
-        <div className="space-y-3">
-          <div className={`text-xs p-3 rounded-xl ${activeTab === "excel" ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700"}`}>
-            {activeTab === "excel" ? "📗 Excel 파일(.xlsx, .xls)을 업로드하세요." : "📄 PDF 또는 이미지 파일을 업로드하세요."}
+      <div className="text-xs p-3 rounded-xl bg-blue-50 text-blue-700 mb-3">
+        위험성평가표 (PDF 또는 이미지)를 체비하세요.
+      </div>
+      <input ref={fileInputRef} type="file" accept=".pdf,image/*" className="hidden"
+        onChange={e => { const f=e.target.files?.[0]; if(f) handleFileUpload(f); e.target.value=""; }} />
+      <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 mb-3"
+        onClick={() => fileInputRef.current?.click()}>
+        {uploading ? (
+          <div className="flex items-center justify-center gap-2 text-blue-600">
+            <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            <span className="text-sm">업로드 중...</span>
           </div>
-          <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50"
-            onClick={() => openFilePicker(activeTab === "excel" ? ".xlsx,.xls" : ".pdf,image/*")}>
-            {uploading ? (
-              <div className="flex items-center justify-center gap-2 text-blue-600">
-                <svg className="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                <span className="text-sm">업로드 중...</span>
-              </div>
-            ) : (
-              <><p className="text-sm text-gray-600 font-medium">파일을 탭하여 선택</p><p className="text-xs text-gray-400 mt-1">최대 20MB</p></>
-            )}
-          </div>
-          {docFiles.length > 0 && (
-            <div className="space-y-2">
-              {docFiles.map(f => (
-                <div key={f.id} className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl border border-gray-200">
-                  <span className="text-xs text-gray-700 flex-1 truncate">{f.fileName}</span>
-                  <a href={f.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs">보기</a>
-                  <button onClick={() => handleDelete(f.id)} className="text-gray-400 hover:text-red-500">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  </button>
-                </div>
-              ))}
+        ) : (
+          <>
+            <p className="text-sm text-gray-600 font-medium">탭하여 파일 선택</p>
+            <p className="text-xs text-gray-400 mt-1">PDF / 이미지 (최대 20MB)</p>
+          </>
+        )}
+      </div>
+      {docFiles.length > 0 && (
+        <div className="space-y-2">
+          {docFiles.map(f => (
+            <div key={f.id} className="flex items-center gap-2 p-2.5 bg-gray-50 rounded-xl border border-gray-200">
+              <span className="text-xs text-gray-700 flex-1 truncate">{f.fileName}</span>
+              <a href={f.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 text-xs px-2 py-1 rounded-lg bg-blue-50">보기</a>
+              <button onClick={() => handleDelete(f.id)} className="text-gray-400 hover:text-red-500">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
             </div>
-          )}
+          ))}
         </div>
       )}
     </div>
