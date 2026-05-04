@@ -151,9 +151,17 @@ export default function TbmOverviewPage() {
     setSelectedReport(null);
     if (!mapObjRef.current) return;
     overlaysRef.current.forEach(o => o.setMap(null));
-    const pos = new window.kakao.maps.LatLng(region.lat, region.lng);
+    // 실제 마커 좌표들의 평균으로 중심 계산
+    const coordReports = region.reports.filter(r => r.workLatitude && r.workLongitude);
+    let centerLat = region.lat;
+    let centerLng = region.lng;
+    if (coordReports.length > 0) {
+      centerLat = coordReports.reduce((s,r) => s + parseFloat(r.workLatitude), 0) / coordReports.length;
+      centerLng = coordReports.reduce((s,r) => s + parseFloat(r.workLongitude), 0) / coordReports.length;
+    }
+    const pos = new window.kakao.maps.LatLng(centerLat, centerLng);
     mapObjRef.current.setCenter(pos);
-    mapObjRef.current.setLevel(9);
+    mapObjRef.current.setLevel(coordReports.length > 1 ? 10 : 7);
     clearDetailMarkers();
 
     setTimeout(() => {
@@ -198,11 +206,13 @@ export default function TbmOverviewPage() {
     }
   };
 
-  // 지역 선택 시 표시할 리포트 (고위험 필터 포함)
+  // 지역 선택 시 표시할 리포트 (태스크필터 + 고위험 필터 모두 적용)
   const regionDisplayReports = selectedRegion
-    ? (highRiskFilter
-        ? selectedRegion.reports.filter(r => HIGH_RISK_TYPES.includes(r.riskType))
-        : selectedRegion.reports)
+    ? selectedRegion.reports.filter(r => {
+        if (taskFilter && r.taskType !== taskFilter) return false;
+        if (highRiskFilter && !HIGH_RISK_TYPES.includes(r.riskType)) return false;
+        return true;
+      })
     : [];
 
   const F = ({ label, value }: { label: string; value?: any }) => {
@@ -379,7 +389,7 @@ export default function TbmOverviewPage() {
                               <span className={`text-[9px] px-1 py-0.5 rounded font-bold mr-1 ${isYongYeok ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
                                 {isYongYeok ? "[용역]" : "[자체진단]"}
                               </span>
-                              <span className={`font-semibold text-xs leading-tight ${isHigh ? "text-red-600" : "text-gray-800"}`}>
+                              <span className={`font-semibold text-xs ${isHigh ? "text-red-600" : "text-gray-800"} whitespace-nowrap overflow-hidden text-ellipsis block max-w-[140px]`}>
                                 {r.projectName || r.facilityName || "-"}
                               </span>
                               {r.band && <p className="text-[10px] text-gray-400 mt-0.5">{r.band}</p>}
