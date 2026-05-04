@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function LogoImage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
