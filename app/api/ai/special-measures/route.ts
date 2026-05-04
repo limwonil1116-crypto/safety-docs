@@ -108,8 +108,10 @@ export async function POST(req: NextRequest) {
       "1. 반드시 위 신청 내용(작업내용, 위험공종, 위험요소 등)을 구체적으로 반영할 것",
       "2. 일반적인 안전수칙이 아닌, 이 작업에 특화된 조치사항을 작성할 것",
       "3. 각 항목은 '- '로 시작하고 구체적인 수치나 방법을 포함할 것",
-      "4. 최소 5줄 이상 작성하되, 필요시 7줄까지 작성 가능",
+      "4. 반드시 5개 이상 항목 작성(최대 8개), 각 항목은 완전한 문장 1~2줄로 작성할 것",
       "5. 한국어로 작성하고, 다른 설명이나 제목 없이 항목만 출력할 것",
+      "6. 각 항목은 단순 나열이 아니라 해당 작업의 실제 위험에 맞는 구체적인 조치명을 포함할 것",
+      "7. 예시: '- 2m 이상 고소작업 시 반드시 안전대(로프 연결) 및 Y형 안전대 갑 사용, 작업진돉끼 시 실승접속장치 설치 확인 후 상단 작업자에게 동신 신호 후 작업 시작'",
     ].join("\n");
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -124,7 +126,7 @@ export async function POST(req: NextRequest) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 1024, temperature: 0.4 },
+          generationConfig: { maxOutputTokens: 2048, temperature: 0.4 },
         }),
       }
     );

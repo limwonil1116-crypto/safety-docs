@@ -31,7 +31,7 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> 
   DRAFT:           { bg: "bg-gray-100",   text: "text-gray-600",   label: "작성중" },
 };
 const ROLE_LABELS: Record<string, Record<number, string>> = {
-  SAFETY_WORK_PERMIT: { 1: "(계획확인)허가자", 2: "(이행확인)확인자" },
+  SAFETY_WORK_PERMIT: { 1: "(계획확인)허가자", 2: "(이행확인)확인자", 3: "(이행확인)확인자" },
   CONFINED_SPACE:     { 1: "감시인", 2: "(계획확인)허가자", 3: "측정담당자", 4: "(이행확인)확인자" },
   HOLIDAY_WORK:       { 1: "검토자", 2: "승인자" },
   POWER_OUTAGE:       { 1: "(계획확인)허가자", 2: "(이행확인)확인자" },
@@ -255,8 +255,8 @@ function ApprovalFlow({ doc, approvalLines, writerName, applicantSignature }: { 
     const line2 = approvalLines.find(l => l.approvalOrder === 2);
     steps = [
       { icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />, label: "신청자", name: writerName, signatureData: isSubmitted ? applicantSignature : undefined, status: isSubmitted ? "done" : "active" },
-      ...(line1 ? [{ icon: <StepIcon type="review" status={getStepStatus(line1)} />, label: roleLabels[1] ?? "검토자", name: line1.approverName ?? "", comment: line1.comment, actedAt: line1.actedAt, signatureData: line1.signatureData, status: getStepStatus(line1) }] : []),
-      ...(line2 ? [{ icon: <StepIcon type="approve" status={getStepStatus(line2)} />, label: line2.approvalRole === "FINAL_APPROVER" ? finalLabel : (roleLabels[2] ?? "허가자"), name: line2.approverName ?? "", comment: line2.comment, actedAt: line2.actedAt, signatureData: line2.signatureData, status: getStepStatus(line2) }] : []),
+      ...(line1 ? [{ icon: <StepIcon type={doc.documentType === "SAFETY_WORK_PERMIT" ? "approve" : "review"} status={getStepStatus(line1)} />, label: roleLabels[1] ?? "(계획확인)허가자", name: line1.approverName ?? "", comment: line1.comment, actedAt: line1.actedAt, signatureData: line1.signatureData, status: getStepStatus(line1) }] : []),
+      ...(line2 ? [{ icon: <StepIcon type="approve" status={getStepStatus(line2)} />, label: line2.approvalRole === "FINAL_APPROVER" ? finalLabel : (roleLabels[2] ?? "(이행확인)확인자"), name: line2.approverName ?? "", comment: line2.comment, actedAt: line2.actedAt, signatureData: line2.signatureData, status: getStepStatus(line2) }] : []),
     ];
   }
   return (
@@ -844,7 +844,7 @@ export default function ApprovalDetailPage() {
       <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
         <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
-          {doc.currentApprovalOrder === 1 ? "검토 의견 입력" : "검토의견 확인 및 설정"}
+          {doc.currentApprovalOrder === 1 ? (doc.documentType === "SAFETY_WORK_PERMIT" ? "(계획확인) 검토의곬 입력" : "검토 의곬 입력") : (doc.documentType === "SAFETY_WORK_PERMIT" ? "(이행확인) 검토의곬 확인" : "검토의곬 확인 및 설정")}
         </h3>
         {reviewGuideText && <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-3">{reviewGuideText}</p>}
         <div className="space-y-3">
@@ -1002,7 +1002,7 @@ export default function ApprovalDetailPage() {
                 }} className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#16a34a" }}>
                 {isConfinedSpace
                   ? confinedOrder === 1 ? "감시인 서명" : confinedOrder === 2 ? "(계획확인) 서명" : "(이행확인) 최종 서명"
-                  : doc.currentApprovalOrder === 1 ? "검토완료" : "최종 승인"}
+                  : doc.currentApprovalOrder === 1 ? (doc.documentType === "SAFETY_WORK_PERMIT" ? "(계획확인) 검토완료" : "검토완료") : "최종 승인"}
               </button>
             </div>
           )}
