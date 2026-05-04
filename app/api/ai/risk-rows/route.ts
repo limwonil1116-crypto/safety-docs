@@ -8,27 +8,27 @@ export async function POST(req: NextRequest) {
 
     const { workContent, workLocation, riskItems, checkedFactors } = await req.json();
 
-    const prompt = [
-      "당신은 한국농어었공사 안전관리 전문가입니다.",
-      "아래 안전작업허가서 내용을 분석해서 위험요소, 개선대책, 재해형태를 3개 항목으로 작성하세요.",
-      "",
-      "작업내용: " + (workContent || "미입력"),
-      "작업장소: " + (workLocation || "미입력"),
-      "위험공종: " + ((riskItems as string[]).join(", ") || "없음"),
-      "예상위험요소: " + ((checkedFactors as string[]).join(", ") || "없음"),
-      "",
-      "응답은 반드시 JSON 배열 형식으로만 출력하세요.",
-      "설명, 제목, 코드 블록 없이 JSON만 출력하세요.",
-      "",
-      "출력 형식 (riskFactor:위험요소, improvement:개선대책, disasterType:재해형태):",
-      '[{"riskFactor":"...","improvement":"...","disasterType":"..."},{"riskFactor":"...","improvement":"...","disasterType":"..."},{"riskFactor":"...","improvement":"...","disasterType":"..."}]',
-      "",
-      "disasterType은 다음 중 하나: 낙상, 추낙, 협샭, 감전, 화재, 익수, 질식",
-    ].join("\n");
+    const riskStr = Array.isArray(riskItems) && riskItems.length > 0 ? riskItems.join(", ") : "없음";
+    const factorStr = Array.isArray(checkedFactors) && checkedFactors.length > 0 ? checkedFactors.join(", ") : "없음";
+
+    const prompt =
+      "당신은 한국농어었공사 안전관리 전문가입니다.\n" +
+      "아래 작업 정보를 분석하여 위험요소, 개선대책, 재해형태를 3개 작성하십시오.\n\n" +
+      "[작업 정보]\n" +
+      "- 작업내용: " + (workContent || "미입력") + "\n" +
+      "- 작업장소: " + (workLocation || "미입력") + "\n" +
+      "- 위험공종: " + riskStr + "\n" +
+      "- 예상위험요소: " + factorStr + "\n\n" +
+      "반드시 아래와 같은 JSON 배열만 응답하십시오. 다른 텍스트는 절대 입력하지 마십시오.\n" +
+      '[{"riskFactor":"위험요소 설명","improvement":"개선대책 설명","disasterType":"낙상"},' +
+      '{"riskFactor":"위험요소 설명","improvement":"개선대책 설명","disasterType":"협샭"},' +
+      '{"riskFactor":"위험요소 설명","improvement":"개선대책 설명","disasterType":"감전"}]\n\n' +
+      "disasterType 허용값: 낙상, 추낙, 협샭, 감전, 화재, 익수, 질식\n" +
+      "JSON 배열로만 응답. 코드 블록, 마크다운, 설명 사용 금지.";
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: "Gemini API 키가 설정되지 않았습니다." }, { status: 500 });
+      return NextResponse.json({ error: "Gemini API 키가 없습니다." }, { status: 500 });
     }
 
     const response = await fetch(
@@ -38,7 +38,11 @@ export async function POST(req: NextRequest) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 1024, temperature: 0.3 },
+          generationConfig: {
+            maxOutputTokens: 1024,
+            temperature: 0.2,
+            responseMimeType: "application/json",
+          },
         }),
       }
     );
