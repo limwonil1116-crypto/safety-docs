@@ -54,7 +54,7 @@ export default function SelectPage() {
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
       <div className="absolute inset-0 z-0"
-        style={{ backgroundImage: "url('/main_02.jpg')", backgroundSize: "cover", backgroundPosition: "center" }} />
+        style={{ backgroundImage: "url('/main_02.jpg')", backgroundSize: "cover", backgroundPosition: "50% 50%", backgroundAttachment: "fixed" }} />
       <div className="absolute inset-0 z-0"
         style={{ background: "linear-gradient(160deg, rgba(15,30,60,0.82) 0%, rgba(30,58,92,0.75) 50%, rgba(10,20,40,0.88) 100%)" }} />
       <div className="absolute inset-0 z-10"><Sparks /></div>
@@ -128,7 +128,7 @@ export default function SelectPage() {
           <div className="relative z-10 flex items-center justify-center"
             style={{ width: 80, height: 80 }}>
             <img src="/logo.png" alt="로고"
-              style={{ width: 80, height: 80, objectFit: "contain", mixBlendMode: "screen", background: "transparent" }} />
+              style={{ width: 80, height: 80, objectFit: "contain", mixBlendMode: "screen", background: "transparent", filter: "drop-shadow(0 0 8px rgba(255,215,0,0.4))" }} />
           </div>
         </div>
 

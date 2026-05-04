@@ -10,6 +10,7 @@ interface ApprovalDoc {
   status: string;
   current_approval_order?: number;
   task_name: string;
+  task_description?: string;
   contractor_company_name?: string;
   writer_name?: string;
   current_approver_name?: string;
@@ -17,6 +18,14 @@ interface ApprovalDoc {
   updated_at: string;
   is_my_turn: boolean;
 }
+
+const getTaskCategory = (desc?: string): "CONTRACTOR" | "SELF" => {
+  try { return JSON.parse(desc || "{}").category === "SELF" ? "SELF" : "CONTRACTOR"; } catch { return "CONTRACTOR"; }
+};
+
+const getTaskCategory = (desc?: string): "CONTRACTOR" | "SELF" => {
+  try { return JSON.parse(desc || "{}").category === "SELF" ? "SELF" : "CONTRACTOR"; } catch { return "CONTRACTOR"; }
+};
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
   DRAFT:           { bg: "bg-gray-100",   text: "text-gray-500",   label: "작성중" },
@@ -144,6 +153,7 @@ export default function ApprovalsPage() {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("ALL");
   const [dateFilter, setDateFilter] = useState("ALL");
+  const [categoryFilter, setCategoryFilter] = useState<"ALL"|"CONTRACTOR"|"SELF">("ALL");
   const [search, setSearch] = useState("");
   const [typeCounts, setTypeCounts] = useState<Record<string, number>>({});
   const [myTurnCount, setMyTurnCount] = useState(0);
@@ -180,6 +190,14 @@ export default function ApprovalsPage() {
     }).replace(/\. /g, ".").replace(/\.$/, "");
   };
 
+  const filteredDocs = docs.filter(doc => {
+    if (categoryFilter !== "ALL") {
+      const cat = getTaskCategory((doc as any).task_description);
+      if (cat !== categoryFilter) return false;
+    }
+    return true;
+  });
+
   return (
     <div>
       <div className="px-4 pt-4 pb-3 bg-white border-b border-gray-100">
@@ -199,6 +217,17 @@ export default function ApprovalsPage() {
               }`}
               style={dateFilter === f.key ? { background: "#2563eb" } : {}}>
               {f.label}
+            </button>
+          ))}
+          <div className="w-px h-4 bg-gray-200 mx-0.5 self-center" />
+          {(["ALL","CONTRACTOR","SELF"] as const).map(f => (
+            <button key={f} onClick={() => setCategoryFilter(f)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                categoryFilter === f
+                  ? f === "SELF" ? "bg-green-600 text-white" : f === "CONTRACTOR" ? "bg-blue-600 text-white" : "bg-gray-700 text-white"
+                  : f === "SELF" ? "text-green-600 border border-green-200 bg-white" : f === "CONTRACTOR" ? "text-blue-600 border border-blue-200 bg-white" : "bg-gray-100 text-gray-600"
+              }`}>
+              {f === "ALL" ? "전체" : f === "CONTRACTOR" ? "[용역]" : "[자체진단]"}
             </button>
           ))}
         </div>
@@ -291,6 +320,12 @@ export default function ApprovalsPage() {
                   <div className="flex items-start justify-between mb-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{typeShort}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 ${getTaskCategory(doc.task_description) === "SELF" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                        {getTaskCategory(doc.task_description) === "SELF" ? "[자체진단]" : "[용역]"}
+                      </span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold mr-1 shrink-0 ${getTaskCategory((doc as any).task_description) === "SELF" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                        {getTaskCategory((doc as any).task_description) === "SELF" ? "[자체진단]" : "[용역]"}
+                      </span>
                       <span className="text-sm font-semibold text-gray-900">{doc.task_name}</span>
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ml-1 ${style.bg} ${style.text}`}>

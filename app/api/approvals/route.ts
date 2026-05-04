@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
           d.updated_at,
           d.current_approver_user_id,
           t.name as task_name,
+          t.description as task_description,
           t.contractor_company_name,
           u.name as writer_name,
           cu.name as current_approver_name,

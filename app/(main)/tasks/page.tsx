@@ -299,6 +299,9 @@ function TasksPageInner() {
                           <span className="text-xs px-2 py-0.5 rounded-full font-medium text-white shrink-0"
                             style={{ background: accentColor }}>{task.division}</span>
                         )}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 ${isSelf ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                          {isSelf ? "[자체진단]" : "[용역]"}
+                        </span>
                         <h3 className="font-semibold text-gray-900 text-sm truncate">{task.name}</h3>
                       </div>
                       {!isSelf && task.contractorCompanyName && (
