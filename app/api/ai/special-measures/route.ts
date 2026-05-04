@@ -110,8 +110,9 @@ export async function POST(req: NextRequest) {
       "3. 각 항목은 '- '로 시작하고 구체적인 수치나 방법을 포함할 것",
       "4. 반드시 5개 이상 항목 작성(최대 8개), 각 항목은 완전한 문장 1~2줄로 작성할 것",
       "5. 한국어로 작성하고, 다른 설명이나 제목 없이 항목만 출력할 것",
-      "6. 각 항목은 단순 나열이 아니라 해당 작업의 실제 위험에 맞는 구체적인 조치명을 포함할 것",
-      "7. 예시: '- 2m 이상 고소작업 시 반드시 안전대(로프 연결) 및 Y형 안전대 갑 사용, 작업진돉끼 시 실승접속장치 설치 확인 후 상단 작업자에게 동신 신호 후 작업 시작'",
+      "6. 매우 중요: 각 항목은 '~할 것.' 또는 '~하여야 한다.' 식으로 나라하는 완전한 문장으로 끝내야 함",
+      "7. 절대 문장 도중에 끊어서는 안 됨 - 한 항목을 완전히 작성한 후 다음 항목으로 넘어갈 것",
+      "8. 잘만든 예시: '- 방조제 제방시면 배수갑문 작업시 납님방지를 위해 안전대(Y형 갑, 로프 쭐결)를 착용하고, 작업진해진에 돌입하기 전 채결기 연결 상태를 관리감독자가 친히 확인한 후 작업을 시작할 것.'",
     ].join("\n");
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -126,7 +127,7 @@ export async function POST(req: NextRequest) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 2048, temperature: 0.4 },
+          generationConfig: { maxOutputTokens: 4096, temperature: 0.4 },
         }),
       }
     );
