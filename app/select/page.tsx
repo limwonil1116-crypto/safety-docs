@@ -4,36 +4,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 function LogoImage() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const img = new window.Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const data = imageData.data;
-      // 모서리 픽셀 색상을 배경색으로 간주
-      const br = data[0], bg = data[1], bb = data[2];
-      const threshold = 40;
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i], g = data[i+1], b = data[i+2];
-        if (Math.abs(r-br) < threshold && Math.abs(g-bg) < threshold && Math.abs(b-bb) < threshold) {
-          data[i+3] = 0; // 투명
-        }
-      }
-      ctx.putImageData(imageData, 0, 0);
-    };
-    img.src = "/logo.png";
-  }, []);
   return (
-    <canvas ref={canvasRef}
-      style={{ width: 80, height: 80, filter: "drop-shadow(0 0 12px rgba(255,215,0,0.7))" }} />
+    <img src="/logo.png" alt="로고"
+      style={{ width: 80, height: 80, objectFit: "contain",
+        borderRadius: 16,
+        filter: "drop-shadow(0 0 12px rgba(255,215,0,0.7))" }} />
   );
 }
 
