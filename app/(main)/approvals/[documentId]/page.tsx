@@ -1081,9 +1081,22 @@ export default function ApprovalDetailPage() {
       )}
 
       {showFinalApprover && doc && (
-        <FinalApproverModal documentId={documentId} documentType={doc.documentType} isFirstStep={true}
+        <FinalApproverModal
+          documentId={documentId}
+          documentType={doc.documentType}
+          isFirstStep={doc.documentType !== "SAFETY_WORK_PERMIT" || !(doc.currentApprovalOrder && doc.currentApprovalOrder >= 1)}
           onClose={() => setShowFinalApprover(false)}
-          onAssigned={() => { setShowFinalApprover(false); alert(doc.documentType === "SAFETY_WORK_PERMIT" ? "(계획확인)허가자가 지정됩니다." : "최종허가자가 지정됩니다."); router.push("/approvals"); }} />
+          onAssigned={() => {
+            setShowFinalApprover(false);
+            if (doc.documentType === "SAFETY_WORK_PERMIT") {
+              const isFirst = !(doc.currentApprovalOrder && doc.currentApprovalOrder >= 1);
+              alert(isFirst ? "(계획확인)허가자가 지정되었습니다." : "(이행확인)확인자가 지정되었습니다.");
+            } else {
+              alert("최종허가자가 지정되었습니다.");
+            }
+            router.push("/approvals");
+          }}
+        />
       )}
 
       {/* 밀폐공간 다음단계 지정 모달 */}
