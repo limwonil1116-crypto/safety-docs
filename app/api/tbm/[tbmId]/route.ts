@@ -66,7 +66,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ tb
       instructorPhone: body.instructorPhone,
       signatureData: body.signatureData,
       photoUrl: body.photoUrl,
-      facilityName: body.facilityName,
       taskType: body.taskType || null,
       band: body.band || null,
       region: body.region || null,
