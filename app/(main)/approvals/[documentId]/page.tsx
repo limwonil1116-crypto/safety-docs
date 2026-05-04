@@ -344,9 +344,9 @@ function FinalApproverModal({ documentId, documentType, onClose, onAssigned }: {
   const [selected, setSelected] = useState<UserItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const finalRoleLabel = doc?.documentType === "SAFETY_WORK_PERMIT" ? "(이행확인)확인자" : (FINAL_ROLE_LABELS[documentType] ?? "최종 허가자");
+  const finalRoleLabel = documentType === "SAFETY_WORK_PERMIT" ? "(이행확인)확인자" : (FINAL_ROLE_LABELS[documentType] ?? "최종 허가자");
   const needFinalApprover = documentType !== "HOLIDAY_WORK";
-  useEffect(() => { const q = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""; const roleQ = (needFinalApprover && doc?.documentType !== "SAFETY_WORK_PERMIT") ? "&role=FINAL_APPROVER" : ""; fetch(`/api/users?krcOnly=true${q}${roleQ}`).then(r => r.json()).then(d => setUsers(d.users ?? [])); }, [keyword, needFinalApprover]);
+  useEffect(() => { const q = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""; const roleQ = (needFinalApprover && documentType !== "SAFETY_WORK_PERMIT") ? "&role=FINAL_APPROVER" : ""; fetch(`/api/users?krcOnly=true${q}${roleQ}`).then(r => r.json()).then(d => setUsers(d.users ?? [])); }, [keyword, needFinalApprover]);
   const handleAssign = async () => {
     if (!selected) { setError("결재자를 선택해주세요."); return; }
     setLoading(true); setError("");
