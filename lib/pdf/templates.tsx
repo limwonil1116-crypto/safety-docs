@@ -398,7 +398,7 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
           ))}
         </View>
 
-        <Text style={S.secHeader}>3. 안전관리자 검토의견</Text>
+        <Text style={S.secHeader}>3. 용역감독 검토내용</Text>
         <View style={S.table}>
           <View style={S.tr}>
             <Text style={[S.th, { flex: 1 }]}>검토의견</Text>
@@ -409,9 +409,9 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
             <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 30 }]}>{fd.reviewResult || ""}</Text>
           </View>
           <View style={S.tr}>
-            <Text style={[S.il, { width: 78 }]}>최종 검토자</Text>
+            <Text style={[S.il, { width: 78 }]}>(계획확인)허가자</Text>
             <View style={{ flex: 2, borderRight: "0.5px solid " + C.border, padding: "4 5", justifyContent: "center" }}>
-              <Text style={{ fontSize: 8.5, color: "#555" }}>(부서) 한국농어촌공사   (직책) 용역관리자</Text>
+              <Text style={{ fontSize: 8.5, color: "#555" }}>(부서) 안전기술본부   (직첸) 용역감독원</Text>
             </View>
             <View style={{ width: 85, padding: "4 5", borderRight: "0.5px solid " + C.border, justifyContent: "center" }}>
               <Text style={{ fontSize: 9.5 }}>{`(성명) ${a1?.approverName || ""}`}</Text>
@@ -424,9 +424,9 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
             </View>
           </View>
           <View style={S.trLast}>
-            <Text style={[S.il, { width: 78 }]}>최종 허가자</Text>
+            <Text style={[S.il, { width: 78 }]}>(이행확인)확인자</Text>
             <View style={{ flex: 2, borderRight: "0.5px solid " + C.border, padding: "4 5", justifyContent: "center" }}>
-              <Text style={{ fontSize: 8.5, color: "#555" }}>(부서) 한국농어촌공사   (직책) 용역관리자</Text>
+              <Text style={{ fontSize: 8.5, color: "#555" }}>(부서) 안전기술본부   (직첸) 용역감독원</Text>
             </View>
             <View style={{ width: 85, padding: "4 5", borderRight: "0.5px solid " + C.border, justifyContent: "center" }}>
               <Text style={{ fontSize: 9.5 }}>{`(성명) ${a2?.approverName || ""}`}</Text>
@@ -641,7 +641,7 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
             </View>
           ))}
         </View>
-        <Text style={S.secHeader}>3. 안전관리자 검토의견</Text>
+        <Text style={S.secHeader}>3. 용역감독 검토내용</Text>
         <View style={S.table}>
           <View style={S.tr}>
             <Text style={[S.th, { flex: 1 }]}>검토의견</Text>
