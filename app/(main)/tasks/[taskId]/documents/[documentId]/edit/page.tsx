@@ -344,6 +344,51 @@ function PhotoAttachSection({ documentId, canAdd = true }: { documentId: string;
 }
 
 
+interface RiskRow { riskFactor: string; improvement: string; disasterType: string; }
+interface Form1 {
+  requestDate: string; workStartDate: string; workEndDate: string; workStartTime: string; workEndTime: string;
+  projectName: string; applicantCompany: string; applicantTitle: string; applicantName: string;
+  workLocation: string; workContent: string; participants: string; facilityName: string;
+  riskHighPlace: boolean; riskHighPlaceDetail: string; riskHighPlaceItems: string[];
+  riskWaterWork: boolean; riskWaterWorkDetail: string; riskWaterWorkItems: string[];
+  riskConfinedSpace: boolean; riskConfinedSpaceDetail: string;
+  riskPowerOutage: boolean; riskPowerOutageDetail: string;
+  riskFireWork: boolean; riskFireWorkDetail: string;
+  riskOther: boolean; riskOtherDetail: string;
+  factorNarrowAccess: boolean; factorSlippery: boolean; factorSteepSlope: boolean; factorWaterHazard: boolean;
+  factorRockfall: boolean; factorNoRailing: boolean; factorLadderNoGuard: boolean; factorSuffocation: boolean;
+  factorElectricFire: boolean; factorSparkFire: boolean; factorOther: boolean; factorOtherDetail: string;
+  riskRows: RiskRow[]; reviewOpinion: string; reviewResult: string;
+  riskAssessRows: RiskAssessRow[];
+}
+const defaultForm1: Form1 = {
+  requestDate: new Date().toISOString().split("T")[0],
+  workStartDate: "", workEndDate: "", workStartTime: "09:00", workEndTime: "18:00",
+  projectName: "", applicantCompany: "", applicantTitle: "", applicantName: "",
+  workLocation: "", workContent: "", participants: "", facilityName: "",
+  riskHighPlace: false, riskHighPlaceDetail: "", riskHighPlaceItems: [],
+  riskWaterWork: false, riskWaterWorkDetail: "", riskWaterWorkItems: [],
+  riskConfinedSpace: false, riskConfinedSpaceDetail: "",
+  riskPowerOutage: false, riskPowerOutageDetail: "",
+  riskFireWork: false, riskFireWorkDetail: "",
+  riskOther: false, riskOtherDetail: "",
+  factorNarrowAccess: false, factorSlippery: false, factorSteepSlope: false, factorWaterHazard: false,
+  factorRockfall: false, factorNoRailing: false, factorLadderNoGuard: false, factorSuffocation: false,
+  factorElectricFire: false, factorSparkFire: false, factorOther: false, factorOtherDetail: "",
+  riskRows: [
+    { riskFactor: "", improvement: "", disasterType: "" },
+    { riskFactor: "", improvement: "", disasterType: "" },
+    { riskFactor: "", improvement: "", disasterType: "" },
+  ], reviewOpinion: "", reviewResult: "",
+  riskAssessRows: [{ ...defaultRiskAssessRow }],
+};
+
+function toggleArrItem(field: string, item: string, currentArr: string[], onChange: (k: string, v: unknown) => void) {
+  const exists = currentArr.includes(item);
+  onChange(field, exists ? currentArr.filter(i => i !== item) : [...currentArr, item]);
+}
+
+
 function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation, onClearLocation, taskName, documentId }: {
   form: Form1; onChange: (k: string, v: unknown) => void;
   workLatitude: number | null; workAddress: string; onOpenLocation: () => void; onClearLocation: () => void;
