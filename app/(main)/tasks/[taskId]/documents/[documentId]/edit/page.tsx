@@ -214,7 +214,9 @@ function AiRiskRowsButton({ form, onChange }: { form: Form1; onChange: (k: strin
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "AI 오류");
-      const rows = data.rows;
+      // rawText로 반환된 JSON을 클라이언트에서 파싱 (special-measures 동일 패턴)
+      const clean = (data.rawText || "").replace(/```json|```/g, "").trim();
+      const rows = JSON.parse(clean);
       if (Array.isArray(rows))
         onChange("riskRows", rows.map((r: any) => ({ riskFactor: r.riskFactor||"", improvement: r.improvement||"", disasterType: r.disasterType||"" })));
     } catch (e: any) { alert("AI 오류: " + (e.message||"오류")); }
