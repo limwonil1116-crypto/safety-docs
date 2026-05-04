@@ -47,7 +47,7 @@ const STEP_STATUS_STYLE: Record<string, { bg: string; text: string; label: strin
 };
 
 const ROLE_LABELS: Record<string, Record<number, string>> = {
-  SAFETY_WORK_PERMIT: { 1: "최종검토자", 2: "최종허가자" },
+  SAFETY_WORK_PERMIT: { 1: "(계획확인)허가자", 2: "(이행확인)확인자" },
   CONFINED_SPACE:     { 1: "허가자",     2: "확인자" },
   HOLIDAY_WORK:       { 1: "검토자",     2: "승인자" },
   POWER_OUTAGE:       { 1: "허가자",     2: "확인자" },
