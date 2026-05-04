@@ -216,7 +216,7 @@ function AiRiskRowsButton({ form, onChange }: { form: Form1; onChange: (k: strin
       if (!res.ok) throw new Error(data.error || "AI 오류");
       const clean = (data.rawText || "").replace(/```json|```/g, "").trim();
       // JSON 배열 부분만 추출
-      const jsonMatch = clean.match(/\[.*\]/s);
+      const jsonMatch = clean.match(/\[[\s\S]*\]/);
       if (!jsonMatch) throw new Error("AI 응답에서 JSON을 찾을 수 없습니다. 다시 시도해주세요.");
       const rows = JSON.parse(jsonMatch[0]);
       if (Array.isArray(rows))
