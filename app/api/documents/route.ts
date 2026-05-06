@@ -24,6 +24,7 @@ export async function GET(_req: NextRequest) {
         createdAt: documents.createdAt,
         taskId: documents.taskId,
         taskName: tasks.name,
+        taskDescription: tasks.description,
         creatorOrganization: users.organization,
       })
       .from(documents)
@@ -54,7 +55,7 @@ export async function GET(_req: NextRequest) {
         },
         taskId: r.taskId as string,
         createdAt: r.createdAt as Date,
-        task: { name: r.taskName ?? "용역명없음" },
+        task: { name: r.taskName ?? "용역명없음", description: r.taskDescription as string | null },
         creator: { organization: r.creatorOrganization ?? "-" },
       };
     });

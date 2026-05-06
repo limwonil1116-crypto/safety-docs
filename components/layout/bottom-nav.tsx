@@ -33,9 +33,9 @@ function BottomNavInner() {
 
   const navItems = [
     {
-      href: "/tasks",
+      href: "/tasks?category=CONTRACTOR",
       label: "과업",
-      dynamicLabel: pathname.startsWith("/tasks") ? tasksLabel : "과업",
+      dynamicLabel: pathname.startsWith("/tasks") ? tasksLabel : "도급(용역)",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>

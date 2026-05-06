@@ -7,6 +7,7 @@ interface DocumentMapItem {
   id: string;
   taskId: string;
   taskName: string;
+  taskDescription?: string | null;
   company: string;
   type: string;
   status: string;
@@ -43,6 +44,17 @@ const DOC_TYPE_CAL_COLOR: Record<string, { bg: string; text: string; border: str
 };
 
 declare global { interface Window { kakao: any; } }
+
+// category 파싱
+function getTaskCat(desc?: string | null): "CONTRACTOR" | "SELF" {
+  try { return JSON.parse(desc || "{}").category === "SELF" ? "SELF" : "CONTRACTOR"; } catch { return "CONTRACTOR"; }
+}
+function getCatLabel(desc?: string | null) {
+  return getTaskCat(desc) === "SELF" ? "자체진단" : "용역";
+}
+function getCatTag(desc?: string | null) {
+  return getTaskCat(desc) === "SELF" ? "[자체진단]" : "[용역]";
+}
 
 // 로컬 타임존 기준 날짜 파싱
 function parseLocalDate(dateStr: string): Date {
@@ -366,9 +378,13 @@ export default function DashboardPage() {
   const [filterTab, setFilterTab] = useState("ALL");
   const [viewMode, setViewMode] = useState<"map" | "calendar">("map");
   const [selectedTaskId, setSelectedTaskId] = useState("ALL");
+  const [categoryFilter, setCategoryFilter] = useState<"ALL"|"CONTRACTOR"|"SELF">("ALL");
 
-  const taskList = Array.from(new Map(documents.map(d => [d.taskId, d.taskName])).entries());
-  const taskFiltered = selectedTaskId === "ALL" ? documents : documents.filter(d => d.taskId === selectedTaskId);
+  // category 필터 먼저 적용
+  const categoryFiltered = categoryFilter === "ALL" ? documents
+    : documents.filter(d => getTaskCat(d.taskDescription) === categoryFilter);
+  const taskList = Array.from(new Map(categoryFiltered.map(d => [d.taskId, d.taskName])).entries());
+  const taskFiltered = selectedTaskId === "ALL" ? categoryFiltered : categoryFiltered.filter(d => d.taskId === selectedTaskId);
   const filtered = filterTab === "ALL" ? taskFiltered : taskFiltered.filter(d => d.documentType === filterTab);
 
   const stats = {
@@ -390,6 +406,7 @@ export default function DashboardPage() {
             id: d.id,
             taskId: d.taskId ?? d.task?.id ?? "",
             taskName: d.task?.name ?? "제목없음",
+            taskDescription: d.task?.description ?? null,
             company: d.creator?.organization ?? "-",
             type: DOC_TYPE_LABEL[d.documentType] ?? d.documentType,
             documentType: d.documentType,
@@ -441,15 +458,16 @@ export default function DashboardPage() {
       const marker = new window.kakao.maps.Marker({ position: pos, map, image: markerImage });
       const periodText = doc.workStartDate && doc.workEndDate && doc.workStartDate !== doc.workEndDate
         ? `${doc.workStartDate} ~ ${doc.workEndDate}` : doc.workStartDate || "";
-      const shortName = doc.taskName.length > 8 ? doc.taskName.slice(0, 8) + "..." : doc.taskName;
+      const catTag = getCatTag(doc.taskDescription);
+      const shortName = `${catTag} ${doc.taskName.length > 8 ? doc.taskName.slice(0, 8) + "..." : doc.taskName}`;
       const labelContent = `<div style="background:${pinColor};color:white;font-size:10px;font-weight:600;padding:3px 7px;border-radius:10px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,0.25);font-family:sans-serif;margin-bottom:4px;">${shortName}</div>`;
       const labelOverlay = new window.kakao.maps.CustomOverlay({ position: pos, content: labelContent, yAnchor: 2.7, map });
-      const infoContent = `<div style="padding:8px 12px;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);min-width:140px;font-family:sans-serif;cursor:pointer"><p style="font-size:12px;font-weight:600;color:#111;margin:0 0 2px;">${doc.taskName}</p><p style="font-size:11px;color:#666;margin:0 0 4px;">${doc.type}</p>${doc.workAddress?`<p style="font-size:10px;color:#888;margin:0 0 4px;">${doc.workAddress}</p>`:""}<p style="font-size:10px;color:#888;margin:0 0 4px;">${periodText}</p><span style="font-size:11px;padding:2px 8px;border-radius:99px;background:${pinColor}20;color:${pinColor};font-weight:500;">${STATUS_STYLE[doc.status]?.label??doc.status}</span></div>`;
+      const infoContent = `<div style="padding:8px 12px;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);min-width:140px;font-family:sans-serif;cursor:pointer"><p style="font-size:10px;font-weight:700;color:${getCatTag(doc.taskDescription).includes("자체") ? "#1d4ed8" : "#16a34a"};margin:0 0 2px;">${getCatTag(doc.taskDescription)}</p><p style="font-size:12px;font-weight:600;color:#111;margin:0 0 2px;">${doc.taskName}</p><p style="font-size:11px;color:#666;margin:0 0 4px;">${doc.type}</p>${doc.workAddress?`<p style="font-size:10px;color:#888;margin:0 0 4px;">${doc.workAddress}</p>`:""}<p style="font-size:10px;color:#888;margin:0 0 4px;">${periodText}</p><span style="font-size:11px;padding:2px 8px;border-radius:99px;background:${pinColor}20;color:${pinColor};font-weight:500;">${STATUS_STYLE[doc.status]?.label??doc.status}</span></div>`;
       const infowindow = new window.kakao.maps.InfoWindow({ content: infoContent, removable: true });
       window.kakao.maps.event.addListener(marker, "click", () => infowindow.open(map, marker));
       void labelOverlay;
     });
-  }, [mapLoaded, documents, filterTab, viewMode, selectedTaskId]);
+  }, [mapLoaded, filtered, filterTab, viewMode, categoryFilter]);
 
 
   return (
@@ -485,7 +503,30 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="flex gap-2 mx-4 mt-4">
+      {/* 카테고리 필터 + 세부 드롭다운 */}
+      <div className="flex items-center gap-2 mx-4 mt-3 flex-wrap">
+        {(["ALL","CONTRACTOR","SELF"] as const).map(f => (
+          <button key={f} onClick={() => { setCategoryFilter(f); setSelectedTaskId("ALL"); }}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+              categoryFilter === f
+                ? f === "SELF" ? "bg-blue-600 text-white border-blue-600"
+                : f === "CONTRACTOR" ? "bg-green-600 text-white border-green-600"
+                : "bg-gray-800 text-white border-gray-800"
+                : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+            }`}>
+            {f === "ALL" ? "전체" : f === "CONTRACTOR" ? "도급사업(용역)" : "자체진단"}
+          </button>
+        ))}
+        <select value={selectedTaskId} onChange={e => setSelectedTaskId(e.target.value)}
+          className="text-xs px-2.5 py-1.5 border border-gray-200 rounded-lg text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[160px]">
+          <option value="ALL">세부 용역 선택</option>
+          {taskList.map(([id, name]) => (
+            <option key={id} value={id}>{name}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex gap-2 mx-4 mt-3">
         <button onClick={() => setViewMode("map")}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${
             viewMode === "map" ? "border-blue-500 bg-blue-50 text-blue-600" : "border-gray-200 text-gray-700 hover:bg-gray-50"
@@ -535,9 +576,9 @@ export default function DashboardPage() {
             <CalendarView
               documents={filtered}
               onDocClick={doc => router.push(`/approvals/${doc.id}`)}
-              selectedTaskId={selectedTaskId}
-              taskList={taskList}
-              onTaskChange={setSelectedTaskId}
+              selectedTaskId="ALL"
+              taskList={[]}
+              onTaskChange={() => {}}
             />
           )}
         </div>
@@ -553,8 +594,11 @@ export default function DashboardPage() {
               className="text-xs px-2 py-1.5 border border-gray-200 rounded-lg text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[160px] truncate"
             >
               <option value="ALL">전체 용역</option>
-              {taskList.map(([id, name]) => (
-                <option key={id} value={id}>{name}</option>
+              {taskList.map(([id, name]) => {
+                const catDoc = categoryFiltered.find(d => d.taskId === id);
+                const tag = getCatTag(catDoc?.taskDescription);
+                return <option key={id} value={id}>{tag} {name}</option>;
+              }
               ))}
             </select>
             <span className="text-xs text-gray-500 shrink-0">{filtered.length}건</span>
@@ -584,7 +628,12 @@ export default function DashboardPage() {
                       className={`cursor-pointer hover:bg-blue-50 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"}`}
                       onClick={() => router.push(`/approvals/${doc.id}`)}
                     >
-                      <td className="px-3 py-2.5 text-gray-800 font-medium max-w-[110px] truncate">{doc.taskName}</td>
+                      <td className="px-3 py-2.5 font-medium max-w-[130px]">
+                        <span className={`text-[9px] px-1 py-0.5 rounded font-bold mr-1 ${getTaskCat(doc.taskDescription) === "SELF" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
+                          {getCatTag(doc.taskDescription)}
+                        </span>
+                        <span className="text-gray-800 text-xs truncate">{doc.taskName}</span>
+                      </td>
                       <td className="text-center px-2 py-2.5 text-gray-700">{doc.type}</td>
                       <td className="text-center px-2 py-2.5 text-gray-700 max-w-[80px] truncate">{doc.company}</td>
                       <td className="text-center px-2 py-2.5">
