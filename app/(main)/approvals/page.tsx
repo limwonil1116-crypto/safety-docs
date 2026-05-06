@@ -282,7 +282,7 @@ export default function ApprovalsPage() {
             <p className="text-sm">결재 목록이 없습니다</p>
           </div>
         ) : (
-          docs.map((doc) => {
+          filteredDocs.map((doc) => {
             const statusKey = getStatusKey(doc);
             const style = STATUS_STYLE[statusKey] ?? STATUS_STYLE.SUBMITTED;
             const typeShort = DOCUMENT_TYPE_SHORT[doc.document_type] ?? doc.document_type;
