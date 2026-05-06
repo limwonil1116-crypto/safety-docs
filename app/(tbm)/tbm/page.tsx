@@ -21,8 +21,10 @@ function TbmPage() {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
-  const typeParam = searchParams.get("type") as "" | "용역" | "자체진단" || "";
+  const typeParam = (searchParams.get("type") || "") as "" | "용역" | "자체진단";
   const [taskFilter, setTaskFilter] = useState<"" | "용역" | "자체진단">(typeParam);
+  // typeParam 변경 시 taskFilter 동기화
+  useEffect(() => { setTaskFilter(typeParam); }, [typeParam]);
   const [highRiskOnly, setHighRiskOnly] = useState(false);
   const [date, setDate] = useState(today()); // ✅ 오늘 날짜 디폴트
 
@@ -66,7 +68,7 @@ function TbmPage() {
     return t;
   };
   const filtered = reports.filter(r => {
-    const norm = normalizeType(r.taskType);
+    const norm = normalizeType(r.taskType || "");
     if (taskFilter && norm !== taskFilter) return false;
     if (highRiskOnly && !HIGH_RISK_TYPES.includes(r.riskType)) return false;
     return true;
@@ -123,16 +125,6 @@ function TbmPage() {
             자체진단
           </button>
         </div>
-        {/* 필터 */}
-        <div className="flex gap-2 mb-2 flex-wrap">
-          {(["", "용역", "자체진단"] as const).map(f => (
-            <button key={f} onClick={() => setTaskFilter(f)}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium border transition-colors ${taskFilter === f ? (f === "용역" ? "bg-green-600 text-white border-green-600" : f === "자체진단" ? "bg-blue-600 text-white border-blue-600" : "bg-gray-700 text-white border-gray-700") : "bg-white text-gray-600 border-gray-300 hover:border-gray-400"}`}>
-              {f || "전체"}
-            </button>
-          ))}
-        </div>
-
         {/* 통계 */}
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-blue-50 rounded-xl p-2.5 text-center">
