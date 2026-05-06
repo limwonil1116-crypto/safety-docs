@@ -598,8 +598,7 @@ export default function DashboardPage() {
                 const catDoc = categoryFiltered.find(d => d.taskId === id);
                 const tag = getCatTag(catDoc?.taskDescription);
                 return <option key={id} value={id}>{tag} {name}</option>;
-              }
-              ))}
+              })}
             </select>
             <span className="text-xs text-gray-500 shrink-0">{filtered.length}건</span>
           </div>
