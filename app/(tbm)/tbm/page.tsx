@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 interface TbmReport {
@@ -14,13 +14,15 @@ const HIGH_RISK_TYPES = ["2.0m 이상 고소작업","1.5m 이상 굴착·가설�
 
 const today = () => new Date().toISOString().split("T")[0];
 
-export default function TbmPage() {
+function TbmPage() {
   const router = useRouter();
   const [reports, setReports] = useState<TbmReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [taskFilter, setTaskFilter] = useState<"" | "용역" | "자체진단">("");
+  const searchParams = useSearchParams();
+  const typeParam = searchParams.get("type") as "" | "용역" | "자체진단" || "";
+  const [taskFilter, setTaskFilter] = useState<"" | "용역" | "자체진단">(typeParam);
   const [highRiskOnly, setHighRiskOnly] = useState(false);
   const [date, setDate] = useState(today()); // ✅ 오늘 날짜 디폴트
 
@@ -109,6 +111,18 @@ export default function TbmPage() {
           )}
         </div>
 
+        {/* 도급사업/자체진단 탭 */}
+        <div className="flex border-b border-gray-100 mb-3 -mx-4 px-4">
+          <button onClick={() => { setTaskFilter(""); }} className={`flex-1 py-2.5 text-sm font-semibold border-b-2 transition-colors ${taskFilter === "" ? "border-gray-800 text-gray-900" : "border-transparent text-gray-400"}`}>
+            전체
+          </button>
+          <button onClick={() => { setTaskFilter("용역"); }} className={`flex-1 py-2.5 text-sm font-semibold border-b-2 transition-colors ${taskFilter === "용역" ? "border-green-600 text-green-600" : "border-transparent text-gray-400"}`}>
+            도급사업(용역)
+          </button>
+          <button onClick={() => { setTaskFilter("자체진단"); }} className={`flex-1 py-2.5 text-sm font-semibold border-b-2 transition-colors ${taskFilter === "자체진단" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-400"}`}>
+            자체진단
+          </button>
+        </div>
         {/* 필터 */}
         <div className="flex gap-2 mb-2 flex-wrap">
           {(["", "용역", "자체진단"] as const).map(f => (
@@ -221,4 +235,8 @@ export default function TbmPage() {
       </div>
     </div>
   );
+}
+
+export default function TbmPageWrapper() {
+  return <Suspense fallback={null}><TbmPage /></Suspense>;
 }

@@ -1,4 +1,3 @@
-"use server";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
@@ -18,7 +17,14 @@ export async function GET(req: NextRequest) {
     const list = await db.select().from(tbmReports)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(tbmReports.reportDate), desc(tbmReports.createdAt));
-    return NextResponse.json({ tbmReports: list });
+    // taskType 정규화: CONTRACTOR→용역, SELF→자체진단
+    const normalizedList = list.map(r => ({
+      ...r,
+      taskType: r.taskType === "CONTRACTOR" ? "용역"
+        : r.taskType === "SELF" ? "자체진단"
+        : r.taskType || ""
+    }));
+    return NextResponse.json({ tbmReports: normalizedList });
   } catch (e) {
     console.error(e);
     return NextResponse.json({ error: "오류가 발생했습니다." }, { status: 500 });
@@ -67,7 +73,9 @@ export async function POST(req: NextRequest) {
       instructorPhone: body.instructorPhone,
       signatureData: body.signatureData,
       photoUrl: body.photoUrl,
-      taskType: body.taskType || null,
+      taskType: body.taskType === "CONTRACTOR" ? "용역"
+        : body.taskType === "SELF" ? "자체진단"
+        : body.taskType || null,
       band: body.band || null,
       region: body.region || null,
     }).returning();
