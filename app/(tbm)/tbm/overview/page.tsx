@@ -4,6 +4,13 @@ import { useRouter } from "next/navigation";
 
 declare global { interface Window { kakao: any; } }
 
+const normalizeType = (t: string) => {
+  if (!t) return "";
+  if (t === "CONTRACTOR" || t === "용역") return "용역";
+  if (t === "SELF" || t === "자체진단") return "자체진단";
+  return t;
+};
+
 const HIGH_RISK_TYPES = ["2.0m 이상 고소작업","1.5m 이상 굴착·가설공사","철곸 구조물 공사","2.0m이상 외부 도장공사","승강기 설치공사","취수탑 공사","복통, 잠관 공사","이외의 작업계획서작성 대상"];
 
 const REGIONS = [
@@ -174,8 +181,8 @@ export default function TbmOverviewPage() {
         const isHigh = HIGH_RISK_TYPES.includes(r.riskType);
         // 용역=초록, 자체진단=파랑, 기타=회색
         // 용역=초록(#16a34a), 자체진단=파낙(#1d4ed8), 기타=회색
-        const bgColor = r.taskType === "자체진단" ? "#1d4ed8" : "#16a34a";
-        const typeTag = r.taskType === "자체진단" ? "[자체] " : "[용역] ";
+        const bgColor = normalizeType(r.taskType) === "자체진단" ? "#1d4ed8" : "#16a34a";
+        const typeTag = normalizeType(r.taskType) === "자체진단" ? "[자체] " : "[용역] ";
         const baseName = r.projectName || r.facilityName || r.contractorName || `${i+1}번`;
         const label = typeTag + baseName;
         const div = document.createElement("div");
@@ -209,7 +216,7 @@ export default function TbmOverviewPage() {
   // 지역 선택 시 표시할 리포트 (태스크필터 + 고위험 필터 모두 적용)
   const regionDisplayReports = selectedRegion
     ? selectedRegion.reports.filter(r => {
-        if (taskFilter && r.taskType !== taskFilter) return false;
+        if (taskFilter && normalizeType(r.taskType) !== taskFilter) return false;
         if (highRiskFilter && !HIGH_RISK_TYPES.includes(r.riskType)) return false;
         return true;
       })
@@ -376,7 +383,7 @@ export default function TbmOverviewPage() {
                     <tr><td colSpan={11} className="text-center py-10 text-gray-400">TBM 보고서가 없습니다.</td></tr>
                   ) : regionDisplayReports.map((r, i) => {
                     const isHigh = HIGH_RISK_TYPES.includes(r.riskType);
-                    const isYongYeok = r.taskType === "용역";
+                    const isYongYeok = normalizeType(r.taskType) === "용역";
                     const rowBg = isHigh ? "bg-red-50" : i % 2 === 0 ? "bg-white" : "bg-gray-50/50";
                     return (
                       <tr key={r.id}
@@ -389,7 +396,7 @@ export default function TbmOverviewPage() {
                               <span className={`text-[9px] px-1 py-0.5 rounded font-bold mr-1 ${isYongYeok ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
                                 {isYongYeok ? "[용역]" : "[자체진단]"}
                               </span>
-                              <span className={`font-semibold text-xs ${isHigh ? "text-red-600" : "text-gray-800"} whitespace-nowrap overflow-hidden text-ellipsis block max-w-[140px]`}>
+                              <span className={`font-semibold text-xs ${isHigh ? "text-red-600" : "text-gray-800"} whitespace-nowrap overflow-hidden text-ellipsis block max-w-[160px]`}>
                                 {r.projectName || r.facilityName || "-"}
                               </span>
                               {r.band && <p className="text-[10px] text-gray-400 mt-0.5">{r.band}</p>}
@@ -415,11 +422,12 @@ export default function TbmOverviewPage() {
                           ) : <span className="text-gray-300">-</span>}
                         </td>
                         <td className="px-3 py-3 text-gray-700 whitespace-nowrap text-[11px]">{r.contractorName || "-"}</td>
-                        <td className="px-3 py-3 text-[10px] max-w-[120px]">
+                        <td className="px-3 py-3 text-[10px] max-w-[100px]">
                           {r.workAddress ? (
                             <button onClick={e => { e.stopPropagation(); setMapTarget({ address: r.workAddress, lat: r.workLatitude, lng: r.workLongitude }); }}
-                              className="text-blue-500 underline text-left line-clamp-2 hover:text-blue-700">
-                              {r.workAddress}
+                              className="text-blue-500 text-left flex items-center gap-0.5 hover:text-blue-700">
+                              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                              <span className="truncate max-w-[80px]">{r.workAddress.length > 10 ? r.workAddress.slice(0,10)+"..." : r.workAddress}</span>
                             </button>
                           ) : <span className="text-gray-400">-</span>}
                         </td>
@@ -463,8 +471,18 @@ export default function TbmOverviewPage() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
               {selectedRegion?.name} 목록
             </button>
-            <button onClick={() => router.push(`/tbm/${selectedReport.id}`)}
-              className="text-xs text-blue-500 border border-blue-200 rounded-lg px-3 py-1.5">전체보기</button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => router.push(`/tbm/${selectedReport.id}`)}
+                className="text-xs text-blue-500 border border-blue-200 rounded-lg px-3 py-1.5">전체보기</button>
+              <button onClick={() => router.push(`/tbm/new?editId=${selectedReport.id}`)}
+                className="text-xs text-gray-600 border border-gray-200 rounded-lg px-3 py-1.5">수정</button>
+              <button onClick={async () => {
+                if (!confirm("이 TBM을 삭제하시겠습니까?")) return;
+                await fetch(`/api/tbm/${selectedReport.id}`, { method: "DELETE" });
+                setSelectedReport(null);
+                setSelectedRegion(null);
+              }} className="text-xs text-red-500 border border-red-200 rounded-lg px-3 py-1.5">삭제</button>
+            </div>
           </div>
           <div className="bg-white rounded-2xl p-4 shadow-sm">
             <h3 className="text-xs font-bold text-gray-500 mb-2">기본정보</h3>
@@ -472,7 +490,7 @@ export default function TbmOverviewPage() {
             <F label="시공사" value={selectedReport.contractorName} />
             <F label="시설물" value={selectedReport.facilityName} />
             <F label="사업명" value={selectedReport.projectName} />
-            <F label="유형" value={selectedReport.taskType} />
+            <F label="유형" value={normalizeType(selectedReport.taskType || "")} />
           </div>
           <div className="bg-white rounded-2xl p-4 shadow-sm">
             <h3 className="text-xs font-bold text-gray-500 mb-2">작업정보</h3>

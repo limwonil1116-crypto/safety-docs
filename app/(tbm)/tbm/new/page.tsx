@@ -295,9 +295,20 @@ function TbmNewInner() {
                 {taskCategory && <div className="flex gap-1.5 flex-wrap">{bandOptions.map(b => (<button key={b} type="button" onClick={() => { setTaskBand(b); setF("band", b); }} className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${taskBand===b?"border-blue-500 bg-blue-50 text-blue-600":"border-gray-200 text-gray-500"}`}>{b}</button>))}</div>}
                 {!customProjectName ? (
                   <div className="space-y-1.5">
-                    <select defaultValue={formRef.current.projectName} onChange={e => setF("projectName", e.target.value)} className={inputCls}>
+                    <select defaultValue={formRef.current.projectName} onChange={e => {
+                      const name = e.target.value;
+                      setF("projectName", name);
+                      // 선택한 과업의 category로 taskType 자동 설정 (단진 버튼과 동일하게)
+                      const allTasks = tasks as TaskItem[];
+                      const selected = allTasks.find((t: TaskItem) => t.name === name);
+                      if (selected) {
+                        const cat = (selected as any).category === "SELF" ? "자체진단" : "용역";
+                        setTaskCategory(cat as "" | "용역" | "자체진단");
+                        setF("taskType", cat);
+                      }
+                    }} className={inputCls}>
                       <option value="">-- 선택해주세요 --</option>
-                      {filteredTasks.map((t: TaskItem) => <option key={t.id} value={t.name}>{t.category === "SELF" ? "[자체진단] " : "[용역] "}{t.name}</option>)}
+                      {filteredTasks.map((t: TaskItem) => <option key={t.id} value={t.name}>{(t as any).category === "SELF" ? "[자체진단] " : "[용역] "}{t.name}</option>)}
                     </select>
                     <button onClick={() => setCustomProjectName(true)} className="text-xs text-blue-500 underline">직접 입력</button>
                   </div>
