@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
 
-export default function BottomNav() {
+function BottomNavInner() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -22,10 +23,19 @@ export default function BottomNav() {
     return () => clearInterval(interval);
   }, []);
 
+  // tasks 페이지에서 category 파라미터 확인
+  const taskCategory = pathname.startsWith("/tasks") ? (searchParams.get("category") || "CONTRACTOR") : null;
+
+  // 도급사업(용역) 선택 시 네비 라벨
+  const tasksLabel = taskCategory === "SELF" ? "자체진단" : "도급(용역)";
+  const tasksSubHref = taskCategory === "SELF" ? "/tasks?category=CONTRACTOR" : "/tasks?category=SELF";
+  const tasksSubLabel = taskCategory === "SELF" ? "도급(용역)" : "자체진단";
+
   const navItems = [
     {
       href: "/tasks",
       label: "과업",
+      dynamicLabel: pathname.startsWith("/tasks") ? tasksLabel : "과업",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -94,22 +104,39 @@ export default function BottomNav() {
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 flex">
       {navItems.map((item) => {
         const isActive = pathname.startsWith(item.href);
+        const isTasksActive = item.href === "/tasks" && isActive;
+        const label = (item as any).dynamicLabel || item.label;
+
         return (
-          <Link key={item.href} href={item.href}
-            className="flex-1 flex flex-col items-center justify-center py-2 gap-1 relative"
-            style={{ color: isActive ? "#2563eb" : "#9ca3af" }}>
-            <div className="relative">
-              {item.icon}
-              {"badge" in item && item.badge > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
-                  {item.badge > 99 ? "99+" : item.badge}
-                </span>
-              )}
-            </div>
-            <span className="text-xs">{item.label}</span>
-          </Link>
+          <div key={item.href} className="flex-1 flex flex-col items-center justify-center relative">
+            {/* tasks 탭: 도급/자체 스위치 탭 표시 */}
+            {isTasksActive && (
+              <Link href={tasksSubHref}
+                className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] px-2 py-0.5 rounded-full border font-medium"
+                style={{ background: taskCategory === "SELF" ? "#dcfce7" : "#dbeafe", color: taskCategory === "SELF" ? "#16a34a" : "#2563eb", borderColor: taskCategory === "SELF" ? "#86efac" : "#93c5fd" }}>
+                {tasksSubLabel} 전환
+              </Link>
+            )}
+            <Link href={item.href}
+              className="flex flex-col items-center justify-center py-2 gap-1 w-full relative"
+              style={{ color: isActive ? "#2563eb" : "#9ca3af" }}>
+              <div className="relative">
+                {item.icon}
+                {"badge" in item && item.badge > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-medium">{label}</span>
+            </Link>
+          </div>
         );
       })}
     </nav>
   );
+}
+
+export default function BottomNav() {
+  return <Suspense fallback={null}><BottomNavInner /></Suspense>;
 }
