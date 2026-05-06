@@ -249,7 +249,9 @@ function TbmNewInner() {
       const signatureData = canvasRef.current?.toDataURL("image/png")||"";
       const url = editId ? `/api/tbm/${editId}` : "/api/tbm";
       const method = editId ? "PATCH" : "POST";
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f, cctvUsed, taskId, signatureData, photoUrl, workerCount: parseInt(f.workerCount)||0, newWorkerCount: parseInt(f.newWorkerCount)||0 }) });
+      // taskType이 비어있으면 taskCategory 상태값으로 보완
+      const finalTaskType = f.taskType || taskCategory || "";
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f, taskType: finalTaskType, cctvUsed, taskId, signatureData, photoUrl, workerCount: parseInt(f.workerCount)||0, newWorkerCount: parseInt(f.newWorkerCount)||0 }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       alert(editId ? "TBM 보고서가 수정되었습니다." : "TBM 보고서가 제출되었습니다.");
