@@ -249,12 +249,21 @@ export default function TbmOverviewPage() {
 
         {/* 날짜 네비 */}
         <div className="flex items-center justify-center gap-3 mb-2">
-          <button onClick={() => moveDate(-1)} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600">
+          <button onClick={() => moveDate(-1)} disabled={loading}
+            className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 disabled:opacity-40">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)}
-            className="text-sm font-bold text-gray-900 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <button onClick={() => moveDate(1)} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600">
+          <div className="relative">
+            <input type="date" value={date} onChange={e => setDate(e.target.value)}
+              className="text-sm font-bold text-gray-900 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            {loading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded-lg">
+                <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              </div>
+            )}
+          </div>
+          <button onClick={() => moveDate(1)} disabled={loading}
+            className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 disabled:opacity-40">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </div>
@@ -275,8 +284,17 @@ export default function TbmOverviewPage() {
       </div>
 
       {/* 지도 */}
-      <div ref={mapRef} style={{ height: "260px" }}>
-        {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-100"><p className="text-sm text-gray-400">지도 로딩 중...</p></div>}
+      <div className="relative">
+        <div ref={mapRef} style={{ height: "260px" }}>
+          {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-100"><p className="text-sm text-gray-400">지도 로딩 중...</p></div>}
+        </div>
+        {/* 데이터 로딩 오버레이 */}
+        {loading && mapLoaded && (
+          <div className="absolute inset-0 bg-white/60 flex flex-col items-center justify-center gap-2 z-10">
+            <svg className="animate-spin" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            <p className="text-sm text-blue-600 font-medium">데이터 불러오는 중...</p>
+          </div>
+        )}
       </div>
 
       {/* 전체 통계 테이블 */}
