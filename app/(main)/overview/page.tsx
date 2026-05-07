@@ -8,6 +8,7 @@ interface DocumentMapItem {
   taskId: string;
   taskName: string;
   taskDescription?: string | null;
+  taskDivision?: string;
   company: string;
   type: string;
   status: string;
@@ -379,12 +380,15 @@ export default function DashboardPage() {
   const [viewMode, setViewMode] = useState<"map" | "calendar">("map");
   const [selectedTaskId, setSelectedTaskId] = useState("ALL");
   const [categoryFilter, setCategoryFilter] = useState<"ALL"|"CONTRACTOR"|"SELF">("ALL");
+  const [divisionFilter, setDivisionFilter] = useState("ALL");
 
   // category 필터 먼저 적용
   const categoryFiltered = categoryFilter === "ALL" ? documents
     : documents.filter(d => getTaskCat(d.taskDescription) === categoryFilter);
-  const taskList = Array.from(new Map(categoryFiltered.map(d => [d.taskId, d.taskName])).entries());
-  const taskFiltered = selectedTaskId === "ALL" ? categoryFiltered : categoryFiltered.filter(d => d.taskId === selectedTaskId);
+  const divisionList = ["ALL", ...Array.from(new Set(categoryFiltered.map(d => d.taskDivision || "").filter(Boolean))).sort()];
+  const divisionFiltered = divisionFilter === "ALL" ? categoryFiltered : categoryFiltered.filter(d => d.taskDivision === divisionFilter);
+  const taskList = Array.from(new Map(divisionFiltered.map(d => [d.taskId, d.taskName])).entries());
+  const taskFiltered = selectedTaskId === "ALL" ? divisionFiltered : divisionFiltered.filter(d => d.taskId === selectedTaskId);
   const filtered = filterTab === "ALL" ? taskFiltered : taskFiltered.filter(d => d.documentType === filterTab);
 
   const stats = {
@@ -407,6 +411,7 @@ export default function DashboardPage() {
             taskId: d.taskId ?? d.task?.id ?? "",
             taskName: d.task?.name ?? "제목없음",
             taskDescription: d.task?.description ?? null,
+            taskDivision: (() => { try { return JSON.parse(d.task?.description || "{}").division || ""; } catch { return ""; } })(),
             company: d.creator?.organization ?? "-",
             type: DOC_TYPE_LABEL[d.documentType] ?? d.documentType,
             documentType: d.documentType,
@@ -506,7 +511,7 @@ export default function DashboardPage() {
       {/* 카테고리 필터 + 세부 드롭다운 */}
       <div className="flex items-center gap-2 mx-4 mt-3 flex-wrap">
         {(["ALL","CONTRACTOR","SELF"] as const).map(f => (
-          <button key={f} onClick={() => { setCategoryFilter(f); setSelectedTaskId("ALL"); }}
+          <button key={f} onClick={() => { setCategoryFilter(f); setSelectedTaskId("ALL"); setDivisionFilter("ALL"); }}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
               categoryFilter === f
                 ? f === "SELF" ? "bg-blue-600 text-white border-blue-600"
@@ -517,6 +522,10 @@ export default function DashboardPage() {
             {f === "ALL" ? "전체" : f === "CONTRACTOR" ? "도급사업(용역)" : "자체진단"}
           </button>
         ))}
+        <select value={divisionFilter} onChange={e => { setDivisionFilter(e.target.value); setSelectedTaskId("ALL"); }}
+          className="text-xs px-2.5 py-1.5 border border-gray-200 rounded-lg text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
+          {divisionList.map(d => <option key={d} value={d}>{d === "ALL" ? "전체 반" : d}</option>)}
+        </select>
         <select value={selectedTaskId} onChange={e => setSelectedTaskId(e.target.value)}
           className="text-xs px-2.5 py-1.5 border border-gray-200 rounded-lg text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[160px]">
           <option value="ALL">세부 선택</option>

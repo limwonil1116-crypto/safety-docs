@@ -411,7 +411,7 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
           <View style={S.tr}>
             <Text style={[S.il, { width: 78 }]}>(계획확인)허가자</Text>
             <View style={{ flex: 2, borderRight: "0.5px solid " + C.border, padding: "4 5", justifyContent: "center" }}>
-              <Text style={{ fontSize: 8.5, color: "#555" }}>(부서) 안전기술본부   (직첸) {isSelf ? "부장" : "용역감독원"}</Text>
+              <Text style={{ fontSize: 8.5, color: "#555" }}>(부서) 안전기술본부   (직책) {isSelf ? "부장" : "용역감독원"}</Text>
             </View>
             <View style={{ width: 85, padding: "4 5", borderRight: "0.5px solid " + C.border, justifyContent: "center" }}>
               <Text style={{ fontSize: 9.5 }}>{`(성명) ${a1?.approverName || ""}`}</Text>
@@ -426,7 +426,7 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
           <View style={S.trLast}>
             <Text style={[S.il, { width: 78 }]}>(이행확인)확인자</Text>
             <View style={{ flex: 2, borderRight: "0.5px solid " + C.border, padding: "4 5", justifyContent: "center" }}>
-              <Text style={{ fontSize: 8.5, color: "#555" }}>(부서) 안전기술본부   (직첸) {isSelf ? "부장" : "용역감독원"}</Text>
+              <Text style={{ fontSize: 8.5, color: "#555" }}>(부서) 안전기술본부   (직책) {isSelf ? "부장" : "용역감독원"}</Text>
             </View>
             <View style={{ width: 85, padding: "4 5", borderRight: "0.5px solid " + C.border, justifyContent: "center" }}>
               <Text style={{ fontSize: 9.5 }}>{`(성명) ${a2?.approverName || ""}`}</Text>
@@ -568,8 +568,8 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
         </View>
 
         <ApproverSection entries={[
-          { roleLabel: "(계획확인) 허가자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a1?.approverName, signatureData: a1?.signatureData },
-          { roleLabel: "(이행확인) 확인자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a2?.approverName, signatureData: a2?.signatureData },
+          { roleLabel: "(계획확인) 허가자", deptLabel: `(부서) 안전기술본부   (직책) ${isSelf ? "부장" : "용역감독원"}`, name: a1?.approverName, signatureData: a1?.signatureData },
+          { roleLabel: "(이행확인) 확인자", deptLabel: `(부서) 안전기술본부   (직책) ${isSelf ? "부장" : "용역감독원"}`, name: a2?.approverName, signatureData: a2?.signatureData },
         ]} />
         <Footer documentId={documentId} createdAt={createdAt} />
       </Page>

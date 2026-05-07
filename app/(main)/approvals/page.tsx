@@ -11,6 +11,7 @@ interface ApprovalDoc {
   current_approval_order?: number;
   task_name: string;
   task_description?: string;
+  task_division?: string;
   contractor_company_name?: string;
   writer_name?: string;
   current_approver_name?: string;
@@ -18,6 +19,10 @@ interface ApprovalDoc {
   updated_at: string;
   is_my_turn: boolean;
 }
+
+const getDivision = (desc?: string): string => {
+  try { return JSON.parse(desc || "{}").division || ""; } catch { return ""; }
+};
 
 const getTaskCategory = (desc?: string): "CONTRACTOR" | "SELF" => {
   try { return JSON.parse(desc || "{}").category === "SELF" ? "SELF" : "CONTRACTOR"; } catch { return "CONTRACTOR"; }
@@ -151,6 +156,7 @@ export default function ApprovalsPage() {
   const [activeTab, setActiveTab] = useState("ALL");
   const [dateFilter, setDateFilter] = useState("ALL");
   const [categoryFilter, setCategoryFilter] = useState<"ALL"|"CONTRACTOR"|"SELF">("ALL");
+  const [divisionFilter, setDivisionFilter] = useState("ALL");
   // URL status=DRAFT 파라미터 지원
   const statusParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("status") : null;
   const [search, setSearch] = useState("");
@@ -189,11 +195,15 @@ export default function ApprovalsPage() {
     }).replace(/\. /g, ".").replace(/\.$/, "");
   };
 
+  const divisionList = ["ALL", ...Array.from(new Set(docs.map(d => getDivision(d.task_description)).filter(Boolean))).sort()];
   const filteredDocs = docs.filter(doc => {
     if (statusParam === "DRAFT" && doc.status !== "DRAFT") return false;
     if (categoryFilter !== "ALL") {
       const cat = getTaskCategory((doc as any).task_description);
       if (cat !== categoryFilter) return false;
+    }
+    if (divisionFilter !== "ALL") {
+      if (getDivision((doc as any).task_description) !== divisionFilter) return false;
     }
     return true;
   });
@@ -220,8 +230,13 @@ export default function ApprovalsPage() {
             </button>
           ))}
           <div className="w-px h-4 bg-gray-200 mx-0.5 self-center" />
+          <select value={divisionFilter} onChange={e => setDivisionFilter(e.target.value)}
+            className="text-xs px-2 py-1 border border-gray-200 rounded-lg text-gray-600 bg-white focus:outline-none">
+            {divisionList.map(d => <option key={d} value={d}>{d === "ALL" ? "전체반" : d}</option>)}
+          </select>
+          <div className="w-px h-4 bg-gray-200 mx-0.5 self-center" />
           {(["ALL","CONTRACTOR","SELF"] as const).map(f => (
-            <button key={f} onClick={() => setCategoryFilter(f)}
+            <button key={f} onClick={() => { setCategoryFilter(f); setDivisionFilter("ALL"); }}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
                 categoryFilter === f
                   ? f === "SELF" ? "bg-green-600 text-white" : f === "CONTRACTOR" ? "bg-blue-600 text-white" : "bg-gray-700 text-white"
