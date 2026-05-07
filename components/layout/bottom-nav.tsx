@@ -23,31 +23,44 @@ function BottomNavInner() {
     return () => clearInterval(interval);
   }, []);
 
-  // tasks 페이지에서 category 파라미터 확인
-  const taskCategory = pathname.startsWith("/tasks") ? (searchParams.get("category") || "CONTRACTOR") : null;
-
-  // 도급사업(용역) 선택 시 네비 라벨
-  const tasksLabel = taskCategory === "SELF" ? "자체진단" : "도급(용역)";
-  const tasksSubHref = taskCategory === "SELF" ? "/tasks?category=CONTRACTOR" : "/tasks?category=SELF";
-  const tasksSubLabel = taskCategory === "SELF" ? "도급(용역)" : "자체진단";
+  const taskCategory = pathname.startsWith("/tasks") ? (searchParams.get("category") || "CONTRACTOR") : "CONTRACTOR";
+  const isContractorActive = pathname.startsWith("/tasks") && taskCategory === "CONTRACTOR";
+  const isSelfActive = pathname.startsWith("/tasks") && taskCategory === "SELF";
 
   const navItems = [
     {
+      key: "tasks-contractor",
       href: "/tasks?category=CONTRACTOR",
-      label: "과업",
-      dynamicLabel: pathname.startsWith("/tasks") ? tasksLabel : "도급(용역)",
+      label: "도급(용역)",
+      isActive: isContractorActive,
+      activeColor: "#16a34a",
       icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-          <line x1="16" y1="13" x2="8" y2="13"/>
-          <line x1="16" y1="17" x2="8" y2="17"/>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M20 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
         </svg>
       ),
     },
     {
+      key: "tasks-self",
+      href: "/tasks?category=SELF",
+      label: "자체진단",
+      isActive: isSelfActive,
+      activeColor: "#2563eb",
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+        </svg>
+      ),
+    },
+    {
+      key: "approvals",
       href: "/approvals",
       label: "결재현황",
+      isActive: pathname.startsWith("/approvals"),
+      activeColor: "#2563eb",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <polyline points="9 11 12 14 22 4"/>
@@ -56,8 +69,11 @@ function BottomNavInner() {
       ),
     },
     {
+      key: "tbm",
       href: "/tbm",
       label: "TBM",
+      isActive: pathname.startsWith("/tbm"),
+      activeColor: "#2563eb",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -68,8 +84,11 @@ function BottomNavInner() {
       ),
     },
     {
+      key: "overview",
       href: "/overview",
       label: "현황",
+      isActive: pathname.startsWith("/overview"),
+      activeColor: "#2563eb",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -78,8 +97,11 @@ function BottomNavInner() {
       ),
     },
     {
+      key: "notifications",
       href: "/notifications",
       label: "알림",
+      isActive: pathname.startsWith("/notifications"),
+      activeColor: "#2563eb",
       badge: unreadCount,
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -89,8 +111,11 @@ function BottomNavInner() {
       ),
     },
     {
+      key: "mypage",
       href: "/mypage",
       label: "나",
+      isActive: pathname.startsWith("/mypage"),
+      activeColor: "#2563eb",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -102,37 +127,26 @@ function BottomNavInner() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 flex">
-      {navItems.map((item) => {
-        const isActive = pathname.startsWith(item.href);
-        const isTasksActive = item.href === "/tasks" && isActive;
-        const label = (item as any).dynamicLabel || item.label;
-
-        return (
-          <div key={item.href} className="flex-1 flex flex-col items-center justify-center relative">
-            {/* tasks 탭: 도급/자체 스위치 탭 표시 */}
-            {isTasksActive && (
-              <Link href={tasksSubHref}
-                className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] px-2 py-0.5 rounded-full border font-medium"
-                style={{ background: taskCategory === "SELF" ? "#dcfce7" : "#dbeafe", color: taskCategory === "SELF" ? "#16a34a" : "#2563eb", borderColor: taskCategory === "SELF" ? "#86efac" : "#93c5fd" }}>
-                {tasksSubLabel} 전환
-              </Link>
+      {navItems.map((item) => (
+        <Link key={item.key} href={item.href}
+          className="flex-1 flex flex-col items-center justify-center py-2 gap-0.5 relative"
+          style={{ color: item.isActive ? item.activeColor : "#9ca3af" }}>
+          {/* 상단 액티브 인디케이터 */}
+          {item.isActive && (
+            <span className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full"
+              style={{ background: item.activeColor }} />
+          )}
+          <div className="relative">
+            {item.icon}
+            {"badge" in item && (item as any).badge > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                {(item as any).badge > 99 ? "99+" : (item as any).badge}
+              </span>
             )}
-            <Link href={item.href}
-              className="flex flex-col items-center justify-center py-2 gap-1 w-full relative"
-              style={{ color: isActive ? "#2563eb" : "#9ca3af" }}>
-              <div className="relative">
-                {item.icon}
-                {"badge" in item && item.badge > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
-                    {item.badge > 99 ? "99+" : item.badge}
-                  </span>
-                )}
-              </div>
-              <span className="text-[10px] font-medium">{label}</span>
-            </Link>
           </div>
-        );
-      })}
+          <span className="text-[9px] font-medium leading-tight">{item.label}</span>
+        </Link>
+      ))}
     </nav>
   );
 }
