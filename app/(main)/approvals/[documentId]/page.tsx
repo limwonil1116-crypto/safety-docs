@@ -433,9 +433,9 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
     fd.riskOther && `기타${fd.riskOtherDetail ? ": " + fd.riskOtherDetail : ""}`,
   ].filter(Boolean) as string[];
   const factorLabels: Record<string, string> = {
-    factorNarrowAccess: "접근통로 협소", factorSlippery: "미끄러운 지반", factorSteepSlope: "급경사면", factorWaterHazard: "익수·유수",
-    factorRockfall: "낙석·굴러떨어짐", factorNoRailing: "안전 난간재", factorLadderNoGuard: "사다리 안전잠금장치", factorSuffocation: "질식·산소결핍·유해가스",
-    factorElectricFire: "감전·전기화재요인", factorSparkFire: "불꽃·불티에 의한 화재", factorOther: `기타${fd.factorOtherDetail ? "(" + fd.factorOtherDetail + ")" : ""}`,
+    factorNarrowAccess: "진출입로 협소", factorSlippery: "미끌러집(이끼기, 습기)", factorSteepSlope: "급경사", factorWaterHazard: "파랑‧유수‧수심",
+    factorRockfall: "낙석‧토사붕괴", factorNoRailing: "난간 미설치", factorLadderNoGuard: "사다리‧방호울 미설치", factorSuffocation: "질식·화재·폭발",
+    factorElectricFire: "감전·전기불꽃 화재", factorSparkFire: "스파크, 화염에 의한 화재", factorOther: `기타${fd.factorOtherDetail ? "(" + fd.factorOtherDetail + ")" : ""}`,
   };
   const checkedFactors = Object.entries(factorLabels).filter(([key]) => !!(fd as any)[key]).map(([, label]) => label);
   const isForm1 = doc.documentType === "SAFETY_WORK_PERMIT";
@@ -867,6 +867,19 @@ export default function ApprovalDetailPage() {
               placeholder="검토 의견을 입력해주세요 (반려 시 필수)"
               rows={6}
               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y text-gray-900 min-h-[120px]" />
+            <button onClick={async () => {
+              const opinion = reviewOpinionRef.current?.value ?? "";
+              const result = reviewResultRef.current?.value ?? "";
+              try {
+                await fetch(`/api/documents/${documentId}`, { method: "PATCH", headers: {"Content-Type":"application/json"},
+                  body: JSON.stringify({ formDataJson: { ...doc.formDataJson, reviewOpinion: opinion, reviewResult: result } }) });
+                setReviewOpinion(opinion);
+                alert("임시저장되었습니다.");
+              } catch { alert("저장실패"); }
+            }} className="mt-2 w-full py-2 rounded-xl text-xs font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 flex items-center justify-center gap-1.5">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              검토의견 임시저장
+            </button>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1.5">조치결과</label>
