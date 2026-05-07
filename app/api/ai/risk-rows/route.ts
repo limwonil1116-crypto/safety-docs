@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     const factorStr = Array.isArray(checkedFactors) && checkedFactors.length > 0 ? checkedFactors.join(", ") : "없음";
 
     const prompt = [
-      "당신은 한국농어었공사 안전관리 전문가입니다.",
+      "당신은 한국농어초공사 안전관리 전문가입니다.",
       "아래 작업 정보를 분석하여 위험요소, 개선대책, 재해형태를 3개 작성하십시오.",
       "",
       "[작업 정보]",
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 1024, temperature: 0.2 },
+          generationConfig: { maxOutputTokens: 4096, temperature: 0.2 },
         }),
       }
     );
@@ -50,7 +50,8 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await response.json();
-    const rawText = (data.candidates?.[0]?.content?.parts?.[0]?.text || "").trim();
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const rawText = parts.map((p: any) => p.text || "").join("").trim();
 
     // 서버에서 직접 파싱하여 검증
     const cleaned = rawText.replace(/```json|```/g, "").trim();
