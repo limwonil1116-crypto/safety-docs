@@ -268,6 +268,7 @@ export default function MyPage() {
         {[
           { label:"용역 목록", sub:"내 용역 및 서류 관리", path:"/tasks" },
           { label:"결재 현황", sub:"결재 대기 및 완료 서류", path:"/approvals" },
+          { label:"작성중 허가서", sub:"임시저장 중인 허가서 목록", path:"/approvals?status=DRAFT" },
           { label:"전체 현황", sub:"지도 및 캘린더 보기", path:"/overview" },
         ].map((item, i, arr) => (
           <button key={item.path} onClick={() => router.push(item.path)}

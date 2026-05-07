@@ -257,7 +257,7 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
   formData: Record<string, any>;
   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
-  workAddress?: string | null; attachments?: AttachmentInfo[];
+  workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
 }) {
   const a1 = approvalLines.find(l => l.approvalOrder === 1);
   const a2 = approvalLines.find(l => l.approvalOrder === 2);
@@ -411,7 +411,7 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
           <View style={S.tr}>
             <Text style={[S.il, { width: 78 }]}>(계획확인)허가자</Text>
             <View style={{ flex: 2, borderRight: "0.5px solid " + C.border, padding: "4 5", justifyContent: "center" }}>
-              <Text style={{ fontSize: 8.5, color: "#555" }}>(부서) 안전기술본부   (직첸) 용역감독원</Text>
+              <Text style={{ fontSize: 8.5, color: "#555" }}>(부서) 안전기술본부   (직첸) {isSelf ? "부장" : "용역감독원"}</Text>
             </View>
             <View style={{ width: 85, padding: "4 5", borderRight: "0.5px solid " + C.border, justifyContent: "center" }}>
               <Text style={{ fontSize: 9.5 }}>{`(성명) ${a1?.approverName || ""}`}</Text>
@@ -426,7 +426,7 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
           <View style={S.trLast}>
             <Text style={[S.il, { width: 78 }]}>(이행확인)확인자</Text>
             <View style={{ flex: 2, borderRight: "0.5px solid " + C.border, padding: "4 5", justifyContent: "center" }}>
-              <Text style={{ fontSize: 8.5, color: "#555" }}>(부서) 안전기술본부   (직첸) 용역감독원</Text>
+              <Text style={{ fontSize: 8.5, color: "#555" }}>(부서) 안전기술본부   (직첸) {isSelf ? "부장" : "용역감독원"}</Text>
             </View>
             <View style={{ width: 85, padding: "4 5", borderRight: "0.5px solid " + C.border, justifyContent: "center" }}>
               <Text style={{ fontSize: 9.5 }}>{`(성명) ${a2?.approverName || ""}`}</Text>
@@ -454,7 +454,7 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
   formData: Record<string, any>;
   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
-  workAddress?: string | null; attachments?: AttachmentInfo[];
+  workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
 }) {
   const checks: Array<{ label: string; applicable: string; result: string }> = fd.safetyChecks ?? [];
   const gasMeasureRows: Array<{ time: string; hour?: string; minute?: string; substances: string; measurer: string; entryCount: string; exitCount: string }> =
@@ -582,7 +582,7 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
   formData: Record<string, any>;
   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
-  workAddress?: string | null; attachments?: AttachmentInfo[];
+  workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
 }) {
   const participants: Array<{ role: string; name: string; phone: string }> = fd.participants ?? [];
   const a1 = approvalLines.find(l => l.approvalOrder === 1);
@@ -694,7 +694,7 @@ export function PowerOutagePDF({ formData: fd, approvalLines, documentId, create
   formData: Record<string, any>;
   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
-  workAddress?: string | null; attachments?: AttachmentInfo[];
+  workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
 }) {
   const checks: Array<{ label: string; applicable: string; result: string }> = fd.safetyChecks ?? [];
   const inspItems: Array<{ equipment: string; cutoffConfirmer: string; electrician: string; siteRepair: string }> = fd.inspectionItems ?? [];

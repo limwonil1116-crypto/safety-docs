@@ -519,7 +519,7 @@ export default function DashboardPage() {
         ))}
         <select value={selectedTaskId} onChange={e => setSelectedTaskId(e.target.value)}
           className="text-xs px-2.5 py-1.5 border border-gray-200 rounded-lg text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[160px]">
-          <option value="ALL">세부 용역 선택</option>
+          <option value="ALL">세부 선택</option>
           {taskList.map(([id, name]) => (
             <option key={id} value={id}>{name}</option>
           ))}

@@ -31,12 +31,13 @@ export interface GeneratePDFOptions {
   applicantSignature?: string;
   workAddress?: string | null;
   attachments?: AttachmentInfo[];  // ✅ 첨부파일
+  isSelf?: boolean; // 자체진단 여부
 }
 
 export async function generatePDF(options: GeneratePDFOptions): Promise<{ buffer: Buffer; filename: string }> {
   const {
     documentId, documentType, formData, approvalLines,
-    createdAt, taskName, applicantSignature, workAddress,
+    createdAt, taskName, applicantSignature, workAddress, isSelf,
     attachments = [],
   } = options;
 
@@ -60,6 +61,7 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ buffer
     applicantSignature,
     workAddress,
     attachments,
+    isSelf: isSelf ?? false,
   };
 
   // ✅ 메인 문서 element

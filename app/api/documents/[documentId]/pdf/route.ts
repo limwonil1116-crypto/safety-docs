@@ -90,9 +90,10 @@ export async function GET(
     if (!doc || doc.deletedAt) return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
 
     const [task] = doc.taskId
-      ? await db.select({ name: tasks.name }).from(tasks).where(eq(tasks.id, doc.taskId)).limit(1)
-      : [{ name: undefined }];
+      ? await db.select({ name: tasks.name, description: tasks.description }).from(tasks).where(eq(tasks.id, doc.taskId)).limit(1)
+      : [{ name: undefined, description: undefined }];
     const taskName = task?.name ?? undefined;
+    const isSelf = (() => { try { return JSON.parse((task as any)?.description || "{}").category === "SELF"; } catch { return false; } })();
     const applicantSignature = await getApplicantSignature({ formDataJson: doc.formDataJson, createdBy: doc.createdBy, id: doc.id });
     const workAddress = (doc as any).workAddress ?? null;
     const attachments = await getAttachments(documentId);  // ✅
@@ -104,7 +105,7 @@ export async function GET(
         formData: (doc.formDataJson as Record<string, unknown>) ?? {},
         approvalLines: approvalLinesWithSig,
         createdAt: doc.createdAt.toISOString(),
-        taskName, applicantSignature, workAddress, attachments,
+        taskName, applicantSignature, workAddress, attachments, isSelf,
       });
       return new NextResponse(new Uint8Array(buffer), {
         headers: {
@@ -132,7 +133,7 @@ export async function GET(
         formData: (doc.formDataJson as Record<string, unknown>) ?? {},
         approvalLines: approvalLinesWithSig,
         createdAt: doc.createdAt.toISOString(),
-        taskName, applicantSignature, workAddress, attachments,
+        taskName, applicantSignature, workAddress, attachments, isSelf,
       });
       try {
         await db.insert(documentOutputs).values({
@@ -149,7 +150,7 @@ export async function GET(
         formData: (doc.formDataJson as Record<string, unknown>) ?? {},
         approvalLines: approvalLinesWithSig,
         createdAt: doc.createdAt.toISOString(),
-        taskName, applicantSignature, workAddress, attachments,
+        taskName, applicantSignature, workAddress, attachments, isSelf,
       });
       return new NextResponse(new Uint8Array(buffer), {
         headers: {

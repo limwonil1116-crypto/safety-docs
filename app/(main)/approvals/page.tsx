@@ -151,6 +151,8 @@ export default function ApprovalsPage() {
   const [activeTab, setActiveTab] = useState("ALL");
   const [dateFilter, setDateFilter] = useState("ALL");
   const [categoryFilter, setCategoryFilter] = useState<"ALL"|"CONTRACTOR"|"SELF">("ALL");
+  // URL status=DRAFT 파라미터 지원
+  const statusParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("status") : null;
   const [search, setSearch] = useState("");
   const [typeCounts, setTypeCounts] = useState<Record<string, number>>({});
   const [myTurnCount, setMyTurnCount] = useState(0);
@@ -188,6 +190,7 @@ export default function ApprovalsPage() {
   };
 
   const filteredDocs = docs.filter(doc => {
+    if (statusParam === "DRAFT" && doc.status !== "DRAFT") return false;
     if (categoryFilter !== "ALL") {
       const cat = getTaskCategory((doc as any).task_description);
       if (cat !== categoryFilter) return false;
