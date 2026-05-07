@@ -837,7 +837,11 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
   const clearCanvas = () => { const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext("2d"); if (!ctx) return; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); };
   const handleSubmit = async () => {
     // 제출 전 반드시 현재 데이터 저장
-    await handleSave(true);
+    try {
+      const _saveData = buildFormData(documentType, form1, form2, form3, form4);
+      await fetch(`/api/documents/${documentId}`, { method: "PATCH", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ formDataJson: _saveData, workLatitude, workLongitude, workAddress }) });
+    } catch (_saveErr) { console.error("pre-submit save", _saveErr); }
     const canvas = canvasRef.current; if (!canvas) return;
     const signatureData = canvas.toDataURL("image/png");
     if (!reviewer) { setError(info.approverLabel + "를 선택해주세요."); return; }
