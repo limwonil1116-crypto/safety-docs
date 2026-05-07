@@ -184,12 +184,12 @@ function AiRiskRowsButton({ form, onChange }: { form: Form1; onChange: (k: strin
       if (form.riskPowerOutage) riskItems.push("정전작업");
       if (form.riskFireWork) riskItems.push("화기작업");
       const fl: Record<string,string> = {
-        factorNarrowAccess:"접근통로 협소", factorSlippery:"미끄러운 지반",
-        factorSteepSlope:"급경사면", factorWaterHazard:"익수·유수",
-        factorRockfall:"낙석", factorNoRailing:"안전난간 미설치",
-        factorLadderNoGuard:"사다리 방호울 미설치",
-        factorSuffocation:"질식·산소결핀",
-        factorElectricFire:"감전·전기화재", factorSparkFire:"불꾽·화재",
+        factorNarrowAccess:"진출입로 협소", factorSlippery:"미끌러집(이끼기, 습기)",
+        factorSteepSlope:"급경사", factorWaterHazard:"파랑‧유수‧수심",
+        factorRockfall:"낙석‧토사붕괴", factorNoRailing:"난간 미설치",
+        factorLadderNoGuard:"사다리‧방호울 미설치",
+        factorSuffocation:"질식·화재·폭발",
+        factorElectricFire:"감전·전기불꽃 화재", factorSparkFire:"스파크, 화염에 의한 화재",
       };
       const checked = Object.entries(fl).filter(([k]) => !!(form as any)[k]).map(([,v]) => v);
       // 서버 API 통해 Gemini 호출 (서버사이드 GEMINI_API_KEY 사용)
@@ -974,16 +974,16 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
     onChange("riskRows", form.riskRows.map((r, i) => i === idx ? { ...r, [f]: v } : r));
 
   const factors = [
-    { key: "factorNarrowAccess", label: "접근통로 협소" },
-    { key: "factorSlippery", label: "미끄러움(빙판, 물기)" },
+    { key: "factorNarrowAccess", label: "진출입로 협소" },
+    { key: "factorSlippery", label: "미끌러집(이끼기, 습기)" },
     { key: "factorSteepSlope", label: "급경사" },
-    { key: "factorWaterHazard", label: "익수·유수·유수" },
-    { key: "factorRockfall", label: "낙석·굴러떨어짐" },
-    { key: "factorNoRailing", label: "안전 난간재" },
-    { key: "factorLadderNoGuard", label: "사다리 안전잠금장치" },
-    { key: "factorSuffocation", label: "질식·산소결핍·유해가스" },
-    { key: "factorElectricFire", label: "감전·전기화재요인" },
-    { key: "factorSparkFire", label: "불꽃·불티에 의한 화재" },
+    { key: "factorWaterHazard", label: "파랑‧유수‧수심" },
+    { key: "factorRockfall", label: "낙석‧토사붕괴" },
+    { key: "factorNoRailing", label: "난간 미설치" },
+    { key: "factorLadderNoGuard", label: "사다리‧방호울 미설치" },
+    { key: "factorSuffocation", label: "질식·화재·폭발" },
+    { key: "factorElectricFire", label: "감전·전기불꽃 화재" },
+    { key: "factorSparkFire", label: "스파크, 화염에 의한 화재" },
     { key: "factorOther", label: "기타" },
   ];
 
