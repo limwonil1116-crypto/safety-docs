@@ -836,6 +836,31 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
   const endDraw = () => { isDrawing.current = false; };
   const clearCanvas = () => { const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext("2d"); if (!ctx) return; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); };
 
+  const handleSubmit = async () => {
+    const canvas = canvasRef.current; if (!canvas) return;
+    const signatureData = canvas.toDataURL("image/png");
+    if (!reviewer) { setError(info.approverLabel + "를 선택해주세요."); return; }
+    setSubmitting(true); setError("");
+    try {
+      const isConfined = documentType === "CONFINED_SPACE";
+      const submitBody: Record<string, unknown> = { signatureData };
+      if (isConfined) {
+        submitBody.monitorUserId = reviewer.id;
+        if (measurerUserId) submitBody.measurerUserId = measurerUserId;
+      } else {
+        submitBody.reviewerUserId = reviewer.id;
+      }
+      const res = await fetch(`/api/documents/${documentId}/approval-lines`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(submitBody),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "제출 실패"); }
+      onSubmitted();
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : "오류가 발생했습니다."); }
+    finally { setSubmitting(false); }
+  };
+
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
       <div className="bg-white w-full rounded-t-3xl max-h-[90vh] overflow-y-auto">
@@ -1554,31 +1579,6 @@ export default function DocumentEditPage() {
     finally { if (!silent) setSaving(false); }
   };
 
-  const handleSubmit = async () => {
-    await handleSave(true); // 제출 전 저장
-    const canvas = canvasRef.current; if (!canvas) return;
-    const signatureData = canvas.toDataURL("image/png");
-    if (!reviewer) { setError(info.approverLabel + "를 선택해주세요."); return; }
-    setSubmitting(true); setError("");
-    try {
-      const isConfined = documentType === "CONFINED_SPACE";
-      const submitBody: Record<string, unknown> = { signatureData };
-      if (isConfined) {
-        submitBody.monitorUserId = reviewer.id;
-        if (measurerUserId) submitBody.measurerUserId = measurerUserId;
-      } else {
-        submitBody.reviewerUserId = reviewer.id;
-      }
-      const res = await fetch(`/api/documents/${documentId}/approval-lines`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(submitBody),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "오류 발생");
-      onSubmitted();
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : "제출에 실패했습니다."); }
-    finally { setSubmitting(false); }
-  };
 
   const handleChange1 = (k: string, v: unknown) => { setForm1(p => ({ ...p, [k]: v })); scheduleAutoSave(); };
   const handleChange2 = (k: string, v: unknown) => { setForm2(p => ({ ...p, [k]: v })); scheduleAutoSave(); };
