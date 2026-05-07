@@ -233,7 +233,10 @@ export default function ApprovalsPage() {
       {/* ✅ 4번: 법정서류 이름 탭 */}
       <div className="bg-white border-b border-gray-200 flex overflow-x-auto">
         {TABS.map((tab) => {
-          const count = tab.key === "ALL" ? (typeCounts.ALL ?? 0) : (typeCounts[tab.key] ?? 0);
+          // categoryFilter 적용된 filteredDocs 기준으로 카운트
+          const count = tab.key === "ALL"
+            ? filteredDocs.length
+            : filteredDocs.filter(d => d.document_type === tab.key).length;
           return (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
               className={`flex-shrink-0 px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
