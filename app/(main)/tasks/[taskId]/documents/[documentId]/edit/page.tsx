@@ -835,22 +835,6 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
   const draw = (e: React.MouseEvent | React.TouchEvent) => { if (!isDrawing.current) return; const canvas = canvasRef.current; if (!canvas) return; e.preventDefault(); const ctx = canvas.getContext("2d"); if (!ctx) return; const pos = getPos(e, canvas); ctx.lineTo(pos.x, pos.y); ctx.stroke(); };
   const endDraw = () => { isDrawing.current = false; };
   const clearCanvas = () => { const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext("2d"); if (!ctx) return; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); };
-  const handleSave = async (silent = false) => {
-    if (!silent) setSaving(true);
-    try {
-      const formDataJson = buildFormData(documentType, form1, form2, form3, form4);
-      const res = await fetch(`/api/documents/${documentId}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ formDataJson, workLatitude, workLongitude, workAddress }),
-      });
-      if (res.ok) {
-        const now = new Date();
-        setLastSaved(`${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")} 저장됨`);
-      }
-    } catch (e) { console.error(e); }
-    finally { if (!silent) setSaving(false); }
-  };
-
   const handleSubmit = async () => {
     // 제출 전 반드시 현재 데이터 저장
     await handleSave(true);
@@ -1580,6 +1564,22 @@ export default function DocumentEditPage() {
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => handleSave(true), 500);
   };
+  const handleSave = async (silent = false) => {
+    if (!silent) setSaving(true);
+    try {
+      const formDataJson = buildFormData(documentType, form1, form2, form3, form4);
+      const res = await fetch(`/api/documents/${documentId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formDataJson, workLatitude, workLongitude, workAddress }),
+      });
+      if (res.ok) {
+        const now = new Date();
+        setLastSaved(`${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")} 저장됨`);
+      }
+    } catch (e) { console.error(e); }
+    finally { if (!silent) setSaving(false); }
+  };
+
   const handleChange1 = (k: string, v: unknown) => { setForm1(p => ({ ...p, [k]: v })); scheduleAutoSave(); };
   const handleChange2 = (k: string, v: unknown) => { setForm2(p => ({ ...p, [k]: v })); scheduleAutoSave(); };
   const handleChange3 = (k: string, v: unknown) => { setForm3(p => ({ ...p, [k]: v })); scheduleAutoSave(); };
