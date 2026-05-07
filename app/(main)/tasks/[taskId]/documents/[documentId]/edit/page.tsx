@@ -28,8 +28,8 @@ const dateInputClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-
 const timeInputClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500";
 
 // 위험공종 관련작업(장소) 항목 목록
-const HIGH_PLACE_ITEMS = ["저수지 여수로 침수탑", "방조제 제방시면 배수갑문", "제방 비탈면 제체"];
-const WATER_WORK_ITEMS = ["저수지 여수로 침수탑", "방조제 제방시면 배수갑문", "배수개선 양수장·배수장"];
+const HIGH_PLACE_ITEMS = ["저수지 여수로·취수탑", "방조제 배수갑문", "양·배수장 건축물"];
+const WATER_WORK_ITEMS = ["저수지 상류사면·물넘이·감세공", "방조제 제방사면·배수갑문", "양·배수장 유입·토출수로"];
 
 const defaultRiskAssessRow: RiskAssessRow = {
   workType: "", riskFactor: "", riskLevel: "중",
@@ -1046,7 +1046,7 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
           <div>
             <label className="flex items-center gap-2 cursor-pointer py-1">
               <input type="checkbox" checked={!!form.riskWaterWork} onChange={e => onChange("riskWaterWork", e.target.checked)} className="w-4 h-4 rounded text-blue-600 border-gray-300" />
-              <span className="text-sm font-medium text-gray-700">수상 또는 수중작업</span>
+              <span className="text-sm font-medium text-gray-700">수상 또는 수변작업</span>
             </label>
             {form.riskWaterWork && (
               <div className="ml-6 mt-2 bg-blue-50 rounded-xl p-3 space-y-1.5">
