@@ -172,7 +172,7 @@ function RiskAssessSection({ documentId, riskAssessRows, onChangeRows }: {
 }
 
 // AI 위험요소 자동생성
-function AiRiskRowsButton({ form, onChange }: { form: Form1; onChange: (k: string, v: unknown) => void }) {
+function AiRiskRowsButton({ form, onChange, onSave }: { form: Form1; onChange: (k: string, v: unknown) => void; onSave?: () => void }) {
   const [loading, setLoading] = useState(false);
   const handleGenerate = async () => {
     setLoading(true);
@@ -205,6 +205,8 @@ function AiRiskRowsButton({ form, onChange }: { form: Form1; onChange: (k: strin
       const rows = data.rows;
       if (Array.isArray(rows))
         onChange("riskRows", rows.map((r: any) => ({ riskFactor: r.riskFactor||"", improvement: r.improvement||"", disasterType: r.disasterType||"" })));
+        // AI 생성 후 즉시 저장
+        setTimeout(() => onSave?.(), 100);
     } catch (e: any) { alert("AI 오류: " + (e.message||"오류")); }
     finally { setLoading(false); }
   };
@@ -965,8 +967,8 @@ function toggleArrItem(field: string, item: string, currentArr: string[], onChan
   onChange(field, exists ? currentArr.filter(i => i !== item) : [...currentArr, item]);
 }
 
-function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation, onClearLocation, taskName, documentId }: {
-  form: Form1; onChange: (k: string, v: unknown) => void;
+function Form1Fields({ form, onChange, onSave, workLatitude, workAddress, onOpenLocation, onClearLocation, taskName, documentId }: {
+  form: Form1; onChange: (k: string, v: unknown) => void; onSave?: () => void;
   workLatitude: number | null; workAddress: string; onOpenLocation: () => void; onClearLocation: () => void;
   taskName: string; documentId: string;
 }) {
@@ -1125,7 +1127,7 @@ function Form1Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
 
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={4} title="위험요소 · 개선대책 · 재해형태" />
-        <AiRiskRowsButton form={form} onChange={onChange} />
+        <AiRiskRowsButton form={form} onChange={onChange} onSave={onSave} />
         <div className="grid grid-cols-12 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg mb-2">
           <div className="col-span-5 text-xs font-medium text-gray-600">위험요소</div>
           <div className="col-span-4 text-xs font-medium text-gray-600">개선대책</div>
@@ -1675,7 +1677,7 @@ export default function DocumentEditPage() {
       </div>
 
       <div className="p-4 space-y-4">
-        {documentType === "SAFETY_WORK_PERMIT" && <Form1Fields form={form1} onChange={handleChange1} {...locProps} taskName={taskName} documentId={documentId} />}
+        {documentType === "SAFETY_WORK_PERMIT" && <Form1Fields form={form1} onChange={handleChange1} onSave={() => handleSave(true)} {...locProps} taskName={taskName} documentId={documentId} />}
         {documentType === "CONFINED_SPACE"     && <Form2Fields form={form2} onChange={handleChange2} {...locProps} taskName={taskName} documentId={documentId} />}
         {documentType === "HOLIDAY_WORK"       && <Form3Fields form={form3} onChange={handleChange3} {...locProps} taskName={taskName} documentId={documentId} />}
         {documentType === "POWER_OUTAGE"       && <Form4Fields form={form4} onChange={handleChange4} {...locProps} taskName={taskName} documentId={documentId} />}
