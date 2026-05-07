@@ -836,6 +836,8 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
   const endDraw = () => { isDrawing.current = false; };
   const clearCanvas = () => { const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext("2d"); if (!ctx) return; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); };
   const handleSubmit = async () => {
+    // 제출 전 반드시 현재 데이터 저장
+    await handleSave(true);
     const canvas = canvasRef.current; if (!canvas) return;
     const signatureData = canvas.toDataURL("image/png");
     if (!reviewer) { setError(info.approverLabel + "를 선택해주세요."); return; }
@@ -1560,7 +1562,7 @@ export default function DocumentEditPage() {
 
   const scheduleAutoSave = () => {
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => handleSave(true), 3000);
+    autoSaveTimer.current = setTimeout(() => handleSave(true), 500);
   };
   const handleChange1 = (k: string, v: unknown) => { setForm1(p => ({ ...p, [k]: v })); scheduleAutoSave(); };
   const handleChange2 = (k: string, v: unknown) => { setForm2(p => ({ ...p, [k]: v })); scheduleAutoSave(); };
@@ -1688,7 +1690,7 @@ export default function DocumentEditPage() {
           className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 disabled:opacity-60">
           {saving ? "저장 중..." : "임시저장"}
         </button>
-        <button onClick={() => setShowApproval(true)}
+        <button onClick={async () => { await handleSave(true); setShowApproval(true); }}
           className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#2563eb" }}>
           결재자 지정 및 제출
         </button>
