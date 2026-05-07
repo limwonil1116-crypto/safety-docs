@@ -253,7 +253,7 @@ export function AttachmentPagesPDF({ riskAssessFiles, safetyCheckPhotos, safetyC
 }
 
 // ===== 붙임1: 안전작업허가서 =====
-export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress }: {
+export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
   formData: Record<string, any>;
   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
@@ -295,16 +295,16 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
   if (fd.riskOther && fd.riskOtherDetail) relatedWorkByType.push({ typeName: "기타", details: [fd.riskOtherDetail as string] });
 
   const factors = [
-    { key: "factorNarrowAccess",  label: "접근통로 협소" },
-    { key: "factorSlippery",      label: "미끄러움(빙판, 물기)" },
+    { key: "factorNarrowAccess",  label: "진출입로 협소" },
+    { key: "factorSlippery",      label: "미끌러집(이끼기, 습기), 습기)" },
     { key: "factorSteepSlope",    label: "급경사면" },
-    { key: "factorWaterHazard",   label: "익수·유수·유수" },
-    { key: "factorRockfall",      label: "낙석·굴러떨어짐" },
-    { key: "factorNoRailing",     label: "안전 난간재" },
-    { key: "factorLadderNoGuard", label: "사다리 안전잠금장치" },
-    { key: "factorSuffocation",   label: "질식·산소결핍·유해가스" },
-    { key: "factorElectricFire",  label: "감전·전기화재요인" },
-    { key: "factorSparkFire",     label: "불꽃·불티에 의한 화재" },
+    { key: "factorWaterHazard",   label: "파랑‧유수‧수심" },
+    { key: "factorRockfall",      label: "낙석‧토사붕괴" },
+    { key: "factorNoRailing",     label: "난간 미설치" },
+    { key: "factorLadderNoGuard", label: "사다리‧방호울 미설치" },
+    { key: "factorSuffocation",   label: "질식·화재·폭발" },
+    { key: "factorElectricFire",  label: "감전·전기불꽃 화재" },
+    { key: "factorSparkFire",   label: "스파크, 화염에 의한 화재" },
     { key: "factorOther",         label: `기타${fd.factorOtherDetail ? "(" + fd.factorOtherDetail + ")" : ""}` },
   ];
 
@@ -450,7 +450,7 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
 }
 
 // ===== 붙임2: 밀폐공간작업허가서 =====
-export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress }: {
+export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
   formData: Record<string, any>;
   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
@@ -578,7 +578,7 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
 }
 
 // ===== 붙임3: 휴일작업신청서 =====
-export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress }: {
+export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
   formData: Record<string, any>;
   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
@@ -690,7 +690,7 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
 }
 
 // ===== 붙임4: 정전작업허가서 =====
-export function PowerOutagePDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress }: {
+export function PowerOutagePDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
   formData: Record<string, any>;
   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
