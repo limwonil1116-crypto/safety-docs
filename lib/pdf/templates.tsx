@@ -296,7 +296,7 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
 
   const factors = [
     { key: "factorNarrowAccess",  label: "진출입로 협소" },
-    { key: "factorSlippery",      label: "미끌러집(이끼기, 습기), 습기)" },
+    { key: "factorSlippery",      label: "미끄러짐(이끼, 습기)" },
     { key: "factorSteepSlope",    label: "급경사면" },
     { key: "factorWaterHazard",   label: "파랑‧유수‧수심" },
     { key: "factorRockfall",      label: "낙석‧토사붕괴" },
