@@ -22,13 +22,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ tbmI
     const uint8 = new Uint8Array(pdfBuffer);
 
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    const filename = \`TBM보고서_\${report.reportDate || dateStr}_\${tbmId.slice(0, 8)}.pdf\`;
+    const filename = `TBM_Report_${report.reportDate || dateStr}_${tbmId.slice(0, 8)}.pdf`;
 
     return new NextResponse(uint8, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": \`inline; filename*=UTF-8''\${encodeURIComponent(filename)}\`,
+        "Content-Disposition": `inline; filename="${filename}"`,
       },
     });
   } catch (e) {
