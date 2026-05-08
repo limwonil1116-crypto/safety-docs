@@ -11,7 +11,7 @@ const normalizeType = (t: string) => {
   return t;
 };
 
-const HIGH_RISK_TYPES = ["2.0m 이상 고소작업","1.5m 이상 굴착·가설공사","철곸 구조물 공사","2.0m이상 외부 도장공사","승강기 설치공사","취수탑 공사","복통, 잠관 공사","이외의 작업계획서작성 대상"];
+const HIGH_RISK_TYPES = ["2.0m 이상 고소작업","1.5m 이상 굴착·흙막이공사","밀폐공간 작업(질식·폭발)","2.0m이상 비계·동바리설치작업","전동·기계톱 벌목작업","수중공사 작업","용접, 용단 작업","잠함·케이슨작업·잠수작업"];
 
 const REGIONS = [
   { name: "서울", lat: 37.5665, lng: 126.9780 },{ name: "부산", lat: 35.1796, lng: 129.0756 },
@@ -45,6 +45,75 @@ interface RegionStat {
   cctvCount: number; highRiskCount: number; reports: TbmReport[];
 }
 
+// 네비게이션 팝업 컴포넌트
+function NaviModal({ address, lat, lng, onClose }: { address: string; lat: string; lng: string; onClose: () => void }) {
+  const encoded = encodeURIComponent(address);
+  const navers = [
+    {
+      label: "카카오맵", color: "#FEE500", text: "#000",
+      onClick: () => {
+        const url = lat && lng
+          ? `kakaomap://look?p=${lat},${lng}`
+          : `kakaomap://search?q=${encoded}`;
+        window.location.href = url;
+        setTimeout(() => { window.open(`https://map.kakao.com/link/search/${encoded}`, "_blank"); }, 1000);
+      }
+    },
+    {
+      label: "티맵", color: "#1A73E8", text: "#fff",
+      onClick: () => {
+        const url = lat && lng
+          ? `tmap://route?goalname=${encoded}&goaly=${lat}&goalx=${lng}`
+          : `tmap://search?name=${encoded}`;
+        window.location.href = url;
+        setTimeout(() => { window.open(`https://tmap.life/${encoded}`, "_blank"); }, 1000);
+      }
+    },
+    {
+      label: "네이버맵", color: "#03C75A", text: "#fff",
+      onClick: () => {
+        const url = lat && lng
+          ? `nmap://route/car?dlat=${lat}&dlng=${lng}&dname=${encoded}&appname=safety-docs`
+          : `nmap://search?query=${encoded}&appname=safety-docs`;
+        window.location.href = url;
+        setTimeout(() => { window.open(`https://map.naver.com/v5/search/${encoded}`, "_blank"); }, 1000);
+      }
+    },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-80 p-5" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <span className="text-sm font-bold text-gray-900">네비게이션 선택</span>
+          </div>
+          <button onClick={onClose} className="text-gray-400">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div className="bg-gray-50 rounded-xl px-3 py-2 mb-4">
+          <p className="text-xs text-gray-500 mb-0.5">목적지:</p>
+          <p className="text-sm text-gray-800 font-medium">{address}</p>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {navers.map(n => (
+            <button key={n.label} onClick={n.onClick}
+              className="py-3 rounded-xl font-bold text-sm flex flex-col items-center gap-1"
+              style={{ backgroundColor: n.color, color: n.text }}>
+              <span className="text-lg font-black">{n.label[0]}</span>
+              <span className="text-xs">{n.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TbmOverviewPage() {
   const router = useRouter();
   const mapRef = useRef<HTMLDivElement>(null);
@@ -59,7 +128,7 @@ export default function TbmOverviewPage() {
   const [loading, setLoading] = useState(true);
   const [taskFilter, setTaskFilter] = useState<"" | "용역" | "자체진단">("");
   const [highRiskFilter, setHighRiskFilter] = useState(false);
-  const [mapTarget, setMapTarget] = useState<{address:string;lat:string;lng:string} | null>(null);
+  const [naviTarget, setNaviTarget] = useState<{ address: string; lat: string; lng: string } | null>(null);
 
   useEffect(() => { loadTbm(); }, [date]);
 
@@ -73,12 +142,8 @@ export default function TbmOverviewPage() {
     finally { setLoading(false); }
   };
 
-  // 필터 적용된 reports
   const filteredReports = reports.filter(r => {
-    if (taskFilter) {
-      const t = r.taskType || "";
-      if (t !== taskFilter) return false;
-    }
+    if (taskFilter) { const t = r.taskType || ""; if (t !== taskFilter) return false; }
     if (highRiskFilter && !HIGH_RISK_TYPES.includes(r.riskType)) return false;
     return true;
   });
@@ -88,15 +153,7 @@ export default function TbmOverviewPage() {
 
   const regionStats: RegionStat[] = REGIONS.map(r => {
     const rps = getRegionReports(r.name);
-    return {
-      ...r,
-      count: rps.length,
-      workerCount: rps.reduce((s, t) => s + (t.workerCount || 0), 0),
-      newWorkerCount: rps.reduce((s, t) => s + (t.newWorkerCount || 0), 0),
-      cctvCount: rps.filter(t => t.cctvUsed).length,
-      highRiskCount: rps.filter(t => HIGH_RISK_TYPES.includes(t.riskType)).length,
-      reports: rps,
-    };
+    return { ...r, count: rps.length, workerCount: rps.reduce((s, t) => s + (t.workerCount || 0), 0), newWorkerCount: rps.reduce((s, t) => s + (t.newWorkerCount || 0), 0), cctvCount: rps.filter(t => t.cctvUsed).length, highRiskCount: rps.filter(t => HIGH_RISK_TYPES.includes(t.riskType)).length, reports: rps };
   });
 
   const totalCount = filteredReports.length;
@@ -110,12 +167,8 @@ export default function TbmOverviewPage() {
     setDate(d.toISOString().split("T")[0]);
   };
 
-  const clearDetailMarkers = () => {
-    markerRefs.current.forEach(m => m.setMap(null));
-    markerRefs.current = [];
-  };
+  const clearDetailMarkers = () => { markerRefs.current.forEach(m => m.setMap(null)); markerRefs.current = []; };
 
-  // 지도 초기화
   useEffect(() => {
     const initMap = () => {
       if (!mapRef.current) return;
@@ -136,7 +189,6 @@ export default function TbmOverviewPage() {
     document.head.appendChild(script);
   }, []);
 
-  // 전국 지역 마커 업데이트
   useEffect(() => {
     if (!mapLoaded || !mapObjRef.current || selectedRegion) return;
     overlaysRef.current.forEach(o => o.setMap(null));
@@ -158,29 +210,23 @@ export default function TbmOverviewPage() {
     setSelectedReport(null);
     if (!mapObjRef.current) return;
     overlaysRef.current.forEach(o => o.setMap(null));
-    // 실제 마커 좌표들의 평균으로 중심 계산
     const coordReports = region.reports.filter(r => r.workLatitude && r.workLongitude);
-    let centerLat = region.lat;
-    let centerLng = region.lng;
+    let centerLat = region.lat, centerLng = region.lng;
     if (coordReports.length > 0) {
-      centerLat = coordReports.reduce((s,r) => s + parseFloat(r.workLatitude), 0) / coordReports.length;
-      centerLng = coordReports.reduce((s,r) => s + parseFloat(r.workLongitude), 0) / coordReports.length;
+      centerLat = coordReports.reduce((s, r) => s + parseFloat(r.workLatitude), 0) / coordReports.length;
+      centerLng = coordReports.reduce((s, r) => s + parseFloat(r.workLongitude), 0) / coordReports.length;
     }
     const pos = new window.kakao.maps.LatLng(centerLat, centerLng);
     mapObjRef.current.setCenter(pos);
     mapObjRef.current.setLevel(coordReports.length > 1 ? 10 : 7);
     clearDetailMarkers();
-
     setTimeout(() => {
       region.reports.forEach((r, i) => {
         if (!r.workLatitude || !r.workLongitude) return;
-        const lat = parseFloat(r.workLatitude);
-        const lng = parseFloat(r.workLongitude);
+        const lat = parseFloat(r.workLatitude), lng = parseFloat(r.workLongitude);
         if (isNaN(lat) || isNaN(lng)) return;
         const mPos = new window.kakao.maps.LatLng(lat, lng);
         const isHigh = HIGH_RISK_TYPES.includes(r.riskType);
-        // 용역=초록, 자체진단=파랑, 기타=회색
-        // 용역=초록(#16a34a), 자체진단=파낙(#1d4ed8), 기타=회색
         const bgColor = normalizeType(r.taskType) === "자체진단" ? "#1d4ed8" : "#16a34a";
         const typeTag = normalizeType(r.taskType) === "자체진단" ? "[자체] " : "[용역] ";
         const baseName = r.projectName || r.facilityName || r.contractorName || `${i+1}번`;
@@ -193,19 +239,18 @@ export default function TbmOverviewPage() {
       });
       const noCoord = region.reports.filter(r => !r.workLatitude || !r.workLongitude);
       if (noCoord.length > 0) {
+        const pos2 = new window.kakao.maps.LatLng(centerLat, centerLng);
         const div = document.createElement("div");
         div.innerHTML = `<div style="background:#9ca3af;color:white;border-radius:20px;padding:4px 8px;font-size:10px;font-weight:bold;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);border:2px solid white;">좌표없음 ${noCoord.length}건</div>`;
         div.addEventListener("click", () => alert(noCoord.map(r => r.contractorName).join(", ") + " - 위치 좌표가 없습니다."));
-        const overlay = new window.kakao.maps.CustomOverlay({ position: pos, content: div, map: mapObjRef.current, zIndex: 4 });
+        const overlay = new window.kakao.maps.CustomOverlay({ position: pos2, content: div, map: mapObjRef.current, zIndex: 4 });
         markerRefs.current.push(overlay);
       }
     }, 300);
   };
 
   const handleBackToAll = () => {
-    setSelectedRegion(null);
-    setSelectedReport(null);
-    clearDetailMarkers();
+    setSelectedRegion(null); setSelectedReport(null); clearDetailMarkers();
     if (mapObjRef.current) {
       mapObjRef.current.setCenter(new window.kakao.maps.LatLng(36.2, 127.8));
       mapObjRef.current.setLevel(13);
@@ -213,7 +258,6 @@ export default function TbmOverviewPage() {
     }
   };
 
-  // 지역 선택 시 표시할 리포트 (태스크필터 + 고위험 필터 모두 적용)
   const regionDisplayReports = selectedRegion
     ? selectedRegion.reports.filter(r => {
         if (taskFilter && normalizeType(r.taskType) !== taskFilter) return false;
@@ -224,7 +268,7 @@ export default function TbmOverviewPage() {
 
   const F = ({ label, value }: { label: string; value?: any }) => {
     if (!value && value !== 0) return null;
-    const v = typeof value === "boolean" ? (value ? "사용중" : "사용안함") : String(value);
+    const v = typeof value === "boolean" ? (value ? "사용" : "미사용") : String(value);
     return (
       <div className="flex gap-2 py-1 border-b border-gray-50 last:border-0">
         <span className="text-xs text-gray-400 w-20 shrink-0">{label}</span>
@@ -235,7 +279,15 @@ export default function TbmOverviewPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "#f0f4f8" }}>
-      {/* 헤더 */}
+      {naviTarget && (
+        <NaviModal
+          address={naviTarget.address}
+          lat={naviTarget.lat}
+          lng={naviTarget.lng}
+          onClose={() => setNaviTarget(null)}
+        />
+      )}
+
       <div className="bg-white border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-base font-bold text-gray-900">TBM 현황 관제</h1>
@@ -246,11 +298,8 @@ export default function TbmOverviewPage() {
             </button>
           ) : null}
         </div>
-
-        {/* 날짜 네비 */}
         <div className="flex items-center justify-center gap-3 mb-2">
-          <button onClick={() => moveDate(-1)} disabled={loading}
-            className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 disabled:opacity-40">
+          <button onClick={() => moveDate(-1)} disabled={loading} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 disabled:opacity-40">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
           <div className="relative">
@@ -262,13 +311,10 @@ export default function TbmOverviewPage() {
               </div>
             )}
           </div>
-          <button onClick={() => moveDate(1)} disabled={loading}
-            className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 disabled:opacity-40">
+          <button onClick={() => moveDate(1)} disabled={loading} className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-600 disabled:opacity-40">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
         </div>
-
-        {/* 필터 버튼 */}
         <div className="flex gap-2 flex-wrap">
           {(["", "용역", "자체진단"] as const).map(f => (
             <button key={f} onClick={() => { setTaskFilter(f); setSelectedRegion(null); setSelectedReport(null); clearDetailMarkers(); }}
@@ -283,34 +329,31 @@ export default function TbmOverviewPage() {
         </div>
       </div>
 
-      {/* 지도 */}
       <div className="relative">
         <div ref={mapRef} style={{ height: "260px" }}>
-          {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-100"><p className="text-sm text-gray-400">지도 로딩 중...</p></div>}
+          {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-100"><p className="text-sm text-gray-400">지도 로딩 중..</p></div>}
         </div>
-        {/* 데이터 로딩 오버레이 */}
         {loading && mapLoaded && (
           <div className="absolute inset-0 bg-white/60 flex flex-col items-center justify-center gap-2 z-10">
             <svg className="animate-spin" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-            <p className="text-sm text-blue-600 font-medium">데이터 불러오는 중...</p>
+            <p className="text-sm text-blue-600 font-medium">데이터 불러오는 중..</p>
           </div>
         )}
       </div>
 
-      {/* 전체 통계 테이블 */}
       {!selectedRegion && (
         <div className="p-4">
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
               <h2 className="text-sm font-bold text-gray-900">지역별 TBM 현황</h2>
-              <span className="text-xs text-gray-400">지역 클릭 시 상세보기</span>
+              <span className="text-xs text-gray-400">지역 탭 클릭 시 상세보기</span>
             </div>
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
                   <th className="text-left px-3 py-2 text-gray-600 font-semibold">지역</th>
                   <th className="text-center px-2 py-2 text-gray-600 font-semibold">TBM</th>
-                  <th className="text-center px-2 py-2 text-gray-600 font-semibold">투입</th>
+                  <th className="text-center px-2 py-2 text-gray-600 font-semibold">작업인원</th>
                   <th className="text-center px-2 py-2 text-gray-600 font-semibold">신규</th>
                   <th className="text-center px-2 py-2 text-gray-600 font-semibold">고위험</th>
                   <th className="text-center px-2 py-2 text-gray-600 font-semibold">CCTV</th>
@@ -318,7 +361,7 @@ export default function TbmOverviewPage() {
               </thead>
               <tbody>
                 <tr className="border-b-2 border-blue-100 bg-blue-50 font-bold">
-                  <td className="px-3 py-2 text-blue-700">총계</td>
+                  <td className="px-3 py-2 text-blue-700">전체</td>
                   <td className="px-2 py-2 text-center text-blue-700">{totalCount}</td>
                   <td className="px-2 py-2 text-center text-blue-700">{totalWorkers}</td>
                   <td className="px-2 py-2 text-center text-blue-700">{totalNewWorkers}</td>
@@ -326,13 +369,9 @@ export default function TbmOverviewPage() {
                   <td className="px-2 py-2 text-center text-blue-700">{totalCctv}</td>
                 </tr>
                 {regionStats.map(r => (
-                  <tr key={r.name}
-                    className={`border-b border-gray-50 cursor-pointer hover:bg-gray-50 ${r.count === 0 ? "opacity-40" : ""}`}
-                    onClick={() => handleSelectRegion(r)}>
+                  <tr key={r.name} className={`border-b border-gray-50 cursor-pointer hover:bg-gray-50 ${r.count === 0 ? "opacity-40" : ""}`} onClick={() => handleSelectRegion(r)}>
                     <td className="px-3 py-2 font-medium text-gray-900">{r.name}</td>
-                    <td className="px-2 py-2 text-center">
-                      {r.count > 0 ? <span className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 font-bold">{r.count}</span> : <span className="text-gray-300">-</span>}
-                    </td>
+                    <td className="px-2 py-2 text-center">{r.count > 0 ? <span className="px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 font-bold">{r.count}</span> : <span className="text-gray-300">-</span>}</td>
                     <td className="px-2 py-2 text-center text-gray-700">{r.workerCount > 0 ? r.workerCount : "-"}</td>
                     <td className="px-2 py-2 text-center text-gray-700">{r.newWorkerCount > 0 ? r.newWorkerCount : "-"}</td>
                     <td className="px-2 py-2 text-center">{r.highRiskCount > 0 ? <span className="text-red-500 font-bold">{r.highRiskCount}</span> : <span className="text-gray-300">-</span>}</td>
@@ -345,10 +384,8 @@ export default function TbmOverviewPage() {
         </div>
       )}
 
-      {/* 지역 선택 - 상세 표 */}
       {selectedRegion && !selectedReport && (
         <div className="p-4 space-y-3">
-          {/* 통계 요약 */}
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-gray-900">{selectedRegion.name} TBM 보고서</h2>
             <span className="text-xs text-gray-500">{regionDisplayReports.length}건 · {selectedRegion.workerCount}명</span>
@@ -367,7 +404,6 @@ export default function TbmOverviewPage() {
             ))}
           </div>
 
-          {/* 상세 목록 테이블 - 세련된 디자인 */}
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between" style={{background:"linear-gradient(135deg,#f8faff,#f0f4ff)"}}>
               <div className="flex items-center gap-2">
@@ -375,25 +411,25 @@ export default function TbmOverviewPage() {
                 <span className="text-xs text-gray-400">{regionDisplayReports.length}건</span>
               </div>
               <div className="flex gap-3">
-                <div className="flex items-center gap-1 text-[10px] text-green-700 font-medium"><span className="w-3 h-3 rounded-full bg-green-500 inline-block shadow-sm"></span>용역</div>
-                <div className="flex items-center gap-1 text-[10px] text-blue-700 font-medium"><span className="w-3 h-3 rounded-full bg-blue-600 inline-block shadow-sm"></span>자체진단</div>
+                <div className="flex items-center gap-1 text-[10px] text-green-700 font-medium"><span className="w-3 h-3 rounded-full bg-green-500 inline-block"></span>용역</div>
+                <div className="flex items-center gap-1 text-[10px] text-blue-700 font-medium"><span className="w-3 h-3 rounded-full bg-blue-600 inline-block"></span>자체진단</div>
               </div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs min-w-[700px]">
+              <table className="w-full text-xs" style={{ minWidth: "900px" }}>
                 <thead>
                   <tr style={{background:"#f1f5f9"}}>
-                    <th className="text-center px-3 py-2.5 text-gray-500 font-semibold border-b border-gray-200 w-8">NO</th>
-                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200">사업명</th>
-                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200">사진</th>
-                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200 min-w-[140px]">작업내용</th>
-                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200 min-w-[120px]">교육내용</th>
-                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200">회사명</th>
-                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200">주소</th>
-                    <th className="text-center px-2 py-2.5 text-gray-600 font-semibold border-b border-gray-200">투입인원</th>
-                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200">투입장비</th>
-                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200">위험공종</th>
-                    <th className="text-center px-2 py-2.5 text-gray-600 font-semibold border-b border-gray-200">소장</th>
+                    <th className="text-center px-2 py-2.5 text-gray-500 font-semibold border-b border-gray-200" style={{width:"36px"}}>NO</th>
+                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200" style={{width:"180px"}}>사업명</th>
+                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200" style={{width:"60px"}}>사진</th>
+                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200" style={{width:"180px"}}>교육내용</th>
+                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200" style={{width:"160px"}}>위험요인</th>
+                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200" style={{width:"100px"}}>회사명</th>
+                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200" style={{width:"110px"}}>주소</th>
+                    <th className="text-center px-2 py-2.5 text-gray-600 font-semibold border-b border-gray-200" style={{width:"60px"}}>투입인원</th>
+                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200" style={{width:"80px"}}>투입장비</th>
+                    <th className="text-left px-3 py-2.5 text-gray-600 font-semibold border-b border-gray-200" style={{width:"80px"}}>위험공종</th>
+                    <th className="text-center px-2 py-2.5 text-gray-600 font-semibold border-b border-gray-200" style={{width:"90px"}}>소장</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -404,33 +440,27 @@ export default function TbmOverviewPage() {
                     const isYongYeok = normalizeType(r.taskType) === "용역";
                     const rowBg = isHigh ? "bg-red-50" : i % 2 === 0 ? "bg-white" : "bg-gray-50/50";
                     return (
-                      <tr key={r.id}
-                        onClick={() => setSelectedReport(r)}
+                      <tr key={r.id} onClick={() => setSelectedReport(r)}
                         className={`${rowBg} cursor-pointer hover:bg-blue-50/70 transition-colors border-b border-gray-100`}>
-                        <td className="px-3 py-3 text-center text-gray-400 font-medium">{i + 1}</td>
+                        <td className="px-2 py-3 text-center text-gray-400 font-medium">{i + 1}</td>
                         <td className="px-3 py-3">
-                          <div className="flex items-start gap-1.5">
-                            <div>
-                              <span className={`text-[9px] px-1 py-0.5 rounded font-bold mr-1 ${isYongYeok ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                                {isYongYeok ? "[용역]" : "[자체진단]"}
-                              </span>
-                              <span className={`font-semibold text-xs ${isHigh ? "text-red-600" : "text-gray-800"} whitespace-nowrap overflow-hidden text-ellipsis block max-w-[160px]`}>
-                                {r.projectName || r.facilityName || "-"}
-                              </span>
-                              {r.band && <p className="text-[10px] text-gray-400 mt-0.5">{r.band}</p>}
-                            </div>
-                          </div>
+                          <span className={`text-[9px] px-1 py-0.5 rounded font-bold mr-1 ${isYongYeok ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                            {isYongYeok ? "[용역]" : "[자체]"}
+                          </span>
+                          <span className={`font-semibold text-xs ${isHigh ? "text-red-600" : "text-gray-800"}`}>
+                            {r.projectName || r.facilityName || "-"}
+                          </span>
+                          {r.band && <p className="text-[10px] text-gray-400 mt-0.5">{r.band}</p>}
                         </td>
                         <td className="px-3 py-3">
-                          {(r as any).photoUrl
-                            ? <img src={(r as any).photoUrl} alt="사진" className="w-14 h-10 object-cover rounded-lg border border-gray-200" />
-                            : <div className="w-14 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-300 text-[9px]">없음</div>
-                          }
+                          {r.photoUrl
+                            ? <img src={r.photoUrl} alt="사진" className="w-14 h-10 object-cover rounded-lg border border-gray-200" />
+                            : <div className="w-14 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-300 text-[9px]">없음</div>}
                         </td>
-                        <td className="px-3 py-3 text-gray-700 max-w-[160px]">
+                        <td className="px-3 py-3 text-gray-700">
                           <p className="line-clamp-3 text-[11px] leading-snug">{r.workToday || "-"}</p>
                         </td>
-                        <td className="px-3 py-3 text-gray-600 max-w-[140px]">
+                        <td className="px-3 py-3 text-gray-600">
                           {(r.riskFactor1 || r.mainRiskFactor) ? (
                             <div className="text-[10px] leading-snug space-y-0.5">
                               {r.riskFactor1 && <p className="line-clamp-1">• {r.riskFactor1}</p>}
@@ -439,21 +469,21 @@ export default function TbmOverviewPage() {
                             </div>
                           ) : <span className="text-gray-300">-</span>}
                         </td>
-                        <td className="px-3 py-3 text-gray-700 whitespace-nowrap text-[11px]">{r.contractorName || "-"}</td>
-                        <td className="px-3 py-3 text-[10px] max-w-[100px]">
+                        <td className="px-3 py-3 text-gray-700 text-[11px]">{r.contractorName || "-"}</td>
+                        <td className="px-3 py-3">
                           {r.workAddress ? (
-                            <button onClick={e => { e.stopPropagation(); setMapTarget({ address: r.workAddress, lat: r.workLatitude, lng: r.workLongitude }); }}
-                              className="text-blue-500 text-left flex items-center gap-0.5 hover:text-blue-700">
-                              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                              <span className="truncate max-w-[80px]">{r.workAddress.length > 10 ? r.workAddress.slice(0,10)+"..." : r.workAddress}</span>
+                            <button onClick={e => { e.stopPropagation(); setNaviTarget({ address: r.workAddress, lat: r.workLatitude, lng: r.workLongitude }); }}
+                              className="text-blue-500 text-left flex items-start gap-0.5 hover:text-blue-700 group">
+                              <svg className="mt-0.5 shrink-0 group-hover:text-blue-700" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                              <span className="text-[10px] leading-tight line-clamp-2 underline underline-offset-1">{r.workAddress}</span>
                             </button>
-                          ) : <span className="text-gray-400">-</span>}
+                          ) : <span className="text-gray-400 text-[10px]">-</span>}
                         </td>
                         <td className="px-2 py-3 text-center">
                           <span className="inline-flex items-center justify-center w-8 h-6 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold">{r.workerCount || 0}</span>
                           {r.newWorkerCount > 0 && <p className="text-[9px] text-orange-500 mt-0.5">신규{r.newWorkerCount}</p>}
                         </td>
-                        <td className="px-3 py-3 text-gray-500 text-[10px] max-w-[100px]">
+                        <td className="px-3 py-3 text-gray-500 text-[10px]">
                           <p className="line-clamp-2">{r.equipment || "-"}</p>
                         </td>
                         <td className="px-3 py-3">
@@ -481,7 +511,6 @@ export default function TbmOverviewPage() {
         </div>
       )}
 
-      {/* 보고서 상세 */}
       {selectedReport && (
         <div className="p-4 space-y-4">
           <div className="flex items-center justify-between">
@@ -490,48 +519,54 @@ export default function TbmOverviewPage() {
               {selectedRegion?.name} 목록
             </button>
             <div className="flex items-center gap-2">
-              <button onClick={() => router.push(`/tbm/${selectedReport.id}`)}
-                className="text-xs text-blue-500 border border-blue-200 rounded-lg px-3 py-1.5">전체보기</button>
-              <button onClick={() => router.push(`/tbm/new?editId=${selectedReport.id}`)}
-                className="text-xs text-gray-600 border border-gray-200 rounded-lg px-3 py-1.5">수정</button>
+              <button onClick={() => router.push(`/tbm/${selectedReport.id}`)} className="text-xs text-blue-500 border border-blue-200 rounded-lg px-3 py-1.5">전체보기</button>
+              <button onClick={() => router.push(`/tbm/new?editId=${selectedReport.id}`)} className="text-xs text-gray-600 border border-gray-200 rounded-lg px-3 py-1.5">수정</button>
               <button onClick={async () => {
                 if (!confirm("이 TBM을 삭제하시겠습니까?")) return;
                 await fetch(`/api/tbm/${selectedReport.id}`, { method: "DELETE" });
-                setSelectedReport(null);
-                setSelectedRegion(null);
+                setSelectedReport(null); setSelectedRegion(null);
               }} className="text-xs text-red-500 border border-red-200 rounded-lg px-3 py-1.5">삭제</button>
             </div>
           </div>
           <div className="bg-white rounded-2xl p-4 shadow-sm">
             <h3 className="text-xs font-bold text-gray-500 mb-2">기본정보</h3>
             <F label="일자" value={selectedReport.reportDate} />
-            <F label="시공사" value={selectedReport.contractorName} />
-            <F label="시설물" value={selectedReport.facilityName} />
+            <F label="수급사" value={selectedReport.contractorName} />
+            <F label="시설명" value={selectedReport.facilityName} />
             <F label="사업명" value={selectedReport.projectName} />
             <F label="유형" value={normalizeType(selectedReport.taskType || "")} />
           </div>
           <div className="bg-white rounded-2xl p-4 shadow-sm">
             <h3 className="text-xs font-bold text-gray-500 mb-2">작업정보</h3>
-            <F label="금일작업" value={selectedReport.workToday} />
-            <F label="주소" value={selectedReport.workAddress} />
-            <F label="투입인원" value={selectedReport.workerCount ? `${selectedReport.workerCount}명` : null} />
-            <F label="신규근로자" value={selectedReport.newWorkerCount ? `${selectedReport.newWorkerCount}명` : null} />
-            <F label="투입장비" value={selectedReport.equipment} />
-            <F label="위험공종" value={selectedReport.riskType} />
+            <F label="당일작업" value={selectedReport.workToday} />
+            <div className="flex gap-2 py-1 border-b border-gray-50">
+              <span className="text-xs text-gray-400 w-20 shrink-0">주소</span>
+              {selectedReport.workAddress ? (
+                <button onClick={() => setNaviTarget({ address: selectedReport.workAddress, lat: selectedReport.workLatitude, lng: selectedReport.workLongitude })}
+                  className="text-xs text-blue-500 flex items-center gap-1 hover:text-blue-700">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  <span className="underline">{selectedReport.workAddress}</span>
+                </button>
+              ) : <span className="text-xs text-gray-400">-</span>}
+            </div>
+            <F label="작업인원" value={selectedReport.workerCount ? `${selectedReport.workerCount}명` : null} />
+            <F label="신규입장자" value={selectedReport.newWorkerCount ? `${selectedReport.newWorkerCount}명` : null} />
+            <F label="작업기계" value={selectedReport.equipment} />
+            <F label="위험종별" value={selectedReport.riskType} />
             <F label="CCTV" value={selectedReport.cctvUsed} />
           </div>
           {selectedReport.photoUrl && (
             <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <h3 className="text-xs font-bold text-gray-500 mb-2">TBM 실시사진</h3>
+              <h3 className="text-xs font-bold text-gray-500 mb-2">TBM 현장사진</h3>
               <img src={selectedReport.photoUrl} alt="TBM사진" className="w-full rounded-xl object-cover max-h-48" />
             </div>
           )}
           {(selectedReport.riskFactor1 || selectedReport.mainRiskFactor) && (
             <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <h3 className="text-xs font-bold text-gray-500 mb-2">위험요인 및 대책</h3>
+              <h3 className="text-xs font-bold text-gray-500 mb-2">위험요인 및 조치</h3>
               {[1,2,3].map(n => (selectedReport as any)[`riskFactor${n}`] && (
                 <div key={n} className="mb-2 bg-gray-50 rounded-xl p-2.5">
-                  <p className="text-[10px] font-semibold text-gray-500">잠재위험요인 {n}</p>
+                  <p className="text-[10px] font-semibold text-gray-500">위험요인 {n}</p>
                   <p className="text-xs text-gray-800">{(selectedReport as any)[`riskFactor${n}`]}</p>
                   {(selectedReport as any)[`riskMeasure${n}`] && <p className="text-[10px] text-blue-600">→ {(selectedReport as any)[`riskMeasure${n}`]}</p>}
                 </div>
@@ -547,7 +582,7 @@ export default function TbmOverviewPage() {
           )}
           <div className="bg-white rounded-2xl p-4 shadow-sm">
             <h3 className="text-xs font-bold text-gray-500 mb-2">교육담당자</h3>
-            <F label="성함" value={selectedReport.instructorName} />
+            <F label="성명" value={selectedReport.instructorName} />
             <F label="연락처" value={selectedReport.instructorPhone} />
             {selectedReport.signatureData && (
               <img src={selectedReport.signatureData} alt="서명" className="h-12 mt-2 border border-gray-200 rounded-lg bg-white" />

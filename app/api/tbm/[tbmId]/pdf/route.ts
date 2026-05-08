@@ -21,14 +21,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ tbmI
     const pdfBuffer = await renderToBuffer(element);
     const uint8 = new Uint8Array(pdfBuffer);
 
-    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    const filename = `TBM_Report_${report.reportDate || dateStr}_${tbmId.slice(0, 8)}.pdf`;
+    // 파일명: 사업명_날짜
+    const projectName = (report.projectName || "TBM보고서").replace(/[/\\?%*:|"<>]/g, "_");
+    const dateStr = report.reportDate || new Date().toISOString().slice(0, 10);
+    const filename = `${projectName}_${dateStr}.pdf`;
 
     return new NextResponse(uint8, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="${filename}"`,
+        "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(filename)}`,
       },
     });
   } catch (e) {
