@@ -4,6 +4,19 @@ import { useRouter, useParams } from "next/navigation";
 
 declare global { interface Window { kakao: any; } }
 
+interface PhotoItem { url: string; caption: string; }
+
+function parsePhotos(photoUrl: string): PhotoItem[] {
+  if (!photoUrl) return [];
+  try {
+    const parsed = JSON.parse(photoUrl);
+    if (Array.isArray(parsed)) return parsed;
+    return [{ url: photoUrl, caption: "" }];
+  } catch {
+    return [{ url: photoUrl, caption: "" }];
+  }
+}
+
 export default function TbmDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -73,6 +86,8 @@ export default function TbmDetailPage() {
   if (loading) return <div className="p-8 text-center text-gray-400 text-sm">로딩 중..</div>;
   if (!report) return <div className="p-8 text-center text-red-500 text-sm">보고서를 찾을 수 없습니다.</div>;
 
+  const photos = parsePhotos(report.photoUrl);
+
   return (
     <div className="min-h-screen" style={{ background: "#f0f4f8" }}>
       <div className="px-4 pt-4 pb-3 bg-white border-b border-gray-100 flex items-center justify-between">
@@ -86,11 +101,8 @@ export default function TbmDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={handlePdf}
-            disabled={pdfLoading}
-            className="px-3 py-1.5 rounded-lg border border-red-200 text-red-600 text-xs font-medium flex items-center gap-1 disabled:opacity-50"
-          >
+          <button onClick={handlePdf} disabled={pdfLoading}
+            className="px-3 py-1.5 rounded-lg border border-red-200 text-red-600 text-xs font-medium flex items-center gap-1 disabled:opacity-50">
             {pdfLoading ? (
               <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
             ) : (
@@ -174,10 +186,25 @@ export default function TbmDetailPage() {
           </div>
         )}
 
-        {report.photoUrl && (
+        {/* 멀티 사진 표시 */}
+        {photos.length > 0 && (
           <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h3 className="text-sm font-bold text-gray-900 mb-3">TBM 현장사진</h3>
-            <img src={report.photoUrl} alt="TBM 현장사진" className="w-full rounded-xl object-cover max-h-64" />
+            <h3 className="text-sm font-bold text-gray-900 mb-3">
+              TBM 현장사진 <span className="text-xs text-gray-400 font-normal ml-1">{photos.length}장</span>
+            </h3>
+            <div className="space-y-3">
+              {photos.map((photo, idx) => (
+                <div key={idx} className="rounded-xl overflow-hidden border border-gray-100">
+                  <img src={photo.url} alt={photo.caption || `사진 ${idx+1}`} className="w-full object-cover max-h-56" />
+                  {photo.caption && (
+                    <div className="px-3 py-2 bg-gray-50 flex items-center gap-1.5">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                      <span className="text-xs text-gray-600">{photo.caption}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

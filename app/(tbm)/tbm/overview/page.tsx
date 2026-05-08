@@ -453,9 +453,20 @@ export default function TbmOverviewPage() {
                           {r.band && <p className="text-[10px] text-gray-400 mt-0.5">{r.band}</p>}
                         </td>
                         <td className="px-3 py-3">
-                          {r.photoUrl
-                            ? <img src={r.photoUrl} alt="사진" className="w-14 h-10 object-cover rounded-lg border border-gray-200" />
-                            : <div className="w-14 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-300 text-[9px]">없음</div>}
+                          {(() => {
+                            if (!r.photoUrl) return <div className="w-14 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-300 text-[9px]">없음</div>;
+                            let photos: {url:string;caption:string}[] = [];
+                            try { const p = JSON.parse(r.photoUrl); photos = Array.isArray(p) ? p : [{url:r.photoUrl,caption:""}]; } catch { photos = [{url:r.photoUrl,caption:""}]; }
+                            return (
+                              <div className="space-y-1">
+                                <div className="relative">
+                                  <img src={photos[0].url} alt="사진" className="w-16 h-12 object-cover rounded-lg border border-gray-200" />
+                                  {photos.length > 1 && <span className="absolute bottom-1 right-1 bg-black/60 text-white text-[8px] px-1 rounded">{photos.length}장</span>}
+                                </div>
+                                {photos[0].caption && <p className="text-[9px] text-gray-500 max-w-[64px] truncate">{photos[0].caption}</p>}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-3 py-3 text-gray-700">
                           <p className="line-clamp-3 text-[11px] leading-snug">{r.workToday || "-"}</p>

@@ -4,8 +4,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 declare global { interface Window { kakao: any; daum: any; } }
 
-const RISK_TYPES = ["2.0m 이상 고소작업","1.5m 이상 굴착·가설공사","철곸 구조물 공사","2.0m이상 외부 도장공사","승강기 설치공사","취수탑 공사","복통, 잠관 공사","이외의 작업계획서작성 대상","해당없음"];
+const RISK_TYPES = ["2.0m 이상 고소작업","1.5m 이상 굴착·흙막이공사","밀폐공간 작업(질식·폭발)","2.0m이상 비계·동바리설치작업","전동·기계톱 벌목작업","수중공사 작업","용접, 용단 작업","잠함·케이슨작업·잠수작업","해당없음"];
+
 interface TaskItem { id: string; name: string; category: string; division: string; }
+interface PhotoItem { url: string; caption: string; }
 
 function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm, onClose }: {
   initialAddress: string; initialLat: number | null; initialLng: number | null;
@@ -19,7 +21,6 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
   const [lat, setLat] = useState<number | null>(initialLat);
   const [lng, setLng] = useState<number | null>(initialLng);
   const [gpsLoading, setGpsLoading] = useState(false);
-  // ✅ 클로저 문제 해결: setAddress를 ref로 저장
   const setAddressRef = useRef(setAddress);
   const setLatRef = useRef(setLat);
   const setLngRef = useRef(setLng);
@@ -39,7 +40,6 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
 
   useEffect(() => {
     if (!mapLoaded || !mapRef.current || !window.kakao?.maps) return;
-    // ✅ 1번: GPS 없을 때 기본 위치를 대한민국 중심(서울)으로, GPS 응답 후 이동
     const defaultLat = lat ?? 36.5, defaultLng = lng ?? 127.5;
     const center = new window.kakao.maps.LatLng(defaultLat, defaultLng);
     const map = new window.kakao.maps.Map(mapRef.current, { center, level: lat ? 5 : 13 });
@@ -52,34 +52,28 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
         const gLat = pos.coords.latitude; const gLng = pos.coords.longitude;
         setLat(gLat); setLng(gLng);
         const ll = new window.kakao.maps.LatLng(gLat, gLng);
-        map.setCenter(ll); map.setLevel(3); marker.setPosition(ll); // GPS 위치 확대
+        map.setCenter(ll); map.setLevel(3); marker.setPosition(ll);
         if (window.kakao.maps.services) {
           const geocoder = new window.kakao.maps.services.Geocoder();
           geocoder.coord2Address(gLng, gLat, (result: any, status: any) => {
             if (status === window.kakao.maps.services.Status.OK) {
-              const addr = result[0].road_address
-                ? result[0].road_address.address_name
-                : result[0].address.address_name;
+              const addr = result[0].road_address ? result[0].road_address.address_name : result[0].address.address_name;
               setAddressRef.current(addr);
             }
           });
         }
         setGpsLoading(false);
-      }, (err) => { setGpsLoading(false); console.warn("GPS 실패:", err.message); }, { timeout: 8000, enableHighAccuracy: true });
+      }, (err) => { setGpsLoading(false); }, { timeout: 8000, enableHighAccuracy: true });
     }
     window.kakao.maps.event.addListener(map, "click", (mouseEvent: any) => {
       const latlng = mouseEvent.latLng; marker.setPosition(latlng);
       const newLat = latlng.getLat(); const newLng = latlng.getLng();
-      // ✅ ref 사용으로 클로저 문제 해결
       setLatRef.current(newLat); setLngRef.current(newLng);
       if (!window.kakao.maps.services) { return; }
       const geocoder = new window.kakao.maps.services.Geocoder();
       geocoder.coord2Address(newLng, newLat, (result: any, status: any) => {
         if (status === window.kakao.maps.services.Status.OK) {
-          const addr = result[0].road_address
-            ? result[0].road_address.address_name
-            : result[0].address.address_name;
-          // ✅ ref로 최신 setter 호출 → 상단 input 주소 업데이트
+          const addr = result[0].road_address ? result[0].road_address.address_name : result[0].address.address_name;
           setAddressRef.current(addr);
         }
       });
@@ -118,27 +112,24 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
           {gpsLoading && (
             <div className="bg-blue-50 rounded-xl px-3 py-2 text-xs text-blue-600 flex items-center gap-2">
               <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-              현재 위치를 가져오는 중...
+              현재 위치를 가져오는 중..
             </div>
           )}
           <div className="rounded-2xl overflow-hidden border border-gray-200">
-            <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 text-xs text-gray-500">📍 지도를 탭하면 위치 지정 · 마커 위에 주소가 표시됩니다</div>
+            <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 text-xs text-gray-500">지도를 클릭하면 위치 지정 · 핀을 드래그로 이동 가능</div>
             <div ref={mapRef} style={{ width: "100%", height: "280px" }}>
-              {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-50"><p className="text-sm text-gray-400">지도 로딩 중...</p></div>}
+              {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-50"><p className="text-sm text-gray-400">지도 로딩 중..</p></div>}
             </div>
           </div>
           <button onClick={() => { if (lat && lng) onConfirm(address, lat, lng); }} disabled={!lat || !lng}
             className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-40" style={{ background: "#2563eb" }}>
-            ✓ 위치로 설정
+            이 위치로 설정
           </button>
-          <div className="h-4" />
         </div>
       </div>
     </div>
   );
 }
-
-
 
 function TbmNewInner() {
   const router = useRouter();
@@ -159,10 +150,9 @@ function TbmNewInner() {
   const [cctvUsed, setCctvUsed] = useState(false);
   const [aiKey, setAiKey] = useState(0);
   const [aiResult, setAiResult] = useState<Record<string,string>>({});
-  const [photoUrl, setPhotoUrl] = useState("");
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
-  // ✅ 수정 시 기존값 복원을 위한 formKey - 데이터 로드 후 리렌더링
   const [formKey, setFormKey] = useState(0);
 
   const formRef = useRef({
@@ -183,6 +173,18 @@ function TbmNewInner() {
   });
   const setF = (k: string, v: any) => { (formRef.current as any)[k] = v; };
 
+  // photoUrl 파싱 (단일 URL 또는 JSON 배열 모두 처리)
+  const parsePhotoUrl = (photoUrl: string): PhotoItem[] => {
+    if (!photoUrl) return [];
+    try {
+      const parsed = JSON.parse(photoUrl);
+      if (Array.isArray(parsed)) return parsed;
+      return [{ url: photoUrl, caption: "" }];
+    } catch {
+      return [{ url: photoUrl, caption: "" }];
+    }
+  };
+
   useEffect(() => {
     fetch("/api/tasks").then(r => r.json()).then(d => {
       const parsed = (d.tasks ?? []).map((t: any) => {
@@ -196,18 +198,15 @@ function TbmNewInner() {
     if (editId) {
       fetch(`/api/tbm/${editId}`).then(r => r.json()).then(d => {
         const r = d.tbmReport; if (!r) return;
-        // ✅ formRef에 기존값 복사
         Object.keys(formRef.current).forEach(k => {
           if (r[k] !== undefined && r[k] !== null) setF(k, String(r[k]));
         });
-        // ✅ UI state도 동기화
         setWorkAddressDisplay(r.workAddress || "");
         setHasLocation(!!r.workLatitude);
         setCctvUsed(r.cctvUsed || false);
-        if (r.photoUrl) setPhotoUrl(r.photoUrl);
+        if (r.photoUrl) setPhotos(parsePhotoUrl(r.photoUrl));
         if (r.taskType) setTaskCategory(r.taskType as "" | "용역" | "자체진단");
         if (r.band) setTaskBand(r.band);
-        // ✅ formKey 증가 → defaultValue 기반 input 리렌더링
         setFormKey(k => k + 1);
       }).catch(() => {});
     }
@@ -215,7 +214,7 @@ function TbmNewInner() {
 
   const handleAiGenerate = async () => {
     const f = formRef.current;
-    if (!f.workToday && !f.workAddress && !f.facilityName) { alert("작업내용, 주소, 시설물 중 하나 이상 입력해주세요."); return; }
+    if (!f.workToday && !f.workAddress && !f.facilityName) { alert("작업내용, 장소, 시설명 중 하나 이상 입력해주세요."); return; }
     setAiLoading(true);
     try {
       const res = await fetch("/api/ai/tbm-risk", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workToday: f.workToday, workAddress: f.workAddress, facilityName: f.facilityName, riskType: f.riskType, reportDate: f.reportDate }) });
@@ -240,17 +239,41 @@ function TbmNewInner() {
   const endDraw = () => { isDrawing.current=false; };
   const clearCanvas = () => { const c=canvasRef.current!; const ctx=c.getContext("2d")!; ctx.fillStyle="#fff"; ctx.fillRect(0,0,c.width,c.height); };
 
+  const handlePhotoUpload = async (files: FileList) => {
+    setPhotoUploading(true);
+    try {
+      const newPhotos: PhotoItem[] = [];
+      for (const file of Array.from(files)) {
+        const fd = new FormData(); fd.append("file", file);
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || `업로드 실패`); }
+        const data = await res.json();
+        if (data.url) newPhotos.push({ url: data.url, caption: "" });
+      }
+      setPhotos(prev => [...prev, ...newPhotos]);
+    } catch (err: any) { alert("사진 업로드 실패: " + (err.message || "알 수 없는 오류")); }
+    finally { setPhotoUploading(false); if (photoInputRef.current) photoInputRef.current.value = ""; }
+  };
+
+  const updateCaption = (idx: number, caption: string) => {
+    setPhotos(prev => prev.map((p, i) => i === idx ? { ...p, caption } : p));
+  };
+  const removePhoto = (idx: number) => {
+    setPhotos(prev => prev.filter((_, i) => i !== idx));
+  };
+
   const handleSubmit = async () => {
     const f = formRef.current;
-    if (!f.contractorName) { alert("시공사명을 입력해주세요."); return; }
-    if (!f.instructorName) { alert("성함을 입력해주세요."); return; }
+    if (!f.contractorName) { alert("수급사명을 입력해주세요."); return; }
+    if (!f.instructorName) { alert("성명을 입력해주세요."); return; }
     setLoading(true);
     try {
       const signatureData = canvasRef.current?.toDataURL("image/png")||"";
       const url = editId ? `/api/tbm/${editId}` : "/api/tbm";
       const method = editId ? "PATCH" : "POST";
-      // taskType이 비어있으면 taskCategory 상태값으로 보완
       const finalTaskType = f.taskType || taskCategory || "";
+      // 사진을 JSON 배열로 저장
+      const photoUrl = photos.length > 0 ? JSON.stringify(photos) : "";
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f, taskType: finalTaskType, cctvUsed, taskId, signatureData, photoUrl, workerCount: parseInt(f.workerCount)||0, newWorkerCount: parseInt(f.newWorkerCount)||0 }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -261,12 +284,9 @@ function TbmNewInner() {
   };
 
   const bandOptions = taskCategory === "용역" ? ["전체","1반","2반","3반","4반","5반"] : taskCategory === "자체진단" ? ["전체","1반","2반","3반","4반","5반","6반","7반","8반","9반","10반"] : [];
-  // tasks 필터: 용역/자체진단 버튼 + 반 선택
   const filteredTasks = tasks.filter((t: TaskItem) => {
-    // taskCategory 매핑: 용역=CONTRACTOR, 자체진단=SELF
     if (taskCategory === "용역" && t.category !== "CONTRACTOR") return false;
     if (taskCategory === "자체진단" && t.category !== "SELF") return false;
-    // 반 필터
     if (taskBand && taskBand !== "전체" && t.division !== taskBand) return false;
     return true;
   });
@@ -281,13 +301,12 @@ function TbmNewInner() {
         <h1 className="text-base font-bold text-gray-900">{editId ? "TBM 보고서 수정" : "TBM 보고서 작성"}</h1>
       </div>
 
-      {/* ✅ formKey로 전체 폼 리렌더링 → defaultValue 반영 */}
       <div key={formKey} className="p-4 space-y-4 pb-32">
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3 pb-2 border-b border-gray-100">기본정보</h3>
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-2">
-              <div><label className="block text-xs font-medium text-gray-600 mb-1.5">교육 일자 <span className="text-red-500">*</span></label><input type="date" defaultValue={formRef.current.reportDate} onChange={e => setF("reportDate", e.target.value)} className={inputCls} /></div>
+              <div><label className="block text-xs font-medium text-gray-600 mb-1.5">보고일자 <span className="text-red-500">*</span></label><input type="date" defaultValue={formRef.current.reportDate} onChange={e => setF("reportDate", e.target.value)} className={inputCls} /></div>
               <div><label className="block text-xs font-medium text-gray-600 mb-1.5">시작</label><input type="time" defaultValue={formRef.current.eduStartTime} onChange={e => setF("eduStartTime", e.target.value)} className={inputCls} /></div>
               <div><label className="block text-xs font-medium text-gray-600 mb-1.5">종료</label><input type="time" defaultValue={formRef.current.eduEndTime} onChange={e => setF("eduEndTime", e.target.value)} className={inputCls} /></div>
             </div>
@@ -298,16 +317,9 @@ function TbmNewInner() {
                 {!customProjectName ? (
                   <div className="space-y-1.5">
                     <select defaultValue={formRef.current.projectName} onChange={e => {
-                      const name = e.target.value;
-                      setF("projectName", name);
-                      // 선택한 과업의 category로 taskType 자동 설정 (단진 버튼과 동일하게)
-                      const allTasks = tasks as TaskItem[];
-                      const selected = allTasks.find((t: TaskItem) => t.name === name);
-                      if (selected) {
-                        const cat = (selected as any).category === "SELF" ? "자체진단" : "용역";
-                        setTaskCategory(cat as "" | "용역" | "자체진단");
-                        setF("taskType", cat);
-                      }
+                      const name = e.target.value; setF("projectName", name);
+                      const selected = (tasks as TaskItem[]).find((t: TaskItem) => t.name === name);
+                      if (selected) { const cat = (selected as any).category === "SELF" ? "자체진단" : "용역"; setTaskCategory(cat as "" | "용역" | "자체진단"); setF("taskType", cat); }
                     }} className={inputCls}>
                       <option value="">-- 선택해주세요 --</option>
                       {filteredTasks.map((t: TaskItem) => <option key={t.id} value={t.name}>{(t as any).category === "SELF" ? "[자체진단] " : "[용역] "}{t.name}</option>)}
@@ -316,62 +328,61 @@ function TbmNewInner() {
                   </div>
                 ) : (
                   <div className="space-y-1.5">
-                    {/* ✅ 직접입력 시 taskType 이미 버튼에서 setF로 저장됨 */}
                     <input defaultValue={formRef.current.projectName} onChange={e => setF("projectName", e.target.value)} className={inputCls} placeholder="용역명 또는 자체진단명 입력" />
                     <button onClick={() => setCustomProjectName(false)} className="text-xs text-blue-500 underline">목록에서 선택</button>
                   </div>
                 )}
               </div>
             </div>
-            <div><label className="block text-xs font-medium text-gray-600 mb-1.5">시공사명 <span className="text-red-500">*</span></label><input defaultValue={formRef.current.contractorName} onChange={e => setF("contractorName", e.target.value)} className={inputCls} placeholder="시공사명" /></div>
-            <div><label className="block text-xs font-medium text-gray-600 mb-1.5">시설물명</label><input defaultValue={formRef.current.facilityName} onChange={e => setF("facilityName", e.target.value)} className={inputCls} placeholder="예: 예당저수지 복통" /></div>
+            <div><label className="block text-xs font-medium text-gray-600 mb-1.5">수급사명 <span className="text-red-500">*</span></label><input defaultValue={formRef.current.contractorName} onChange={e => setF("contractorName", e.target.value)} className={inputCls} placeholder="수급사명" /></div>
+            <div><label className="block text-xs font-medium text-gray-600 mb-1.5">시설명</label><input defaultValue={formRef.current.facilityName} onChange={e => setF("facilityName", e.target.value)} className={inputCls} placeholder="예: 예당저수지" /></div>
           </div>
         </div>
 
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3 pb-2 border-b border-gray-100">작업정보</h3>
           <div className="space-y-3">
-            <div><label className="block text-xs font-medium text-gray-600 mb-1.5">금일작업</label><textarea defaultValue={formRef.current.workToday} onChange={e => setF("workToday", e.target.value)} className={inputCls} rows={3} placeholder="금일 작업내용" /></div>
-            <div><label className="block text-xs font-medium text-gray-600 mb-1.5">실제 작업주소</label>
+            <div><label className="block text-xs font-medium text-gray-600 mb-1.5">당일작업</label><textarea defaultValue={formRef.current.workToday} onChange={e => setF("workToday", e.target.value)} className={inputCls} rows={3} placeholder="당일 작업내용" /></div>
+            <div><label className="block text-xs font-medium text-gray-600 mb-1.5">실제 작업장소</label>
               <div className="space-y-2">
-                <input defaultValue={formRef.current.workAddress} onChange={e => { setF("workAddress", e.target.value); setWorkAddressDisplay(e.target.value); }} className={inputCls} placeholder="주소 직접 입력" />
+                <input defaultValue={formRef.current.workAddress} onChange={e => { setF("workAddress", e.target.value); setWorkAddressDisplay(e.target.value); }} className={inputCls} placeholder="장소 직접 입력" />
                 <button onClick={() => setShowLocationPicker(true)} className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium ${hasLocation?"border-blue-400 bg-blue-50 text-blue-600":"border-gray-300 bg-white text-gray-600 hover:bg-gray-50"}`}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>{hasLocation ? workAddressDisplay||"위치 선택됨" : "지도에서 위치 선택 (GPS 자동설정)"}</button>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="block text-xs font-medium text-gray-600 mb-1.5">투입인원(명)</label><input type="number" min="0" defaultValue={formRef.current.workerCount} onChange={e => setF("workerCount", e.target.value)} className={inputCls} /></div>
-              <div><label className="block text-xs font-medium text-gray-600 mb-1.5">신규근로자(명)</label><input type="number" min="0" defaultValue={formRef.current.newWorkerCount} onChange={e => setF("newWorkerCount", e.target.value)} className={inputCls} /></div>
+              <div><label className="block text-xs font-medium text-gray-600 mb-1.5">작업인원(명)</label><input type="number" min="0" defaultValue={formRef.current.workerCount} onChange={e => setF("workerCount", e.target.value)} className={inputCls} /></div>
+              <div><label className="block text-xs font-medium text-gray-600 mb-1.5">신규입장자 명</label><input type="number" min="0" defaultValue={formRef.current.newWorkerCount} onChange={e => setF("newWorkerCount", e.target.value)} className={inputCls} /></div>
             </div>
-            <div><label className="block text-xs font-medium text-gray-600 mb-1.5">투입장비</label><input defaultValue={formRef.current.equipment} onChange={e => setF("equipment", e.target.value)} className={inputCls} placeholder="투입장비 목록" /></div>
-            <div><label className="block text-xs font-medium text-gray-600 mb-1.5">위험공종</label>
+            <div><label className="block text-xs font-medium text-gray-600 mb-1.5">작업기계</label><input defaultValue={formRef.current.equipment} onChange={e => setF("equipment", e.target.value)} className={inputCls} placeholder="작업기계 목록" /></div>
+            <div><label className="block text-xs font-medium text-gray-600 mb-1.5">위험종별</label>
               <select defaultValue={formRef.current.riskType} onChange={e => setF("riskType", e.target.value)} className={inputCls}>
                 {RISK_TYPES.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
-            <div><label className="block text-xs font-medium text-gray-600 mb-1.5">CCTV 사용여부</label><div className="flex gap-3">{["사용중","사용안함"].map(v => (<button key={v} type="button" onClick={() => { setCctvUsed(v==="사용중"); setF("cctvUsed", v==="사용중"); }} className={`flex-1 py-2.5 rounded-xl text-sm font-medium border-2 ${(cctvUsed?"사용중":"사용안함")===v?"border-blue-500 bg-blue-50 text-blue-600":"border-gray-200 text-gray-500"}`}>{v}</button>))}</div></div>
+            <div><label className="block text-xs font-medium text-gray-600 mb-1.5">CCTV 사용여부</label><div className="flex gap-3">{["사용함","사용안함"].map(v => (<button key={v} type="button" onClick={() => { setCctvUsed(v==="사용함"); setF("cctvUsed", v==="사용함"); }} className={`flex-1 py-2.5 rounded-xl text-sm font-medium border-2 ${(cctvUsed?"사용함":"사용안함")===v?"border-blue-500 bg-blue-50 text-blue-600":"border-gray-200 text-gray-500"}`}>{v}</button>))}</div></div>
           </div>
         </div>
 
         <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 mb-3 pb-2 border-b border-gray-100">위험요인 및 대책</h3>
+          <h3 className="text-sm font-bold text-gray-900 mb-3 pb-2 border-b border-gray-100">위험요인 및 조치</h3>
           <div className="space-y-3">
-            <button onClick={handleAiGenerate} disabled={aiLoading} className="w-full py-3 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50" style={{ background: aiLoading?"#6b7280":"linear-gradient(135deg,#7c3aed,#2563eb)" }}>{aiLoading ? <><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>AI 분석 중...</> : <>AI 위험요인·대책 자동 생성</>}</button>
+            <button onClick={handleAiGenerate} disabled={aiLoading} className="w-full py-3 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50" style={{ background: aiLoading?"#6b7280":"linear-gradient(135deg,#7c3aed,#2563eb)" }}>{aiLoading ? <><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>AI 분석 중...</> : <>AI 위험요인·조치 자동 생성</>}</button>
             {([1,2,3] as const).map(n => (
               <div key={n} className="bg-gray-50 rounded-xl p-3 space-y-2">
-                <p className="text-xs font-semibold text-gray-600">잠재위험요인 {n}</p>
+                <p className="text-xs font-semibold text-gray-600">위험요인 {n}</p>
                 <input key={`rf${n}-${aiKey}`} defaultValue={aiResult[`riskFactor${n}`]||(formRef.current as any)[`riskFactor${n}`]||""} onChange={e => setF(`riskFactor${n}`, e.target.value)} className={inputCls} placeholder={`위험요인 ${n}`} />
-                <input key={`rm${n}-${aiKey}`} defaultValue={aiResult[`riskMeasure${n}`]||(formRef.current as any)[`riskMeasure${n}`]||""} onChange={e => setF(`riskMeasure${n}`, e.target.value)} className={inputCls} placeholder={`대책 ${n}`} />
+                <input key={`rm${n}-${aiKey}`} defaultValue={aiResult[`riskMeasure${n}`]||(formRef.current as any)[`riskMeasure${n}`]||""} onChange={e => setF(`riskMeasure${n}`, e.target.value)} className={inputCls} placeholder={`조치 ${n}`} />
               </div>
             ))}
             <div className="bg-amber-50 rounded-xl p-3 space-y-2 border border-amber-200">
               <p className="text-xs font-semibold text-amber-700">중점위험요인</p>
               <input key={`mrf-${aiKey}`} defaultValue={aiResult.mainRiskFactor||formRef.current.mainRiskFactor||""} onChange={e => setF("mainRiskFactor", e.target.value)} className={inputCls} placeholder="중점위험요인" />
-              <input key={`mrm-${aiKey}`} defaultValue={aiResult.mainRiskMeasure||formRef.current.mainRiskMeasure||""} onChange={e => setF("mainRiskMeasure", e.target.value)} className={inputCls} placeholder="중점위험요인 대책" />
+              <input key={`mrm-${aiKey}`} defaultValue={aiResult.mainRiskMeasure||formRef.current.mainRiskMeasure||""} onChange={e => setF("mainRiskMeasure", e.target.value)} className={inputCls} placeholder="중점위험요인 조치" />
             </div>
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-gray-600">잠재위험요소</p>
+              <p className="text-xs font-semibold text-gray-600">위험요소</p>
               {([1,2,3] as const).map(n => (
-                <input key={`re${n}-${aiKey}`} defaultValue={aiResult[`riskElement${n}`]||(formRef.current as any)[`riskElement${n}`]||""} onChange={e => setF(`riskElement${n}`, e.target.value)} className={inputCls} placeholder={`잠재위험요소 ${n}`} />
+                <input key={`re${n}-${aiKey}`} defaultValue={aiResult[`riskElement${n}`]||(formRef.current as any)[`riskElement${n}`]||""} onChange={e => setF(`riskElement${n}`, e.target.value)} className={inputCls} placeholder={`위험요소 ${n}`} />
               ))}
             </div>
           </div>
@@ -379,56 +390,65 @@ function TbmNewInner() {
 
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3 pb-2 border-b border-gray-100">기타사항</h3>
-          <textarea defaultValue={formRef.current.otherContent} onChange={e => setF("otherContent", e.target.value)} className={inputCls} rows={4} placeholder="위험성평가 내용 전달 등" />
+          <textarea defaultValue={formRef.current.otherContent} onChange={e => setF("otherContent", e.target.value)} className={inputCls} rows={4} placeholder="위험성평가 내용 외 기타" />
         </div>
 
+        {/* 멀티 사진 업로드 */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 mb-3 pb-2 border-b border-gray-100">TBM 실시사진</h3>
-          <input ref={photoInputRef} type="file" accept="image/*" className="hidden"
-            onChange={async (e) => {
-              const file = e.target.files?.[0]; if (!file) return;
-              setPhotoUploading(true);
-              try {
-                const fd = new FormData(); fd.append("file", file);
-                const res = await fetch("/api/upload", { method: "POST", body: fd });
-                if (!res.ok) {
-                  const err = await res.json().catch(() => ({}));
-                  throw new Error(err.error || `업로드 실패 (${res.status})`);
-                }
-                const data = await res.json();
-                if (data.url) setPhotoUrl(data.url);
-                else throw new Error("업로드 URL 없음");
-              } catch (err: any) { alert("사진 업로드 실패: " + (err.message || "알 수 없는 오류")); }
-              finally { setPhotoUploading(false); }
-            }}
+          <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100">
+            <h3 className="text-sm font-bold text-gray-900">TBM 현장사진</h3>
+            <span className="text-xs text-gray-400">{photos.length}장</span>
+          </div>
+          <input ref={photoInputRef} type="file" accept="image/*" multiple className="hidden"
+            onChange={async (e) => { if (e.target.files) await handlePhotoUpload(e.target.files); }}
           />
-          {photoUrl ? (
-            <div className="relative">
-              <img src={photoUrl} alt="교육사진" className="w-full rounded-xl object-cover max-h-48" />
-              <button onClick={() => setPhotoUrl("")} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center text-xs">✕</button>
+          {/* 등록된 사진 목록 */}
+          {photos.length > 0 && (
+            <div className="space-y-3 mb-3">
+              {photos.map((photo, idx) => (
+                <div key={idx} className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className="relative">
+                    <img src={photo.url} alt={`사진 ${idx+1}`} className="w-full object-cover max-h-48" />
+                    <button onClick={() => removePhoto(idx)}
+                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white flex items-center justify-center text-xs">✕</button>
+                    <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">{idx + 1}/{photos.length}</div>
+                  </div>
+                  <div className="px-3 py-2 bg-gray-50">
+                    <input
+                      type="text"
+                      value={photo.caption}
+                      onChange={e => updateCaption(idx, e.target.value)}
+                      placeholder="사진 설명 입력 (예: 현장 전경, 작업 전 점검 등)"
+                      className="w-full text-xs px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
-          ) : (
-            <button onClick={() => photoInputRef.current?.click()} disabled={photoUploading}
-              className="w-full py-8 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center gap-2 text-gray-400 hover:border-blue-400 hover:text-blue-500 disabled:opacity-50">
-              {photoUploading ? (
-                <><svg className="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span className="text-sm">업로드 중...</span></>
-              ) : (
-                <><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span className="text-sm">사진 첨부</span><span className="text-xs">탭하여 사진을 선택하세요</span></>
-              )}
-            </button>
           )}
+          {/* 사진 추가 버튼 */}
+          <button onClick={() => photoInputRef.current?.click()} disabled={photoUploading}
+            className="w-full py-4 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center gap-1.5 text-gray-400 hover:border-blue-400 hover:text-blue-500 disabled:opacity-50">
+            {photoUploading ? (
+              <><svg className="animate-spin" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg><span className="text-sm">업로드 중..</span></>
+            ) : (
+              <><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <span className="text-sm">{photos.length > 0 ? "사진 추가" : "사진 등록"}</span>
+              <span className="text-xs">여러 장 동시 선택 가능</span></>
+            )}
+          </button>
         </div>
 
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="text-sm font-bold text-gray-900 mb-3 pb-2 border-b border-gray-100">교육담당자</h3>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <div><label className="block text-xs font-medium text-gray-600 mb-1.5">성함 <span className="text-red-500">*</span></label><input defaultValue={formRef.current.instructorName} onChange={e => setF("instructorName", e.target.value)} className={inputCls} placeholder="교육담당자 이름" /></div>
+              <div><label className="block text-xs font-medium text-gray-600 mb-1.5">성명 <span className="text-red-500">*</span></label><input defaultValue={formRef.current.instructorName} onChange={e => setF("instructorName", e.target.value)} className={inputCls} placeholder="교육담당자 이름" /></div>
               <div><label className="block text-xs font-medium text-gray-600 mb-1.5">연락처</label><input defaultValue={formRef.current.instructorPhone} onChange={e => { const v=e.target.value.replace(/\D/g,""); const f=v.length<=3?v:v.length<=7?v.slice(0,3)+"-"+v.slice(3):v.slice(0,3)+"-"+v.slice(3,7)+"-"+v.slice(7,11); setF("instructorPhone",f); }} className={inputCls} placeholder="010-0000-0000" maxLength={13} /></div>
             </div>
             <div><label className="block text-xs font-medium text-gray-600 mb-1.5">서명</label>
               <div className="border-2 border-gray-200 rounded-2xl overflow-hidden bg-white relative" style={{ touchAction:"none" }}>
-                <div className="absolute top-2 left-3 text-xs text-gray-300 pointer-events-none">아래에 서명해주세요</div>
+                <div className="absolute top-2 left-3 text-xs text-gray-300 pointer-events-none">여기에 서명해주세요</div>
                 <canvas ref={canvasRef} width={600} height={160} className="w-full" style={{ cursor:"crosshair", touchAction:"none", display:"block" }} onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw} onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
               </div>
               <button onClick={clearCanvas} className="mt-2 w-full py-2 rounded-xl border border-gray-200 text-xs text-gray-500">서명 지우기</button>
@@ -447,7 +467,7 @@ function TbmNewInner() {
         />
       )}
       <div className="fixed bottom-16 left-0 right-0 px-4 py-3 bg-white border-t border-gray-200">
-        <button onClick={handleSubmit} disabled={loading} className="w-full py-3.5 rounded-xl text-white font-medium text-sm disabled:opacity-50" style={{ background:"#2563eb" }}>{loading ? "제출 중..." : editId ? "수정 완료" : "TBM 보고서 제출"}</button>
+        <button onClick={handleSubmit} disabled={loading} className="w-full py-3.5 rounded-xl text-white font-medium text-sm disabled:opacity-50" style={{ background:"#2563eb" }}>{loading ? "제출 중.." : editId ? "수정 완료" : "TBM 보고서 제출"}</button>
       </div>
     </div>
   );
@@ -455,7 +475,7 @@ function TbmNewInner() {
 
 export default function TbmNewPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-gray-400 text-sm">로딩 중...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-gray-400 text-sm">로딩 중..</div>}>
       <TbmNewInner />
     </Suspense>
   );
