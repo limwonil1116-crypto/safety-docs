@@ -3,7 +3,6 @@ import { auth } from "@/auth";
 import { db } from "@/db";
 import { tbmReports } from "@/db/schema";
 import { eq, desc, and } from "drizzle-orm";
-import { tasks } from "@/db/schema";
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,34 +17,13 @@ export async function GET(req: NextRequest) {
     const list = await db.select().from(tbmReports)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(tbmReports.reportDate), desc(tbmReports.createdAt));
-    // taskType 정규화 + taskId로 task의 category 조회해 빈값 채우기
-    const taskIds = [...new Set(list.map(r => r.taskId).filter(Boolean))] as string[];
-    const taskMap: Record<string, string> = {};
-    if (taskIds.length > 0) {
-      const taskList = await db.select({ id: tasks.id, description: tasks.description })
-        .from(tasks).where(eq(tasks.id, taskIds[0]));
-      // 모든 taskId에 대해 category 조회
-      for (const tid of taskIds) {
-        try {
-          const [t] = await db.select({ description: tasks.description }).from(tasks).where(eq(tasks.id, tid));
-          if (t?.description) {
-            const meta = JSON.parse(t.description);
-            taskMap[tid] = meta.category === "SELF" ? "자체진단" : "용역";
-          }
-        } catch {}
-      }
-    }
-    const normalizedList = list.map(r => {
-      let taskType = r.taskType || "";
-      // 영문 정규화
-      if (taskType === "CONTRACTOR") taskType = "용역";
-      else if (taskType === "SELF") taskType = "자체진단";
-      // 빈값이면 taskId로 task category에서 채우기
-      if (!taskType && r.taskId && taskMap[r.taskId]) {
-        taskType = taskMap[r.taskId];
-      }
-      return { ...r, taskType };
-    });
+    // taskType 정규화: CONTRACTOR→용역, SELF→자체진단
+    const normalizedList = list.map(r => ({
+      ...r,
+      taskType: r.taskType === "CONTRACTOR" ? "용역"
+        : r.taskType === "SELF" ? "자체진단"
+        : r.taskType || ""
+    }));
     return NextResponse.json({ tbmReports: normalizedList });
   } catch (e) {
     console.error(e);
