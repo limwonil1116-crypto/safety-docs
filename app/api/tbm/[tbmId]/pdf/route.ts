@@ -11,17 +11,17 @@ import { TbmReportPDF } from "@/lib/pdf/templates";
 export async function GET(req: NextRequest, { params }: { params: Promise<{ tbmId: string }> }) {
   try {
     const session = await auth();
-    if (!session?.user) return NextResponse.json({ error: "\ub85c\uadf8\uc778\uc774 \ud544\uc694\ud569\ub2c8\ub2e4." }, { status: 401 });
+    if (!session?.user) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
 
     const { tbmId } = await params;
     const [report] = await db.select().from(tbmReports).where(eq(tbmReports.id, tbmId));
-    if (!report) return NextResponse.json({ error: "TBM \ubcf4\uace0\uc11c\ub97c \ucc3e\uc744 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4." }, { status: 404 });
+    if (!report) return NextResponse.json({ error: "TBM 보고서를 찾을 수 없습니다." }, { status: 404 });
 
-    const element = React.createElement(TbmReportPDF, { report: report as Record<string, any> });
+    const element = React.createElement(TbmReportPDF, { report: report as Record<string, any> }) as any;
     const buffer = await renderToBuffer(element);
 
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    const filename = `TBM\ubcf4\uace0\uc11c_${report.reportDate || dateStr}_${tbmId.slice(0, 8)}.pdf`;
+    const filename = `TBM보고서_${report.reportDate || dateStr}_${tbmId.slice(0, 8)}.pdf`;
 
     return new NextResponse(buffer, {
       status: 200,
@@ -32,6 +32,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ tbmI
     });
   } catch (e) {
     console.error(e);
-    return NextResponse.json({ error: "\uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4." }, { status: 500 });
+    return NextResponse.json({ error: "오류가 발생했습니다." }, { status: 500 });
   }
 }
