@@ -791,3 +791,133 @@ export function PowerOutagePDF({ formData: fd, approvalLines, documentId, create
     </Document>
   );
 }
+
+// ===== TBM 일일안전교육보고서 PDF =====
+export function TbmReportPDF({ report }: { report: Record<string, any> }) {
+  const T = StyleSheet.create({
+    page: { fontFamily: "NanumGothic", fontSize: 8.5, paddingTop: 10, paddingBottom: 20, paddingHorizontal: 14, color: "#000" },
+    titleBox: { border: "1.5px solid #000", paddingVertical: 8, marginBottom: 6 },
+    titleMain: { fontSize: 18, fontWeight: "bold", textAlign: "center", letterSpacing: 2 },
+    secHeader: { backgroundColor: "#bdd7ee", border: "0.8px solid #7f9fbf", padding: "3 6", fontSize: 9.5, fontWeight: "bold", marginBottom: 0 },
+    table: { border: "0.8px solid #7f9fbf", marginBottom: 6 },
+    tr: { flexDirection: "row", borderBottom: "0.5px solid #7f9fbf" },
+    trLast: { flexDirection: "row" },
+    lb: { fontWeight: "bold", padding: "3 5", fontSize: 8.5, borderRight: "0.5px solid #7f9fbf", backgroundColor: "#f2f2f2", width: 90 },
+    vl: { flex: 1, padding: "3 5", fontSize: 8.5 },
+    riskBox: { border: "0.8px solid #7f9fbf", marginBottom: 3, padding: "4 6" },
+    riskTitle: { fontSize: 8.5, fontWeight: "bold", color: "#1a3a5c", marginBottom: 2 },
+    riskContent: { fontSize: 8.5 },
+    riskMeasure: { fontSize: 8, color: "#1a5c3a", marginTop: 1 },
+    mainRiskBox: { border: "0.8px solid #f59e0b", backgroundColor: "#fffbeb", marginBottom: 3, padding: "4 6" },
+    footer: { position: "absolute", bottom: 6, left: 14, right: 14, borderTop: "0.5px solid #aaa", paddingTop: 3, flexDirection: "row", justifyContent: "space-between" },
+    footerText: { fontSize: 7, color: "#666" },
+  });
+
+  const Row = ({ label, value, last }: { label: string; value?: any; last?: boolean }) => {
+    if (!value && value !== 0 && value !== false) return null;
+    const display = typeof value === "boolean" ? (value ? "사용" : "미사용") : String(value);
+    return (
+      <View style={last ? T.trLast : T.tr}>
+        <Text style={T.lb}>{label}</Text>
+        <Text style={T.vl}>{display}</Text>
+      </View>
+    );
+  };
+
+  const hasRisk = report.riskFactor1 || report.riskFactor2 || report.riskFactor3 || report.mainRiskFactor;
+
+  return (
+    <Document>
+      <Page size="A4" style={T.page}>
+        <View style={T.titleBox}>
+          <Text style={T.titleMain}>TBM 일일안전교육보고서</Text>
+        </View>
+
+        <Text style={T.secHeader}>1. 기본정보</Text>
+        <View style={T.table}>
+          <Row label="보고일자" value={report.reportDate} />
+          <Row label="교육시간" value={report.eduStartTime && report.eduEndTime ? `${report.eduStartTime} ~ ${report.eduEndTime}` : report.eduStartTime} />
+          <Row label="본부" value={report.headquarters} />
+          <Row label="지소" value={report.branch} />
+          <Row label="사업명" value={report.projectName} />
+          <Row label="사업유형" value={report.projectType} />
+          <Row label="수급사명" value={report.contractorName} />
+          <Row label="시설명" value={report.facilityName} last />
+        </View>
+
+        <Text style={T.secHeader}>2. 작업정보</Text>
+        <View style={T.table}>
+          <Row label="당일작업" value={report.workToday} />
+          <Row label="작업장소" value={report.workAddress} />
+          <Row label="작업인원" value={report.workerCount ? `${report.workerCount}명` : null} />
+          <Row label="신규입장자" value={report.newWorkerCount ? `${report.newWorkerCount}명` : null} />
+          <Row label="작업기계" value={report.equipment} />
+          <Row label="위험종별" value={report.riskType} />
+          <Row label="CCTV" value={report.cctvUsed !== undefined ? (report.cctvUsed ? "사용" : "미사용") : null} last />
+        </View>
+
+        {hasRisk ? (
+          <View style={{ marginBottom: 6 }}>
+            <Text style={T.secHeader}>3. 위험요인 및 조치</Text>
+            <View style={{ marginTop: 2 }}>
+              {[1, 2, 3].map(n => report[`riskFactor${n}`] ? (
+                <View key={n} style={T.riskBox}>
+                  <Text style={T.riskTitle}>위험요인 {n}</Text>
+                  <Text style={T.riskContent}>{report[`riskFactor${n}`]}</Text>
+                  {report[`riskMeasure${n}`] ? <Text style={T.riskMeasure}>→ 조치: {report[`riskMeasure${n}`]}</Text> : null}
+                </View>
+              ) : null)}
+              {report.mainRiskFactor ? (
+                <View style={T.mainRiskBox}>
+                  <Text style={[T.riskTitle, { color: "#92400e" }]}>중점위험요인</Text>
+                  <Text style={T.riskContent}>{report.mainRiskFactor}</Text>
+                  {report.mainRiskMeasure ? <Text style={[T.riskMeasure, { color: "#92400e" }]}>→ 조치: {report.mainRiskMeasure}</Text> : null}
+                </View>
+              ) : null}
+              {(report.riskElement1 || report.riskElement2 || report.riskElement3) ? (
+                <View style={T.riskBox}>
+                  <Text style={T.riskTitle}>위험요소</Text>
+                  {[1,2,3].map(n => report[`riskElement${n}`] ? <Text key={n} style={T.riskContent}>{report[`riskElement${n}`]}</Text> : null)}
+                </View>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+
+        {report.otherContent ? (
+          <View style={{ marginBottom: 6 }}>
+            <Text style={T.secHeader}>4. 기타사항</Text>
+            <View style={{ border: "0.8px solid #7f9fbf", padding: "4 6" }}>
+              <Text style={{ fontSize: 8.5 }}>{report.otherContent}</Text>
+            </View>
+          </View>
+        ) : null}
+
+        {report.photoUrl ? (
+          <View style={{ marginBottom: 6 }}>
+            <Text style={T.secHeader}>5. TBM 현장사진</Text>
+            <Image src={report.photoUrl} style={{ width: "100%", maxHeight: 160, objectFit: "contain", marginTop: 2, border: "0.5px solid #ccc" }} />
+          </View>
+        ) : null}
+
+        <Text style={T.secHeader}>6. 교육담당자</Text>
+        <View style={T.table}>
+          <Row label="성명" value={report.instructorName} />
+          <Row label="연락처" value={report.instructorPhone} last />
+        </View>
+
+        {report.signatureData ? (
+          <View style={{ border: "0.8px solid #7f9fbf", padding: "6 10", flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 6 }}>
+            <Text style={{ fontSize: 8.5, color: "#555" }}>서명</Text>
+            <Image src={report.signatureData} style={{ height: 28, width: 100, objectFit: "contain" }} />
+          </View>
+        ) : null}
+
+        <View style={T.footer}>
+          <Text style={T.footerText}>{`TBM ID: ${(report.id || "").slice(0, 8)}`}</Text>
+          <Text style={T.footerText}>{`발급일시: ${new Date().toLocaleString("ko-KR")}`}</Text>
+        </View>
+      </Page>
+    </Document>
+  );
+}
