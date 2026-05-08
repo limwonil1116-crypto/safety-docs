@@ -834,12 +834,11 @@ export function TbmReportPDF({ report }: { report: Record<string, any> }) {
           <Text style={T.titleMain}>Tool Box Meeting 회의록</Text>
         </View>
 
-        {/* TBM리더 행 */}
-        <View style={[T.table]}>
+        <View style={T.table}>
           <View style={T.tr}>
             <Text style={[T.th, { width: 60 }]}>TBM리더</Text>
             <View style={[T.td, { flex: 2, flexDirection: "row", alignItems: "center" }]}>
-              <Text style={{ fontSize: 8.5 }}>◆ 소속 : {report.contractorName || ""}</Text>
+              <Text style={{ fontSize: 8.5 }}>{"◆ 소속 : "}{report.contractorName || ""}</Text>
             </View>
             <Text style={[T.th, { width: 35 }]}>이름</Text>
             <Text style={[T.td, { width: 55 }]}>{report.instructorName || ""}</Text>
@@ -865,10 +864,12 @@ export function TbmReportPDF({ report }: { report: Record<string, any> }) {
           <View style={T.trLast}>
             <Text style={[T.th, { width: 60 }]}>TBM 장소</Text>
             <Text style={[T.td, { flex: 2 }]}>{report.workAddress || ""}</Text>
-            <Text style={[T.th, { width: 55, fontSize: 7.5 }]}>{"위험성평가
-실시여부"}</Text>
+            <View style={{ width: 55, backgroundColor: "#d9e1f2", borderRight: "0.5px solid #000", padding: "3 3", justifyContent: "center" }}>
+              <Text style={{ fontSize: 7.5, fontWeight: "bold", textAlign: "center" }}>위험성평가</Text>
+              <Text style={{ fontSize: 7.5, fontWeight: "bold", textAlign: "center" }}>실시여부</Text>
+            </View>
             <View style={{ width: 70, flexDirection: "row", alignItems: "center", padding: "3 5", gap: 4 }}>
-              <View style={T.checkBox}><Text style={{ fontSize: 7, color: "#000" }}>✓</Text></View>
+              <View style={T.checkBox}><Text style={{ fontSize: 7, color: "#000" }}>v</Text></View>
               <Text style={{ fontSize: 8 }}>예  </Text>
               <View style={T.checkBox} />
               <Text style={{ fontSize: 8 }}>아니오</Text>
@@ -876,7 +877,6 @@ export function TbmReportPDF({ report }: { report: Record<string, any> }) {
           </View>
         </View>
 
-        {/* 잠재위험요인 + 대책 */}
         <View style={T.table}>
           <View style={T.tr}>
             <Text style={[T.th, { flex: 1 }]}>잠재위험요인(수시위험성평가와 연계)</Text>
@@ -895,20 +895,18 @@ export function TbmReportPDF({ report }: { report: Record<string, any> }) {
           )}
         </View>
 
-        {/* 중점위험요인 */}
         {(report.mainRiskFactor || report.mainRiskMeasure) ? (
           <View style={[T.table, { marginBottom: 3 }]}>
-            <View style={T.tr}>
+            <View style={T.trLast}>
               <Text style={[T.th, { width: 60, fontSize: 8 }]}>중점위험 요인</Text>
-              <Text style={[T.td, { flex: 1 }]}>선정: {report.mainRiskFactor || ""}</Text>
+              <Text style={[T.td, { flex: 1 }]}>{"선정: "}{report.mainRiskFactor || ""}</Text>
               <Text style={[T.th, { width: 35, fontSize: 8 }]}>대책</Text>
               <Text style={[T.tdLast, { flex: 1 }]}>{report.mainRiskMeasure || ""}</Text>
             </View>
           </View>
         ) : null}
 
-        {/* 작업 전 안전조치 확인 */}
-        <Text style={[T.secHeader, { marginBottom: 0 }]}>■ 작업 전 안전조치 확인 ※ 위 잠재위험요인(중점위험 포함) 안전조치 여부 재확인</Text>
+        <Text style={T.secHeader}>{"■ 작업 전 안전조치 확인 ※ 위 잠재위험요인(중점위험 포함) 안전조치 여부 재확인"}</Text>
         <View style={[T.table, { marginTop: 0 }]}>
           <View style={T.tr}>
             <Text style={[T.th, { flex: 2 }]}>잠재위험요소(중점위험 포함)</Text>
@@ -918,7 +916,7 @@ export function TbmReportPDF({ report }: { report: Record<string, any> }) {
             <View key={i} style={i === elements.length - 1 ? T.trLast : T.tr}>
               <Text style={[T.td, { flex: 2 }]}>{`${i + 1}. ${el}`}</Text>
               <View style={{ width: 100, flexDirection: "row", alignItems: "center", padding: "3 5", gap: 4 }}>
-                <View style={T.checkBox}><Text style={{ fontSize: 7 }}>✓</Text></View>
+                <View style={T.checkBox}><Text style={{ fontSize: 7 }}>v</Text></View>
                 <Text style={{ fontSize: 8 }}>예  </Text>
                 <View style={T.checkBox} />
                 <Text style={{ fontSize: 8 }}>아니오</Text>
@@ -932,17 +930,13 @@ export function TbmReportPDF({ report }: { report: Record<string, any> }) {
           )}
         </View>
 
-        {/* 작업 전 일일 안전점검 */}
-        <Text style={[T.secHeader]}>■ 작업 전 일일 안전점검 시행 결과 ※ 공사현장 일일안전점검을 통해 위험성평가 이행 확인</Text>
-
-        {/* 기타사항 */}
-        <Text style={[T.secHeader]}>■ 기타사항(교육내용, 제안사항, 아차사고 등)</Text>
+        <Text style={T.secHeader}>{"■ 작업 전 일일 안전점검 시행 결과 ※ 공사현장 일일안전점검을 통해 위험성평가 이행 확인"}</Text>
+        <Text style={T.secHeader}>{"■ 기타사항(교육내용, 제안사항, 아차사고 등)"}</Text>
         <View style={{ border: "0.5px solid #000", borderTop: 0, padding: "3 5", minHeight: 40, marginBottom: 3 }}>
           <Text style={{ fontSize: 8.5 }}>{report.otherContent || ""}</Text>
         </View>
 
-        {/* TBM 실시사진 + 투입인원 + 투입장비 */}
-        <View style={[T.table]}>
+        <View style={T.table}>
           <View style={T.tr}>
             <Text style={[T.th, { flex: 2 }]}>TBM 실시사진</Text>
             <Text style={[T.th, { flex: 1 }]}>투입인원</Text>
@@ -954,11 +948,10 @@ export function TbmReportPDF({ report }: { report: Record<string, any> }) {
                 ? <Image src={report.photoUrl} style={{ width: "100%", maxHeight: 95, objectFit: "contain" }} />
                 : <Text style={{ fontSize: 8, color: "#aaa" }}>사진 없음</Text>}
             </View>
-            <Text style={[T.td, { flex: 1, minHeight: 100 }]}>
-              {report.workerCount ? `${report.workerCount}명` : ""}
-              {report.newWorkerCount ? `
-(신규 ${report.newWorkerCount}명)` : ""}
-            </Text>
+            <View style={[T.td, { flex: 1, minHeight: 100, padding: "3 5" }]}>
+              <Text style={{ fontSize: 8.5 }}>{report.workerCount ? `${report.workerCount}명` : ""}</Text>
+              {report.newWorkerCount ? <Text style={{ fontSize: 8 }}>{`(신규 ${report.newWorkerCount}명)`}</Text> : null}
+            </View>
             <Text style={[T.tdLast, { flex: 1, minHeight: 100 }]}>{report.equipment || "없음"}</Text>
           </View>
         </View>
