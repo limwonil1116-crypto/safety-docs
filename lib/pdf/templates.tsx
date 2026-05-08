@@ -791,3 +791,151 @@ export function PowerOutagePDF({ formData: fd, approvalLines, documentId, create
     </Document>
   );
 }
+
+
+// ===== TBM \uc77c\uc77c\uc548\uc804\uad50\uc721\ubcf4\uace0\uc11c PDF =====
+export function TbmReportPDF({ report }: { report: Record<string, any> }) {
+  const T = StyleSheet.create({
+    page: { fontFamily: "NanumGothic", fontSize: 8.5, paddingTop: 10, paddingBottom: 20, paddingHorizontal: 14, color: "#000" },
+    titleBox: { border: "1.5px solid #000", paddingVertical: 8, marginBottom: 6 },
+    titleMain: { fontSize: 18, fontWeight: "bold", textAlign: "center", letterSpacing: 2 },
+    section: { marginBottom: 6 },
+    secHeader: { backgroundColor: "#bdd7ee", border: "0.8px solid #7f9fbf", padding: "3 6", fontSize: 9.5, fontWeight: "bold", marginBottom: 0 },
+    table: { border: "0.8px solid #7f9fbf" },
+    tr: { flexDirection: "row", borderBottom: "0.5px solid #7f9fbf" },
+    trLast: { flexDirection: "row" },
+    label: { fontWeight: "bold", padding: "3 5", fontSize: 8.5, borderRight: "0.5px solid #7f9fbf", backgroundColor: "#f2f2f2", width: 90 },
+    val: { flex: 1, padding: "3 5", fontSize: 8.5 },
+    riskBox: { border: "0.8px solid #7f9fbf", marginBottom: 3, padding: "4 6" },
+    riskTitle: { fontSize: 8.5, fontWeight: "bold", color: "#1a3a5c", marginBottom: 2 },
+    riskContent: { fontSize: 8.5 },
+    riskMeasure: { fontSize: 8, color: "#1a5c3a", marginTop: 1 },
+    mainRiskBox: { border: "0.8px solid #f59e0b", backgroundColor: "#fffbeb", marginBottom: 3, padding: "4 6" },
+    footer: { position: "absolute", bottom: 6, left: 14, right: 14, borderTop: "0.5px solid #aaa", paddingTop: 3, flexDirection: "row", justifyContent: "space-between" },
+    footerText: { fontSize: 7, color: "#666" },
+  });
+
+  const Field = ({ label, value }: { label: string; value?: any }) => {
+    if (value === null || value === undefined || value === "") return null;
+    const display = typeof value === "boolean" ? (value ? "\uc0ac\uc6a9" : "\ubbf8\uc0ac\uc6a9") : String(value);
+    return (
+      <View style={T.tr}>
+        <Text style={T.label}>{label}</Text>
+        <Text style={T.val}>{display}</Text>
+      </View>
+    );
+  };
+
+  const hasRisk = report.riskFactor1 || report.riskFactor2 || report.riskFactor3 || report.mainRiskFactor;
+
+  return (
+    <Document>
+      <Page size="A4" style={T.page}>
+        <View style={T.titleBox}>
+          <Text style={T.titleMain}>TBM \uc77c\uc77c\uc548\uc804\uad50\uc721\ubcf4\uace0\uc11c</Text>
+        </View>
+
+        {/* 1. \uae30\ubcf8\uc815\ubcf4 */}
+        <Text style={T.secHeader}>1. \uae30\ubcf8\uc815\ubcf4</Text>
+        <View style={[T.table, T.section]}>
+          <Field label="\ubcf4\uace0\uc77c\uc790" value={report.reportDate} />
+          <Field label="\uad50\uc721\uc2dc\uac04" value={report.eduStartTime && report.eduEndTime ? `${report.eduStartTime} ~ ${report.eduEndTime}` : report.eduStartTime} />
+          <Field label="\ubcf8\ubd80" value={report.headquarters} />
+          <Field label="\uc9c0\uc18c" value={report.branch} />
+          <Field label="\uc0ac\uc5c5\uba85" value={report.projectName} />
+          <Field label="\uc0ac\uc5c5\uc720\ud615" value={report.projectType} />
+          <Field label="\uc218\uae09\uc0ac\uba85" value={report.contractorName} />
+          <View style={T.trLast}>
+            <Text style={T.label}>\uc2dc\uc124\uba85</Text>
+            <Text style={T.val}>{report.facilityName || ""}</Text>
+          </View>
+        </View>
+
+        {/* 2. \uc791\uc5c5\uc815\ubcf4 */}
+        <Text style={T.secHeader}>2. \uc791\uc5c5\uc815\ubcf4</Text>
+        <View style={[T.table, T.section]}>
+          <Field label="\ub2f9\uc77c\uc791\uc5c5" value={report.workToday} />
+          <Field label="\uc791\uc5c5\uc7a5\uc18c" value={report.workAddress} />
+          <Field label="\uc791\uc5c5\uc778\uc6d0" value={report.workerCount ? `${report.workerCount}\uba85` : null} />
+          <Field label="\uc2e0\uaddc\uc785\uc7a5\uc790" value={report.newWorkerCount ? `${report.newWorkerCount}\uba85` : null} />
+          <Field label="\uc791\uc5c5\uae30\uacc4" value={report.equipment} />
+          <Field label="\uc704\ud5d8\uc885\ubcd1" value={report.riskType} />
+          <View style={T.trLast}>
+            <Text style={T.label}>CCTV</Text>
+            <Text style={T.val}>{report.cctvUsed ? "\uc0ac\uc6a9" : "\ubbf8\uc0ac\uc6a9"}</Text>
+          </View>
+        </View>
+
+        {/* 3. \uc704\ud5d8\uc694\uc778 \ubc0f \uc870\uce58 */}
+        {hasRisk && (
+          <View style={T.section}>
+            <Text style={T.secHeader}>3. \uc704\ud5d8\uc694\uc778 \ubc0f \uc870\uce58</Text>
+            <View style={{ marginTop: 2 }}>
+              {[1, 2, 3].map(n => report[`riskFactor${n}`] ? (
+                <View key={n} style={T.riskBox}>
+                  <Text style={T.riskTitle}>\uc704\ud5d8\uc694\uc778 {n}</Text>
+                  <Text style={T.riskContent}>{report[`riskFactor${n}`]}</Text>
+                  {report[`riskMeasure${n}`] && <Text style={T.riskMeasure}>\u2192 \uc870\uce58: {report[`riskMeasure${n}`]}</Text>}
+                </View>
+              ) : null)}
+              {report.mainRiskFactor && (
+                <View style={T.mainRiskBox}>
+                  <Text style={[T.riskTitle, { color: "#92400e" }]}>\uc911\uc810\uc704\ud5d8\uc694\uc778</Text>
+                  <Text style={T.riskContent}>{report.mainRiskFactor}</Text>
+                  {report.mainRiskMeasure && <Text style={[T.riskMeasure, { color: "#92400e" }]}>\u2192 \uc870\uce58: {report.mainRiskMeasure}</Text>}
+                </View>
+              )}
+              {(report.riskElement1 || report.riskElement2 || report.riskElement3) && (
+                <View style={T.riskBox}>
+                  <Text style={T.riskTitle}>\uc704\ud5d8\uc694\uc18c</Text>
+                  {[1, 2, 3].map(n => report[`riskElement${n}`] ? <Text key={n} style={T.riskContent}>{report[`riskElement${n}`]}</Text> : null)}
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* 4. \uae30\ud0c0\uc0ac\ud56d */}
+        {report.otherContent && (
+          <View style={T.section}>
+            <Text style={T.secHeader}>4. \uae30\ud0c0\uc0ac\ud56d</Text>
+            <View style={{ border: "0.8px solid #7f9fbf", padding: "4 6" }}>
+              <Text style={{ fontSize: 8.5 }}>{report.otherContent}</Text>
+            </View>
+          </View>
+        )}
+
+        {/* 5. \ud604\uc7a5\uc0ac\uc9c4 */}
+        {report.photoUrl && (
+          <View style={T.section}>
+            <Text style={T.secHeader}>5. TBM \ud604\uc7a5\uc0ac\uc9c4</Text>
+            <Image src={report.photoUrl} style={{ width: "100%", maxHeight: 160, objectFit: "contain", marginTop: 2, border: "0.5px solid #ccc" }} />
+          </View>
+        )}
+
+        {/* 6. \uad50\uc721\ub2f4\ub2f9\uc790 */}
+        <Text style={T.secHeader}>6. \uad50\uc721\ub2f4\ub2f9\uc790</Text>
+        <View style={[T.table, { marginBottom: 8 }]}>
+          <Field label="\uc131\uba85" value={report.instructorName} />
+          <View style={T.trLast}>
+            <Text style={T.label}>\uc5f0\ub77d\ucc98</Text>
+            <Text style={T.val}>{report.instructorPhone || ""}</Text>
+          </View>
+        </View>
+
+        {/* \uc11c\uba85 */}
+        {report.signatureData && (
+          <View style={{ border: "0.8px solid #7f9fbf", padding: "6 10", flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 6 }}>
+            <Text style={{ fontSize: 8.5, color: "#555" }}>\uc11c\uba85</Text>
+            <Image src={report.signatureData} style={{ height: 28, width: 100, objectFit: "contain" }} />
+          </View>
+        )}
+
+        <View style={T.footer}>
+          <Text style={T.footerText}>{`TBM ID: ${(report.id || "").slice(0, 8)}`}</Text>
+          <Text style={T.footerText}>{`\ubc1c\uae09\uc77c\uc2dc: ${new Date().toLocaleString("ko-KR")} | \ubcf8 \ubb38\uc11c\ub294 \uc804\uc790\ubb38\uc11c\ub85c \ubc1c\uae09\ub418\uc5c8\uc2b5\ub2c8\ub2e4`}</Text>
+        </View>
+      </Page>
+    </Document>
+  );
+}
