@@ -18,16 +18,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ tbmI
     if (!report) return NextResponse.json({ error: "TBM 보고서를 찾을 수 없습니다." }, { status: 404 });
 
     const element = React.createElement(TbmReportPDF, { report: report as Record<string, any> }) as any;
-    const buffer = await renderToBuffer(element);
+    const pdfBuffer = await renderToBuffer(element);
+    const uint8 = new Uint8Array(pdfBuffer);
 
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    const filename = `TBM보고서_${report.reportDate || dateStr}_${tbmId.slice(0, 8)}.pdf`;
+    const filename = \`TBM보고서_\${report.reportDate || dateStr}_\${tbmId.slice(0, 8)}.pdf\`;
 
-    return new NextResponse(buffer, {
+    return new NextResponse(uint8, {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(filename)}`,
+        "Content-Disposition": \`inline; filename*=UTF-8''\${encodeURIComponent(filename)}\`,
       },
     });
   } catch (e) {
