@@ -348,7 +348,7 @@ function FinalApproverModal({ documentId, documentType, isFirstStep = false, onC
     ? (isFirstStep ? "(계획확인)허가자" : "(이행확인)확인자")
     : (FINAL_ROLE_LABELS[documentType] ?? "최종 허가자");
   const needFinalApprover = documentType !== "HOLIDAY_WORK";
-  useEffect(() => { const q = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""; const roleQ = (needFinalApprover && (documentType !== "SAFETY_WORK_PERMIT" || isFirstStep)) ? "&role=FINAL_APPROVER" : ""; fetch(`/api/users?krcOnly=true${q}${roleQ}`).then(r => r.json()).then(d => setUsers(d.users ?? [])); }, [keyword, needFinalApprover]);
+    useEffect(() => { const q = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""; fetch(`/api/users?krcOnly=true${q}`).then(r => r.json()).then(d => setUsers(d.users ?? [])); }, [keyword]);
   const handleAssign = async () => {
     if (!selected) { setError("결재자를 선택해주세요."); return; }
     setLoading(true); setError("");
