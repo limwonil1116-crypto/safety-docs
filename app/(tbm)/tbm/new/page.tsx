@@ -262,6 +262,35 @@ function TbmNewInner() {
     setPhotos(prev => prev.filter((_, i) => i !== idx));
   };
 
+  const [tempSaving, setTempSaving] = useState(false);
+  const [tempSavedAt, setTempSavedAt] = useState("");
+
+  const handleTempSave = async () => {
+    const f = formRef.current;
+    if (!f.contractorName && !f.projectName) { alert("수급사명 또는 사업명을 입력해주세요."); return; }
+    setTempSaving(true);
+    try {
+      const photoUrl = photos.length > 0 ? JSON.stringify(photos) : "";
+      const finalTaskType = f.taskType || taskCategory || "";
+      const url = editId ? `/api/tbm/${editId}` : "/api/tbm";
+      const method = editId ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...f, taskType: finalTaskType, cctvUsed, taskId, signatureData: "", photoUrl, workerCount: parseInt(f.workerCount)||0, newWorkerCount: parseInt(f.newWorkerCount)||0 })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      if (!editId && data.tbmReport?.id) {
+        // 새 보고서인 경우 URL을 editId로 업데이트
+        window.history.replaceState(null, "", `/tbm/new?editId=${data.tbmReport.id}`);
+      }
+      const now = new Date();
+      setTempSavedAt(`${now.getHours()}:${String(now.getMinutes()).padStart(2,"0")}`);
+    } catch (e: any) { alert("임시저장 실패: " + (e.message || "오류")); }
+    finally { setTempSaving(false); }
+  };
+
   const handleSubmit = async () => {
     const f = formRef.current;
     if (!f.contractorName) { alert("수급사명을 입력해주세요."); return; }
@@ -466,7 +495,15 @@ function TbmNewInner() {
           onClose={() => setShowLocationPicker(false)}
         />
       )}
-      <div className="fixed bottom-16 left-0 right-0 px-4 py-3 bg-white border-t border-gray-200">
+      <div className="fixed bottom-16 left-0 right-0 px-4 py-3 bg-white border-t border-gray-200 space-y-2">
+        <button onClick={handleTempSave} disabled={tempSaving}
+          className="w-full py-2.5 rounded-xl border border-gray-300 text-gray-600 font-medium text-sm disabled:opacity-50 flex items-center justify-center gap-1.5">
+          {tempSaving ? (
+            <><svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>저장 중..</>
+          ) : (
+            <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>임시저장{tempSavedAt ? ` (${tempSavedAt})` : ""}</>
+          )}
+        </button>
         <button onClick={handleSubmit} disabled={loading} className="w-full py-3.5 rounded-xl text-white font-medium text-sm disabled:opacity-50" style={{ background:"#2563eb" }}>{loading ? "제출 중.." : editId ? "수정 완료" : "TBM 보고서 제출"}</button>
       </div>
     </div>

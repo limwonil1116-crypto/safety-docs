@@ -28,12 +28,11 @@ const getTaskCategory = (desc?: string): "CONTRACTOR" | "SELF" => {
   try { return JSON.parse(desc || "{}").category === "SELF" ? "SELF" : "CONTRACTOR"; } catch { return "CONTRACTOR"; }
 };
 
-
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
   DRAFT:           { bg: "bg-gray-100",   text: "text-gray-500",   label: "작성중" },
   SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료" },
   IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중" },
-  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종결재 진행중" },
+  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종검토 진행중" },
   APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료" },
   REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "반려" },
 };
@@ -43,12 +42,11 @@ function getStatusKey(doc: ApprovalDoc): string {
   return doc.status;
 }
 
-// ✅ 4번: 법정서류 제목으로 탭 변경
 const TABS = [
   { key: "ALL",                label: "전체" },
   { key: "SAFETY_WORK_PERMIT", label: "안전작업허가서" },
   { key: "CONFINED_SPACE",     label: "밀폐공간작업허가서" },
-  { key: "HOLIDAY_WORK",       label: "휴일작업신청서" },
+  { key: "HOLIDAY_WORK",       label: "휴일작업신고서" },
   { key: "POWER_OUTAGE",       label: "정전작업허가서" },
 ];
 
@@ -97,7 +95,6 @@ function ApprovalStepFlow({ doc }: { doc: ApprovalDoc }) {
   );
 
   if (isConfined) {
-    // 밀폐공간 5단계: 신청→감시인→계획확인→측정→이행확인
     const ord = doc.current_approval_order ?? 0;
     const st = doc.status;
     const s0: StepStatus = st !== "DRAFT" ? "done" : "active";
@@ -109,7 +106,7 @@ function ApprovalStepFlow({ doc }: { doc: ApprovalDoc }) {
       <div className="flex items-center gap-0.5 mt-2.5">
         <StepDot s={s0} label="신청" type="doc" />
         <Line active={s1 === "done" || s1 === "active"} />
-        <StepDot s={s1} label="감시인" type="search" />
+        <StepDot s={s1} label="감시자" type="search" />
         <Line active={s2 === "done" || s2 === "active"} />
         <StepDot s={s2} label="계획확인" type="shield" />
         <Line active={s3 === "done" || s3 === "active"} />
@@ -123,7 +120,6 @@ function ApprovalStepFlow({ doc }: { doc: ApprovalDoc }) {
     );
   }
 
-  // 일반 3단계
   const step1: StepStatus = doc.status !== "DRAFT" ? "done" : "active";
   let step2: StepStatus = "pending";
   let step3: StepStatus = "pending";
@@ -157,11 +153,10 @@ export default function ApprovalsPage() {
   const [dateFilter, setDateFilter] = useState("ALL");
   const [categoryFilter, setCategoryFilter] = useState<"ALL"|"CONTRACTOR"|"SELF">("ALL");
   const [divisionFilter, setDivisionFilter] = useState("ALL");
-  // URL status=DRAFT 파라미터 지원
-  const statusParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("status") : null;
   const [search, setSearch] = useState("");
-  const [typeCounts, setTypeCounts] = useState<Record<string, number>>({});
   const [myTurnCount, setMyTurnCount] = useState(0);
+
+  const statusParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("status") : null;
 
   const fetchApprovals = useCallback(async () => {
     setLoading(true); setError("");
@@ -174,7 +169,6 @@ export default function ApprovalsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "데이터 오류");
       setDocs(data.documents ?? []);
-      setTypeCounts(data.typeCounts ?? {});
       setMyTurnCount(data.myTurnCount ?? 0);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "알 수 없는 오류가 발생했습니다.");
@@ -195,15 +189,21 @@ export default function ApprovalsPage() {
     }).replace(/\. /g, ".").replace(/\.$/, "");
   };
 
-  const divisionList = ["ALL", ...Array.from(new Set(docs.map(d => getDivision(d.task_description)).filter(Boolean))).sort()];
+  // 반 목록: 현재 카테고리 필터에 맞는 것만
+  const divisionList = ["ALL", ...Array.from(new Set(
+    docs
+      .filter(d => categoryFilter === "ALL" || getTaskCategory(d.task_description) === categoryFilter)
+      .map(d => getDivision(d.task_description))
+      .filter(Boolean)
+  )).sort()];
+
   const filteredDocs = docs.filter(doc => {
     if (statusParam === "DRAFT" && doc.status !== "DRAFT") return false;
     if (categoryFilter !== "ALL") {
-      const cat = getTaskCategory((doc as any).task_description);
-      if (cat !== categoryFilter) return false;
+      if (getTaskCategory(doc.task_description) !== categoryFilter) return false;
     }
     if (divisionFilter !== "ALL") {
-      if (getDivision((doc as any).task_description) !== divisionFilter) return false;
+      if (getDivision(doc.task_description) !== divisionFilter) return false;
     }
     return true;
   });
@@ -211,7 +211,7 @@ export default function ApprovalsPage() {
   return (
     <div>
       <div className="px-4 pt-4 pb-3 bg-white border-b border-gray-100">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-3">
           <h1 className="text-lg font-bold text-gray-900">결재현황</h1>
           {myTurnCount > 0 && (
             <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-red-100 text-red-600">
@@ -219,39 +219,55 @@ export default function ApprovalsPage() {
             </span>
           )}
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-1">
+
+        {/* 기간 필터 */}
+        <div className="flex gap-2 mb-2">
           {DATE_FILTERS.map((f) => (
             <button key={f.key} onClick={() => setDateFilter(f.key)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                dateFilter === f.key ? "text-white" : "bg-gray-100 text-gray-600"
-              }`}
-              style={dateFilter === f.key ? { background: "#2563eb" } : {}}>
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+                dateFilter === f.key
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white text-gray-600 border-gray-200"
+              }`}>
               {f.label}
             </button>
           ))}
-          <div className="w-px h-4 bg-gray-200 mx-0.5 self-center" />
-          <select value={divisionFilter} onChange={e => setDivisionFilter(e.target.value)}
-            className="text-xs px-2 py-1 border border-gray-200 rounded-lg text-gray-600 bg-white focus:outline-none">
-            {divisionList.map(d => <option key={d} value={d}>{d === "ALL" ? "전체반" : d}</option>)}
-          </select>
-          <div className="w-px h-4 bg-gray-200 mx-0.5 self-center" />
-          {(["ALL","CONTRACTOR","SELF"] as const).map(f => (
-            <button key={f} onClick={() => { setCategoryFilter(f); setDivisionFilter("ALL"); }}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+        </div>
+
+        {/* 유형 필터 (전체/용역/자체진단) + 반 드롭다운 */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {(["ALL", "CONTRACTOR", "SELF"] as const).map(f => (
+            <button key={f}
+              onClick={() => { setCategoryFilter(f); setDivisionFilter("ALL"); }}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
                 categoryFilter === f
-                  ? f === "SELF" ? "bg-green-600 text-white" : f === "CONTRACTOR" ? "bg-blue-600 text-white" : "bg-gray-700 text-white"
-                  : f === "SELF" ? "text-green-600 border border-green-200 bg-white" : f === "CONTRACTOR" ? "text-blue-600 border border-blue-200 bg-white" : "bg-gray-100 text-gray-600"
+                  ? f === "SELF" ? "bg-green-600 text-white border-green-600"
+                    : f === "CONTRACTOR" ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-gray-700 text-white border-gray-700"
+                  : f === "SELF" ? "text-green-600 border-green-200 bg-white"
+                    : f === "CONTRACTOR" ? "text-blue-600 border-blue-200 bg-white"
+                    : "bg-white text-gray-600 border-gray-200"
               }`}>
               {f === "ALL" ? "전체" : f === "CONTRACTOR" ? "[용역]" : "[자체진단]"}
             </button>
           ))}
+          {/* 반 드롭다운: 용역 또는 자체진단 선택시에만 표시 */}
+          {categoryFilter !== "ALL" && divisionList.length > 1 && (
+            <select
+              value={divisionFilter}
+              onChange={e => setDivisionFilter(e.target.value)}
+              className="text-xs px-2.5 py-1.5 border border-gray-200 rounded-full text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+              {divisionList.map(d => (
+                <option key={d} value={d}>{d === "ALL" ? "전체 반" : d}</option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
-      {/* ✅ 4번: 법정서류 이름 탭 */}
+      {/* 허가서 종류 탭 */}
       <div className="bg-white border-b border-gray-200 flex overflow-x-auto">
         {TABS.map((tab) => {
-          // categoryFilter 적용된 filteredDocs 기준으로 카운트
           const count = tab.key === "ALL"
             ? filteredDocs.length
             : filteredDocs.filter(d => d.document_type === tab.key).length;
@@ -294,7 +310,7 @@ export default function ApprovalsPage() {
           ))
         ) : error ? (
           <div className="text-center py-12 text-red-500 text-sm">{error}</div>
-        ) : docs.length === 0 ? (
+        ) : filteredDocs.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-3 opacity-50">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -332,15 +348,18 @@ export default function ApprovalsPage() {
                   {isMyTurn && (
                     <div className="flex items-center gap-1.5 mb-2 text-xs font-medium text-blue-600">
                       <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse inline-block"/>
-                      내 결재 차례입니다
+                      지금 결재 차례입니다
                     </div>
                   )}
                   <div className="flex items-start justify-between mb-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{typeShort}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold mr-1 shrink-0 ${getTaskCategory((doc as any).task_description) === "SELF" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
-                        {getTaskCategory((doc as any).task_description) === "SELF" ? "[자체진단]" : "[용역]"}
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 ${getTaskCategory(doc.task_description) === "SELF" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+                        {getTaskCategory(doc.task_description) === "SELF" ? "[자체진단]" : "[용역]"}
                       </span>
+                      {getDivision(doc.task_description) && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{getDivision(doc.task_description)}</span>
+                      )}
                       <span className="text-sm font-semibold text-gray-900">{doc.task_name}</span>
                     </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ml-1 ${style.bg} ${style.text}`}>
