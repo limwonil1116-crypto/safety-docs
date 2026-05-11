@@ -558,7 +558,7 @@ const DEFAULT_GAS_ROWS = [
 function GasRowInput({ row, onChange }: { row: any; onChange: (field: string, value: string) => void }) {
     const numVal = (f: string) => parseInt(row[f] || "0", 10) || 0;
     const [localRow, setLocalRow] = useState<any>(row);
-    useEffect(() => { setLocalRow(row); }, [row]);
+    // row 변경시 덮어쓰기 제거 - 초기값만 사용
     const handleChange = (f: string, v: string) => {
       setLocalRow((prev: any) => ({ ...prev, [f]: v }));
     };
