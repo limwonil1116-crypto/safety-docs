@@ -23,9 +23,10 @@ export async function GET(req: NextRequest) {
     if (krcOnly) {
       conditions.push(eq(users.organization, "한국농어촌공사"));
     }
-    if (roleFilter) {
-      conditions.push(eq(users.role, roleFilter as any));
-    }
+    // roleFilter 비활성화 - 전체 풀 허용
+    // if (roleFilter) {
+    //   conditions.push(eq(users.role, roleFilter as any));
+    // }
 
     // 활성 사용자만
     conditions.push(eq(users.status, "ACTIVE"));
