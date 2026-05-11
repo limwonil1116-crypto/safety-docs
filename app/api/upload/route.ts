@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,6 +9,15 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get("file") as File;
     if (!file) return NextResponse.json({ error: "파일이 없습니다." }, { status: 400 });
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json({ error: "Supabase 환경변수가 없습니다." }, { status: 500 });
+    }
+
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
 
     const ext = file.name.split(".").pop() || "jpg";
     const filename = `tbm-photos/${Date.now()}.${ext}`;
