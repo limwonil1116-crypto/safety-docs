@@ -432,10 +432,8 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
         {/* 위험요소/개선대책/재해형태 */}
         <View style={[P.table, { marginBottom: 3 }]}>
           <View style={P.tr}>
-            <Text style={[P.th, { flex: 3 }]}>{"위험요소
-(위험성 평가 결과 포함)"}</Text>
-            <Text style={[P.th, { flex: 3 }]}>{"개선대책
-(개선대책 결과 포함)"}</Text>
+            <Text style={[P.th, { flex: 3 }]}>{"위험요소(위험성 평가 결과 포함)"}</Text>
+            <Text style={[P.th, { flex: 3 }]}>{"개선대책(개선대책 결과 포함)"}</Text>
             <Text style={[P.th, { flex: 1, borderRight: 0 }]}>재해형태</Text>
           </View>
           {riskRows.map((row, idx) => (
