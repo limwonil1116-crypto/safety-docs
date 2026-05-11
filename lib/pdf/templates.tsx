@@ -391,9 +391,11 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
         <Text style={P.secHeader}>2. 위험공종 확인내용</Text>
         <View style={[P.table, { marginBottom: 3 }]}>
           <View style={P.tr}>
-            <Text style={[P.th, { width: 90 }]}>{"작업허가제
-대상공종
-(관련공종☑)"}</Text>
+            <View style={[P.th, { width: 90, flexDirection: "column", justifyContent: "center" }]}>
+              <Text style={{ fontSize: 8, fontWeight: "bold", textAlign: "center" }}>작업허가제</Text>
+              <Text style={{ fontSize: 8, fontWeight: "bold", textAlign: "center" }}>대상공종</Text>
+              <Text style={{ fontSize: 8, fontWeight: "bold", textAlign: "center" }}>(관련공종☑)</Text>
+            </View>
             <Text style={[P.th, { flex: 1 }]}>관련작업(장소)</Text>
             <Text style={[P.th, { flex: 1, borderRight: 0 }]}>발생하는 위험요소</Text>
           </View>
