@@ -811,6 +811,20 @@ export function TbmReportPDF({ report }: { report: Record<string, any> }) {
     checkBox: { width: 9, height: 9, border: "0.8px solid #333", marginRight: 2, alignItems: "center", justifyContent: "center" },
   });
 
+  // photoUrl 파싱: JSON 배열 또는 단일 URL
+  const parsePhotos = (photoUrl: string): Array<{url: string; caption: string}> => {
+    if (!photoUrl) return [];
+    try {
+      const parsed = JSON.parse(photoUrl);
+      if (Array.isArray(parsed)) return parsed;
+      return [{ url: photoUrl, caption: "" }];
+    } catch {
+      return [{ url: photoUrl, caption: "" }];
+    }
+  };
+
+  const photos = parsePhotos(report.photoUrl || "");
+
   const timeStr = report.eduStartTime && report.eduEndTime
     ? `${report.reportDate} ${report.eduStartTime}:00 (${report.eduStartTime}~${report.eduEndTime}) 작업 날짜와 동일함`
     : report.reportDate || "";
@@ -824,6 +838,12 @@ export function TbmReportPDF({ report }: { report: Record<string, any> }) {
   const elements = [
     report.riskElement1, report.riskElement2, report.riskElement3,
   ].filter(Boolean);
+
+  // 사진을 2장씩 나눠 표시 (A4에 맞게)
+  const photoRows: Array<Array<{url:string;caption:string}>> = [];
+  for (let i = 0; i < photos.length; i += 2) {
+    photoRows.push(photos.slice(i, i + 2));
+  }
 
   return (
     <Document>
@@ -932,10 +952,11 @@ export function TbmReportPDF({ report }: { report: Record<string, any> }) {
 
         <Text style={T.secHeader}>{"■ 작업 전 일일 안전점검 시행 결과 ※ 공사현장 일일안전점검을 통해 위험성평가 이행 확인"}</Text>
         <Text style={T.secHeader}>{"■ 기타사항(교육내용, 제안사항, 아차사고 등)"}</Text>
-        <View style={{ border: "0.5px solid #000", borderTop: 0, padding: "3 5", minHeight: 40, marginBottom: 3 }}>
+        <View style={{ border: "0.5px solid #000", borderTop: 0, padding: "3 5", minHeight: 35, marginBottom: 3 }}>
           <Text style={{ fontSize: 8.5 }}>{report.otherContent || ""}</Text>
         </View>
 
+        {/* TBM 실시사진 + 투입인원 + 투입장비 */}
         <View style={T.table}>
           <View style={T.tr}>
             <Text style={[T.th, { flex: 2 }]}>TBM 실시사진</Text>
@@ -943,16 +964,29 @@ export function TbmReportPDF({ report }: { report: Record<string, any> }) {
             <Text style={[T.th, { flex: 1, borderRight: 0 }]}>투입장비</Text>
           </View>
           <View style={T.trLast}>
-            <View style={[T.td, { flex: 2, minHeight: 100, alignItems: "center", justifyContent: "center" }]}>
-              {report.photoUrl
-                ? <Image src={report.photoUrl} style={{ width: "100%", maxHeight: 95, objectFit: "contain" }} />
-                : <Text style={{ fontSize: 8, color: "#aaa" }}>사진 없음</Text>}
+            <View style={[T.td, { flex: 2, minHeight: photos.length > 0 ? 160 : 80 }]}>
+              {photos.length > 0 ? (
+                <View style={{ flexDirection: "column", gap: 4 }}>
+                  {photoRows.map((row, ri) => (
+                    <View key={ri} style={{ flexDirection: "row", gap: 4 }}>
+                      {row.map((photo, pi) => (
+                        <View key={pi} style={{ flex: 1 }}>
+                          <Image src={photo.url} style={{ width: "100%", height: photos.length === 1 ? 130 : 75, objectFit: "cover" }} />
+                          {photo.caption ? <Text style={{ fontSize: 7, color: "#555", marginTop: 1, textAlign: "center" }}>{photo.caption}</Text> : null}
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={{ fontSize: 8, color: "#aaa", textAlign: "center", marginTop: 20 }}>사진 없음</Text>
+              )}
             </View>
-            <View style={[T.td, { flex: 1, minHeight: 100, padding: "3 5" }]}>
+            <View style={[T.td, { flex: 1, minHeight: 80, padding: "3 5" }]}>
               <Text style={{ fontSize: 8.5 }}>{report.workerCount ? `${report.workerCount}명` : ""}</Text>
               {report.newWorkerCount ? <Text style={{ fontSize: 8 }}>{`(신규 ${report.newWorkerCount}명)`}</Text> : null}
             </View>
-            <Text style={[T.tdLast, { flex: 1, minHeight: 100 }]}>{report.equipment || "없음"}</Text>
+            <Text style={[T.tdLast, { flex: 1, minHeight: 80 }]}>{report.equipment || "없음"}</Text>
           </View>
         </View>
 
