@@ -476,7 +476,7 @@ function LocationField({ workLatitude, onOpenLocation }: {
       <button onClick={onOpenLocation}
         className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-medium transition-colors ${workLatitude ? "border-blue-400 bg-blue-50 text-blue-600" : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"}`}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-        {workLatitude ? (workAddress || "위치 선택됨 (위치 변경)") : "지도에서 위치 선택 (GPS 자동설정)"}
+        {workLatitude ? "위치 선택됨 (위치 변경)" : "지도에서 위치 선택 (GPS 자동설정)"}
       </button>
     </div>
   );
