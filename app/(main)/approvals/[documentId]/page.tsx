@@ -557,18 +557,7 @@ const DEFAULT_GAS_ROWS = [
 
 function GasRowInput({ row, onChange }: { row: any; onChange: (field: string, value: string) => void }) {
     const numVal = (f: string) => parseInt(row[f] || "0", 10) || 0;
-    const [localRow, setLocalRow] = useState<any>(row);
-    // row 변경시 덮어쓰기 제거 - 초기값만 사용
-    const handleChange = (f: string, v: string) => {
-      setLocalRow((prev: any) => ({ ...prev, [f]: v }));
-    };
-    const handleBlur = (f: string) => {
-      onChange(f, localRow[f] ?? "");
-    };
-    const handleStep = (f: string, v: string) => {
-      setLocalRow((prev: any) => ({ ...prev, [f]: v }));
-      onChange(f, v);
-    };
+    const handleStep = (f: string, v: string) => { onChange(f, v); };
     return (
       <div className="bg-gray-50 rounded-xl p-3 space-y-3 border border-gray-100">
         <div className="flex items-center gap-3">
@@ -577,7 +566,7 @@ function GasRowInput({ row, onChange }: { row: any; onChange: (field: string, va
             {(["hour","minute"] as const).map(f => (
               <div key={f} className="flex flex-col items-center gap-0.5">
                 <button type="button" onMouseDown={e=>{e.preventDefault(); handleStep(f, String(numVal(f)+1));}} className="w-8 h-7 flex items-center justify-center rounded-t-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-500 text-xs select-none">▲</button>
-                <input type="number" min="0" value={localRow[f] || ""} onChange={e => handleChange(f, e.target.value)} onBlur={() => handleBlur(f)} className="w-12 h-8 text-center text-sm text-gray-900 border-x border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                <input type="number" min="0" value={localRow[f] || ""} onChange={e => onChange(f, e.target.value)} className="w-12 h-8 text-center text-sm text-gray-900 border-x border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                 <button type="button" onMouseDown={e=>{e.preventDefault(); handleStep(f, String(Math.max(0,numVal(f)-1)));}} className="w-8 h-7 flex items-center justify-center rounded-b-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-500 text-xs select-none">▼</button>
                 <span className="text-xs text-gray-500">{f==="hour"?"시":"분"}</span>
               </div>
@@ -596,7 +585,7 @@ function GasRowInput({ row, onChange }: { row: any; onChange: (field: string, va
             ] as const).map(({f,label,unit,ph}) => (
               <div key={f} className="flex flex-col gap-0.5">
                 <label className="text-[10px] text-gray-500">{label} ({unit})</label>
-                <input type="text" value={localRow[f] || ""} placeholder={ph} onChange={e => handleChange(f, e.target.value)} onBlur={() => handleBlur(f)} className="px-2 py-1.5 text-sm text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white placeholder:text-gray-300" />
+                <input type="text" value={localRow[f] || ""} placeholder={ph} onChange={e => onChange(f, e.target.value)} className="px-2 py-1.5 text-sm text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white placeholder:text-gray-300" />
               </div>
             ))}
           </div>
@@ -609,7 +598,7 @@ function GasRowInput({ row, onChange }: { row: any; onChange: (field: string, va
           ] as const).map(({f,label,type}) => (
             <div key={f}>
               <label className="text-xs text-gray-500 mb-1 block">{label}</label>
-              <input type={type} min={type==="number"?"0":undefined} value={localRow[f] || ""} onChange={e => handleChange(f, e.target.value)} onBlur={() => handleBlur(f)} className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
+              <input type={type} min={type==="number"?"0":undefined} value={localRow[f] || ""} onChange={e => onChange(f, e.target.value)} className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
             </div>
           ))}
         </div>
