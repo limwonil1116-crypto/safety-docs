@@ -482,7 +482,40 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
       {isForm1 && riskTypesSummary.length > 0 && <div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-3">위험공종 체크사항</h3><div className="space-y-1.5">{riskTypesSummary.map((item, i) => (<div key={i} className="flex items-start gap-2"><div className="w-4 h-4 rounded bg-blue-600 flex items-center justify-center shrink-0 mt-0.5"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg></div><span className="text-sm text-gray-800">{item}</span></div>))}</div></div>}
       {isForm1 && checkedFactors.length > 0 && <div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-3">발생하는 위험요소</h3><div className="flex flex-wrap gap-2">{checkedFactors.map((f, i) => (<span key={i} className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">{f}</span>))}</div></div>}
       {isForm1 && Array.isArray(fd.riskRows) && fd.riskRows.length > 0 && <div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-3">위험요소 · 개선대책</h3><div className="space-y-2">{(fd.riskRows as any[]).map((row, i) => (<div key={i} className="bg-gray-50 rounded-xl p-3 text-xs space-y-1">{row.riskFactor && <div><span className="text-gray-500">위험요소:</span> <span className="text-gray-800">{row.riskFactor}</span></div>}{row.improvement && <div><span className="text-gray-500">개선대책:</span> <span className="text-gray-800">{row.improvement}</span></div>}{row.disasterType && <div><span className="text-gray-500">재해형태:</span> <span className="text-gray-800">{row.disasterType}</span></div>}</div>))}</div></div>}
-      {(isForm2 || isForm4) && Array.isArray(fd.safetyChecks) && <div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-3">안전조치 이행사항</h3><div className="space-y-1.5">{(fd.safetyChecks as any[]).map((item, i) => (<div key={i} className="flex items-center gap-2 text-xs py-1 border-b border-gray-50"><div className={`w-4 h-4 rounded flex items-center justify-center shrink-0 ${item.applicable === "해당" ? "bg-blue-600" : "bg-gray-200"}`}>{item.applicable === "해당" && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}</div><span className={`flex-1 ${item.applicable === "해당" ? "text-gray-800 font-medium" : "text-gray-400"}`}>{item.label}</span>{item.applicable && <span className={`text-xs px-1.5 py-0.5 rounded ${item.applicable === "해당" ? "bg-blue-50 text-blue-600" : "bg-gray-100 text-gray-400"}`}>{item.applicable}</span>}{item.result && <span className="text-gray-500 text-xs">→ {item.result}</span>}</div>))}</div></div>}
+{(isForm2 || isForm4) && Array.isArray(fd.safetyChecks) && (
+                <div className="bg-white rounded-2xl p-4 shadow-sm">
+                  <h3 className="text-sm font-bold text-gray-900 mb-3">안전조치 이행사항</h3>
+                  <div className="space-y-1">
+                    <div className="grid grid-cols-12 gap-1 px-2 py-1 bg-gray-100 rounded-lg mb-1">
+                      <div className="col-span-6 text-xs font-medium text-gray-600">확인항목</div>
+                      <div className="col-span-3 text-xs font-medium text-gray-600 text-center">해당여부</div>
+                      <div className="col-span-3 text-xs font-medium text-gray-600 text-center">확인결과</div>
+                    </div>
+                    {(fd.safetyChecks as any[]).map((item, idx2) => {
+                      const isBold = item.label?.startsWith("\u25cf") || item.label?.startsWith("\u2605");
+                      const displayLabel = item.label?.replace(/^[\u25cf\u2605]/, "") || item.label;
+                      const isHaedan = item.applicable === "\ud574당";
+                      return (
+                        <div key={idx2} className={`grid grid-cols-12 gap-1 items-center border rounded-lg px-2 py-1 ${isBold ? "bg-blue-50 border-blue-100" : "border-gray-100"}`}>
+                          <div className={`col-span-6 text-xs leading-tight ${isBold ? "font-bold text-gray-900" : "text-gray-700"}`}>{displayLabel}</div>
+                          <div className="col-span-3 text-center">
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${isHaedan ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}>
+                              {isHaedan ? "\ud574당" : "\ud574당없음"}
+                            </span>
+                          </div>
+                          <div className="col-span-3 text-center">
+                            {isHaedan ? (
+                              <span className="text-[10px] text-green-700 font-medium">{item.result || "\uc870치완료"}</span>
+                            ) : (
+                              <span className="text-[10px] text-gray-400">-</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
       {isForm4 && Array.isArray(fd.inspectionItems) && (fd.inspectionItems as any[]).some(i => i.equipment) && <div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-3">기기 확인 결과</h3><div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="bg-gray-50"><th className="text-left px-2 py-1.5 text-gray-600 font-medium">점검기기</th><th className="text-left px-2 py-1.5 text-gray-600 font-medium">차단확인자</th><th className="text-left px-2 py-1.5 text-gray-600 font-medium">전기담당자</th><th className="text-left px-2 py-1.5 text-gray-600 font-medium">현장정비</th></tr></thead><tbody>{(fd.inspectionItems as any[]).filter(i => i.equipment).map((item, i) => (<tr key={i} className="border-t border-gray-100"><td className="px-2 py-1.5 text-gray-800">{item.equipment}</td><td className="px-2 py-1.5 text-gray-800">{item.cutoffConfirmer}</td><td className="px-2 py-1.5 text-gray-800">{item.electrician}</td><td className="px-2 py-1.5 text-gray-800">{item.siteRepair}</td></tr>))}</tbody></table></div></div>}
       {isForm3 && Array.isArray(fd.participants) && <div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-3">작업 참여자</h3><div className="space-y-1.5">{(fd.participants as any[]).map((p, i) => (<div key={i} className="flex gap-3 text-sm"><span className="text-gray-400 w-28 shrink-0">{p.role}</span><span className="text-gray-900">{p.name} {p.phone ? `(${p.phone})` : ""}</span></div>))}</div></div>}
       {isForm3 && (fd.riskFactors || fd.improvementMeasures) && <div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-3">위험요소 및 개선대책</h3><div className="space-y-2">{fd.riskFactors && <Field label="위험요소" value={fd.riskFactors as string} />}{fd.improvementMeasures && <Field label="개선대책" value={fd.improvementMeasures as string} />}</div></div>}
