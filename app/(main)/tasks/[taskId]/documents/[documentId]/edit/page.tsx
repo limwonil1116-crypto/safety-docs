@@ -509,64 +509,68 @@ interface SafetyCheckItem { label: string; applicable: string; result: string; }
 function SafetyCheckTable({ items, onChange }: { items: SafetyCheckItem[]; onChange: (updated: SafetyCheckItem[]) => void }) {
   const update = (idx: number, field: keyof SafetyCheckItem, value: string) =>
     onChange(items.map((item, i) => i === idx ? { ...item, [field]: value } : item));
-  const OPTS = ["조치완료"];
+
+  // 초기 마운트시 디폴트값 설정 (해당없음)
+  const initialized = items.map(item => ({
+    ...item,
+    applicable: item.applicable || "해당없음",
+  }));
+
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-3 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg text-xs font-medium text-gray-600">
-        <div className="col-span-1">확인항목</div>
-        <div className="col-span-1 text-center">해당여부</div>
-        <div className="col-span-1 text-center">확인결과</div>
+    <div>
+      {/* 헤더 */}
+      <div className="grid grid-cols-12 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg mb-1">
+        <div className="col-span-5 text-xs font-medium text-gray-600">확인항목</div>
+        <div className="col-span-3 text-xs font-medium text-gray-600 text-center">해당여부</div>
+        <div className="col-span-4 text-xs font-medium text-gray-600 text-center">확인결과</div>
       </div>
-      {items.map((item, idx) => {
-        const isDirectInput = item.applicable === "해당" && !OPTS.includes(item.result) && item.result !== "" && item.result !== "선택";
-        const isBold = item.label.startsWith("●");
-        const displayLabel = item.label.replace(/^●/, "");
-        return (
-          <div key={idx} className="border border-gray-100 rounded-xl p-2.5 space-y-2">
-            <div className={`text-xs leading-tight ${isBold ? "font-bold text-gray-900" : "text-gray-700"}`}>{displayLabel}</div>
-            <div className="flex gap-2">
-              {["해당", "해당없음"].map(opt => (
-                <button key={opt} type="button"
-                  onClick={() => {
-                    update(idx, "applicable", opt);
-                    if (opt === "해당" && !items[idx].result) {
-                      update(idx, "result", "조치완료");
-                    }
-                    if (opt === "해당없음") {
-                      update(idx, "result", "");
-                    }
-                  }}
-                  className={`flex-1 py-2 rounded-lg text-xs font-semibold border-2 transition-colors ${
-                    item.applicable === opt
-                      ? opt === "해당" ? "bg-blue-600 border-blue-600 text-white" : "bg-gray-500 border-gray-500 text-white"
-                      : "bg-white border-gray-200 text-gray-500"
-                  }`}>
-                  {opt}
-                </button>
-              ))}
+      <div className="space-y-1">
+        {initialized.map((item, idx) => {
+          const isBold = item.label.startsWith("★");
+          const displayLabel = item.label.replace(/^★/, "");
+          const isHaedan = item.applicable === "해당";
+          return (
+            <div key={idx} className={`grid grid-cols-12 gap-1 items-center border rounded-xl px-2 py-1.5 ${isBold ? "bg-blue-50 border-blue-100" : "border-gray-100"}`}>
+              <div className={`col-span-5 text-xs leading-tight ${isBold ? "font-bold text-gray-900" : "text-gray-700"}`}>{displayLabel}</div>
+              <div className="col-span-3 flex gap-1">
+                {["해당", "해당없음"].map(opt => (
+                  <button key={opt} type="button"
+                    onClick={() => {
+                      const newItems = items.map((itm, i) => {
+                        if (i !== idx) return itm;
+                        const newApplicable = opt;
+                        const newResult = opt === "해당"
+                          ? (itm.result && itm.result !== "해당없음" ? itm.result : "조치완료")
+                          : "해당없음";
+                        return { ...itm, applicable: newApplicable, result: newResult };
+                      });
+                      onChange(newItems);
+                    }}
+                    className={`flex-1 py-1 rounded-lg text-[10px] font-semibold border transition-colors ${
+                      (item.applicable || "해당없음") === opt
+                        ? opt === "해당" ? "bg-blue-600 border-blue-600 text-white" : "bg-gray-500 border-gray-500 text-white"
+                        : "bg-white border-gray-200 text-gray-500"
+                    }`}>
+                    {opt === "해당없음" ? "없음" : opt}
+                  </button>
+                ))}
+              </div>
+              <div className="col-span-4">
+                {isHaedan ? (
+                  <input
+                    type="text"
+                    value={item.result === "해당없음" ? "조치완료" : (item.result || "조치완료")}
+                    onChange={e => update(idx, "result", e.target.value)}
+                    className="w-full px-2 py-1 border border-blue-200 rounded-lg text-[10px] text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+                  />
+                ) : (
+                  <div className="text-[10px] text-gray-400 text-center">-</div>
+                )}
+              </div>
             </div>
-            <div className="space-y-1">
-              {item.applicable === "해당" ? (
-                <>
-                  <select
-                    value={isDirectInput ? "직접입력" : (item.result || "")}
-                    onChange={e => { if (e.target.value !== "직접입력") update(idx, "result", e.target.value); else update(idx, "result", " "); }}
-                    className="w-full px-2 py-1 border border-gray-200 rounded-lg text-xs text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500">
-                    <option value="">선택</option>
-                    {OPTS.map(o => <option key={o} value={o}>{o}</option>)}
-                    <option value="직접입력">직접입력</option>
-                  </select>
-                  {isDirectInput && (
-                    <input type="text" value={item.result.trim()} onChange={e => update(idx, "result", e.target.value)}
-                      placeholder="직접 입력" autoFocus
-                      className="w-full px-2 py-1 border border-blue-300 rounded-lg text-xs text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                  )}
-                </>
-              ) : <div className="text-xs text-gray-300 text-center">-</div>}
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1167,19 +1171,19 @@ function Form1Fields({ form, onChange, onSave, workLatitude, workAddress, onOpen
 
 // ===== 붙임2/3/4 Forms =====
 const CONFINED_CHECKS: SafetyCheckItem[] = [
-  { label: "안전담당자지정 및 감시인 배치", applicable: "", result: "" },
-  { label: "밸브차단, 맹판설치, 불활성가스 치환, 용기세정", applicable: "", result: "" },
-  { label: "●측정자의 자격조건 확인", applicable: "", result: "" },
-  { label: "산소농도 및 유해가스농도 (계속)측정", applicable: "", result: "" },
-  { label: "환기시설 설치", applicable: "", result: "" },
-  { label: "전화 및 무선기기 구비", applicable: "", result: "" },
-  { label: "방폭형 전기기계기구의 사용", applicable: "", result: "" },
-  { label: "소화기 비치", applicable: "", result: "" },
-  { label: "●관계자외 출입차단 금지 조치", applicable: "", result: "" },
-  { label: "공기공급식 호흡용보호구, 보호복, 보호장갑 등 비치", applicable: "", result: "" },
-  { label: "대피용 기구 및 응급구조장비 구비", applicable: "", result: "" },
-  { label: "작업 전 안전교육 실시(TBM 등)", applicable: "", result: "" },
-  { label: "●특별교육 이수", applicable: "", result: "" },
+  { label: "안전담당자지정 및 감시인 배치", applicable: "해당없음", result: "" },
+  { label: "밸브차단, 맹판설치, 불활성가스 치환, 용기세정", applicable: "해당없음", result: "" },
+  { label: "●측정자의 자격조건 확인", applicable: "해당없음", result: "" },
+  { label: "산소농도 및 유해가스농도 (계속)측정", applicable: "해당없음", result: "" },
+  { label: "환기시설 설치", applicable: "해당없음", result: "" },
+  { label: "전화 및 무선기기 구비", applicable: "해당없음", result: "" },
+  { label: "방폭형 전기기계기구의 사용", applicable: "해당없음", result: "" },
+  { label: "소화기 비치", applicable: "해당없음", result: "" },
+  { label: "●관계자외 출입차단 금지 조치", applicable: "해당없음", result: "" },
+  { label: "공기공급식 호흡용보호구, 보호복, 보호장갑 등 비치", applicable: "해당없음", result: "" },
+  { label: "대피용 기구 및 응급구조장비 구비", applicable: "해당없음", result: "" },
+  { label: "작업 전 안전교육 실시(TBM 등)", applicable: "해당없음", result: "" },
+  { label: "●특별교육 이수", applicable: "해당없음", result: "" },
 ];
 interface GasMeasureRow { time: string; hour: string; minute: string; substances: string; measurer: string; entryCount: string; exitCount: string; }
 interface Form2 {
@@ -1410,15 +1414,15 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
 }
 
 const POWER_CHECKS: SafetyCheckItem[] = [
-  { label: "전로차단 안전장치 확인", applicable: "", result: "" },
-  { label: "변압기차단기 확인", applicable: "", result: "" },
-  { label: "잠금조치", applicable: "", result: "" },
-  { label: "접지설비 차단", applicable: "", result: "" },
-  { label: "차단여부 감시", applicable: "", result: "" },
-  { label: "잔여전기 방전", applicable: "", result: "" },
-  { label: "검전기로 방전여부 확인", applicable: "", result: "" },
-  { label: "활선작업 규정대로 설치", applicable: "", result: "" },
-  { label: "현장 안전장치 확인", applicable: "", result: "" },
+  { label: "전로차단 안전장치 확인", applicable: "해당없음", result: "" },
+  { label: "변압기차단기 확인", applicable: "해당없음", result: "" },
+  { label: "잠금조치", applicable: "해당없음", result: "" },
+  { label: "접지설비 차단", applicable: "해당없음", result: "" },
+  { label: "차단여부 감시", applicable: "해당없음", result: "" },
+  { label: "잔여전기 방전", applicable: "해당없음", result: "" },
+  { label: "검전기로 방전여부 확인", applicable: "해당없음", result: "" },
+  { label: "활선작업 규정대로 설치", applicable: "해당없음", result: "" },
+  { label: "현장 안전장치 확인", applicable: "해당없음", result: "" },
 ];
 interface InspectionItem { equipment: string; cutoffConfirmer: string; electrician: string; siteRepair: string; }
 interface Form4 {
