@@ -841,3 +841,210 @@ export function PowerOutagePDF({ formData: fd, approvalLines, documentId, create
     </Document>
   );
 }
+
+// ===== TBM Tool Box Meeting 회의록 PDF =====
+export function TbmReportPDF({ report }: { report: Record<string, any> }) {
+  const T = StyleSheet.create({
+    page: { fontFamily: "NanumGothic", fontSize: 8.5, paddingTop: 8, paddingBottom: 20, paddingHorizontal: 10, color: "#000" },
+    topNote: { fontSize: 7, color: "#555", marginBottom: 4 },
+    titleBox: { borderBottom: "1.5px solid #000", paddingVertical: 7, marginBottom: 4 },
+    titleMain: { fontSize: 16, fontWeight: "bold", textAlign: "center" },
+    table: { border: "0.8px solid #000", marginBottom: 3 },
+    tr: { flexDirection: "row", borderBottom: "0.5px solid #000", minHeight: 20 },
+    trLast: { flexDirection: "row", minHeight: 20 },
+    th: { backgroundColor: "#d9e1f2", fontWeight: "bold", padding: "3 5", fontSize: 8.5, borderRight: "0.5px solid #000", justifyContent: "center" },
+    td: { padding: "3 5", fontSize: 8.5, borderRight: "0.5px solid #000", flexShrink: 1 },
+    tdLast: { padding: "3 5", fontSize: 8.5, flexShrink: 1 },
+    secHeader: { backgroundColor: "#bdd7ee", padding: "2 5", fontSize: 8.5, fontWeight: "bold", borderBottom: "0.5px solid #000", borderTop: "0.5px solid #000" },
+    footer: { position: "absolute", bottom: 6, left: 10, right: 10, borderTop: "0.5px solid #aaa", paddingTop: 2, flexDirection: "row", justifyContent: "space-between" },
+    footerText: { fontSize: 6.5, color: "#666" },
+    checkBox: { width: 9, height: 9, border: "0.8px solid #333", marginRight: 2, alignItems: "center", justifyContent: "center" },
+  });
+
+  // photoUrl 파싱: JSON 배열 또는 단일 URL
+  const parsePhotos = (photoUrl: string): Array<{url: string; caption: string}> => {
+    if (!photoUrl) return [];
+    try {
+      const parsed = JSON.parse(photoUrl);
+      if (Array.isArray(parsed)) return parsed;
+      return [{ url: photoUrl, caption: "" }];
+    } catch {
+      return [{ url: photoUrl, caption: "" }];
+    }
+  };
+
+  const photos = parsePhotos(report.photoUrl || "");
+
+  const timeStr = report.eduStartTime && report.eduEndTime
+    ? `${report.reportDate} ${report.eduStartTime}:00 (${report.eduStartTime}~${report.eduEndTime}) 작업 날짜와 동일함`
+    : report.reportDate || "";
+
+  const riskRows = [
+    { factor: report.riskFactor1, measure: report.riskMeasure1 },
+    { factor: report.riskFactor2, measure: report.riskMeasure2 },
+    { factor: report.riskFactor3, measure: report.riskMeasure3 },
+  ].filter(r => r.factor);
+
+  const elements = [
+    report.riskElement1, report.riskElement2, report.riskElement3,
+  ].filter(Boolean);
+
+  // 사진을 2장씩 나눠 표시 (A4에 맞게)
+  const photoRows: Array<Array<{url:string;caption:string}>> = [];
+  for (let i = 0; i < photos.length; i += 2) {
+    photoRows.push(photos.slice(i, i + 2));
+  }
+
+  return (
+    <Document>
+      <Page size="A4" style={T.page}>
+        <Text style={T.topNote}>건설기술 진흥법 시행령 103조(안전교육) 제3항에 따른 안전교육내용 기록</Text>
+
+        <View style={T.titleBox}>
+          <Text style={T.titleMain}>Tool Box Meeting 회의록</Text>
+        </View>
+
+        <View style={T.table}>
+          <View style={T.tr}>
+            <Text style={[T.th, { width: 60 }]}>TBM리더</Text>
+            <View style={[T.td, { flex: 2, flexDirection: "row", alignItems: "center" }]}>
+              <Text style={{ fontSize: 8.5 }}>{"◆ 소속 : "}{report.contractorName || ""}</Text>
+            </View>
+            <Text style={[T.th, { width: 35 }]}>이름</Text>
+            <Text style={[T.td, { width: 55 }]}>{report.instructorName || ""}</Text>
+            <View style={{ width: 70, padding: "2 4", flexDirection: "row", alignItems: "center", justifyContent: "flex-start", gap: 4 }}>
+              <Text style={{ fontSize: 8, color: "#888" }}>(서명)</Text>
+              {report.signatureData
+                ? <Image src={report.signatureData} style={{ height: 22, width: 50, objectFit: "contain" }} />
+                : <View style={{ width: 50, height: 18, border: "0.5px dashed #ccc" }} />}
+            </View>
+          </View>
+          <View style={T.tr}>
+            <Text style={[T.th, { width: 60 }]}>TBM 일시</Text>
+            <Text style={[T.tdLast, { flex: 1 }]}>{timeStr}</Text>
+          </View>
+          <View style={T.tr}>
+            <Text style={[T.th, { width: 60 }]}>작업명</Text>
+            <Text style={[T.tdLast, { flex: 1 }]}>{report.projectName || ""}</Text>
+          </View>
+          <View style={T.tr}>
+            <Text style={[T.th, { width: 60 }]}>작업내용</Text>
+            <Text style={[T.tdLast, { flex: 1 }]}>{report.workToday || ""}</Text>
+          </View>
+          <View style={T.trLast}>
+            <Text style={[T.th, { width: 60 }]}>TBM 장소</Text>
+            <Text style={[T.td, { flex: 2 }]}>{report.workAddress || ""}</Text>
+            <View style={{ width: 55, backgroundColor: "#d9e1f2", borderRight: "0.5px solid #000", padding: "3 3", justifyContent: "center" }}>
+              <Text style={{ fontSize: 7.5, fontWeight: "bold", textAlign: "center" }}>위험성평가</Text>
+              <Text style={{ fontSize: 7.5, fontWeight: "bold", textAlign: "center" }}>실시여부</Text>
+            </View>
+            <View style={{ width: 70, flexDirection: "row", alignItems: "center", padding: "3 5", gap: 4 }}>
+              <View style={T.checkBox}><Text style={{ fontSize: 7, color: "#000" }}>v</Text></View>
+              <Text style={{ fontSize: 8 }}>예  </Text>
+              <View style={T.checkBox} />
+              <Text style={{ fontSize: 8 }}>아니오</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={T.table}>
+          <View style={T.tr}>
+            <Text style={[T.th, { flex: 1 }]}>잠재위험요인(수시위험성평가와 연계)</Text>
+            <Text style={[T.th, { flex: 1, borderRight: 0 }]}>대책(제거&gt;대체&gt;통제 순서고려)</Text>
+          </View>
+          {riskRows.length > 0 ? riskRows.map((r, i) => (
+            <View key={i} style={i === riskRows.length - 1 ? T.trLast : T.tr}>
+              <Text style={[T.td, { flex: 1, minHeight: 18 }]}>{`${i + 1}. ${r.factor}`}</Text>
+              <Text style={[T.tdLast, { flex: 1, minHeight: 18 }]}>{`${i + 1}. ${r.measure || ""}`}</Text>
+            </View>
+          )) : (
+            <View style={T.trLast}>
+              <Text style={[T.td, { flex: 1, minHeight: 18 }]}></Text>
+              <Text style={[T.tdLast, { flex: 1, minHeight: 18 }]}></Text>
+            </View>
+          )}
+        </View>
+
+        {(report.mainRiskFactor || report.mainRiskMeasure) ? (
+          <View style={[T.table, { marginBottom: 3 }]}>
+            <View style={T.trLast}>
+              <Text style={[T.th, { width: 60, fontSize: 8 }]}>중점위험 요인</Text>
+              <Text style={[T.td, { flex: 1 }]}>{"선정: "}{report.mainRiskFactor || ""}</Text>
+              <Text style={[T.th, { width: 35, fontSize: 8 }]}>대책</Text>
+              <Text style={[T.tdLast, { flex: 1 }]}>{report.mainRiskMeasure || ""}</Text>
+            </View>
+          </View>
+        ) : null}
+
+        <Text style={T.secHeader}>{"■ 작업 전 안전조치 확인 ※ 위 잠재위험요인(중점위험 포함) 안전조치 여부 재확인"}</Text>
+        <View style={[T.table, { marginTop: 0 }]}>
+          <View style={T.tr}>
+            <Text style={[T.th, { flex: 2 }]}>잠재위험요소(중점위험 포함)</Text>
+            <Text style={[T.th, { width: 100, borderRight: 0 }]}>조치여부</Text>
+          </View>
+          {elements.length > 0 ? elements.map((el, i) => (
+            <View key={i} style={i === elements.length - 1 ? T.trLast : T.tr}>
+              <Text style={[T.td, { flex: 2 }]}>{`${i + 1}. ${el}`}</Text>
+              <View style={{ width: 100, flexDirection: "row", alignItems: "center", padding: "3 5", gap: 4 }}>
+                <View style={T.checkBox}><Text style={{ fontSize: 7 }}>v</Text></View>
+                <Text style={{ fontSize: 8 }}>예  </Text>
+                <View style={T.checkBox} />
+                <Text style={{ fontSize: 8 }}>아니오</Text>
+              </View>
+            </View>
+          )) : (
+            <View style={T.trLast}>
+              <Text style={[T.td, { flex: 2, minHeight: 16 }]}></Text>
+              <Text style={[T.tdLast, { width: 100, minHeight: 16 }]}></Text>
+            </View>
+          )}
+        </View>
+
+        <Text style={T.secHeader}>{"■ 작업 전 일일 안전점검 시행 결과 ※ 공사현장 일일안전점검을 통해 위험성평가 이행 확인"}</Text>
+        <Text style={T.secHeader}>{"■ 기타사항(교육내용, 제안사항, 아차사고 등)"}</Text>
+        <View style={{ border: "0.5px solid #000", borderTop: 0, padding: "3 5", minHeight: 35, marginBottom: 3 }}>
+          <Text style={{ fontSize: 8.5 }}>{report.otherContent || ""}</Text>
+        </View>
+
+        {/* TBM 실시사진 + 투입인원 + 투입장비 */}
+        <View style={T.table}>
+          <View style={T.tr}>
+            <Text style={[T.th, { flex: 2 }]}>TBM 실시사진</Text>
+            <Text style={[T.th, { flex: 1 }]}>투입인원</Text>
+            <Text style={[T.th, { flex: 1, borderRight: 0 }]}>투입장비</Text>
+          </View>
+          <View style={T.trLast}>
+            <View style={[T.td, { flex: 2, minHeight: photos.length > 0 ? 160 : 80 }]}>
+              {photos.length > 0 ? (
+                <View style={{ flexDirection: "column", gap: 4 }}>
+                  {photoRows.map((row, ri) => (
+                    <View key={ri} style={{ flexDirection: "row", gap: 4 }}>
+                      {row.map((photo, pi) => (
+                        <View key={pi} style={{ flex: 1 }}>
+                          <Image src={photo.url} style={{ width: "100%", height: photos.length === 1 ? 130 : 75, objectFit: "cover" }} />
+                          {photo.caption ? <Text style={{ fontSize: 7, color: "#555", marginTop: 1, textAlign: "center" }}>{photo.caption}</Text> : null}
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={{ fontSize: 8, color: "#aaa", textAlign: "center", marginTop: 20 }}>사진 없음</Text>
+              )}
+            </View>
+            <View style={[T.td, { flex: 1, minHeight: 80, padding: "3 5" }]}>
+              <Text style={{ fontSize: 8.5 }}>{report.workerCount ? `${report.workerCount}명` : ""}</Text>
+              {report.newWorkerCount ? <Text style={{ fontSize: 8 }}>{`(신규 ${report.newWorkerCount}명)`}</Text> : null}
+            </View>
+            <Text style={[T.tdLast, { flex: 1, minHeight: 80 }]}>{report.equipment || "없음"}</Text>
+          </View>
+        </View>
+
+        <View style={T.footer}>
+          <Text style={T.footerText}>{`TBM ID: ${(report.id || "").slice(0, 8)}`}</Text>
+          <Text style={T.footerText}>{`발급일시: ${new Date().toLocaleString("ko-KR")} | 본 문서는 전자문서로 발급되었습니다`}</Text>
+        </View>
+      </Page>
+    </Document>
+  );
+}
