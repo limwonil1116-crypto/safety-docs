@@ -10,10 +10,15 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File;
     if (!file) return NextResponse.json({ error: "파일이 없습니다." }, { status: 400 });
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    // NEXT_PUBLIC_ 또는 일반 환경변수 모두 시도
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      || process.env.SUPABASE_URL
+      || "https://gtvyekhjrrubbcxdnxlw.supabase.co";
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json({ error: "Supabase 환경변수가 없습니다." }, { status: 500 });
+
+    if (!serviceRoleKey) {
+      console.error("SUPABASE_SERVICE_ROLE_KEY 없음");
+      return NextResponse.json({ error: "서버 설정 오류 (SERVICE_ROLE_KEY)" }, { status: 500 });
     }
 
     const { createClient } = await import("@supabase/supabase-js");
@@ -32,8 +37,8 @@ export async function POST(req: NextRequest) {
       });
 
     if (error) {
-      console.error("Supabase upload error:", error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("Supabase upload error:", JSON.stringify(error));
+      return NextResponse.json({ error: `Supabase 오류: ${error.message}` }, { status: 500 });
     }
 
     const { data: urlData } = supabase.storage
