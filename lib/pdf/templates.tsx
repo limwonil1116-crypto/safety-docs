@@ -490,10 +490,7 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
           </View>
         </View>
 
-        <Text style={{ fontSize: 7.5, color: "#555", marginTop: 1 }}>
-          {"붙임 1. 해당공종 수시 위험성평가표
-       2. 개선대책 확인자료(사진 등)"}
-        </Text>
+        <Text style={{ fontSize: 7.5, color: "#555", marginTop: 1 }}>{"붙임 1. 해당공종 수시 위험성평가표  2. 개선대책 확인자료(사진 등)"}</Text>
         <View style={P.footer}>
           <Text style={P.footerText}>{`문서번호: ${documentId.slice(0, 8)}`}</Text>
           <Text style={P.footerText}>{`작성일시: ${new Date(createdAt).toLocaleString("ko-KR")} | 한국농어촌공사 안전기술본부`}</Text>
