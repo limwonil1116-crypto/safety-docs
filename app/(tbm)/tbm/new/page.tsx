@@ -448,7 +448,7 @@ function TbmNewInner() {
                       value={photo.caption}
                       onChange={e => updateCaption(idx, e.target.value)}
                       placeholder="사진 설명 입력 (예: 현장 전경, 작업 전 점검 등)"
-                      className="w-full text-xs px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white"
+                      className="w-full text-xs px-2 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white text-gray-900 placeholder:text-gray-400"
                     />
                   </div>
                 </div>

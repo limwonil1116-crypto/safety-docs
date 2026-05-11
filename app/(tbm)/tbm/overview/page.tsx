@@ -442,8 +442,8 @@ export default function TbmOverviewPage() {
                     return (
                       <tr key={r.id} onClick={() => setSelectedReport(r)}
                         className={`${rowBg} cursor-pointer hover:bg-blue-50/70 transition-colors border-b border-gray-100`}>
-                        <td className="px-2 py-3 text-center text-gray-400 font-medium">{i + 1}</td>
-                        <td className="px-3 py-3">
+                        <td className="px-2 py-3 text-center text-gray-400 font-medium whitespace-nowrap">{i + 1}</td>
+                        <td className="px-3 py-3 whitespace-nowrap">
                           <span className={`text-[9px] px-1 py-0.5 rounded font-bold mr-1 ${isYongYeok ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
                             {isYongYeok ? "[용역]" : "[자체]"}
                           </span>
@@ -566,12 +566,35 @@ export default function TbmOverviewPage() {
             <F label="위험종별" value={selectedReport.riskType} />
             <F label="CCTV" value={selectedReport.cctvUsed} />
           </div>
-          {selectedReport.photoUrl && (
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <h3 className="text-xs font-bold text-gray-500 mb-2">TBM 현장사진</h3>
-              <img src={selectedReport.photoUrl} alt="TBM사진" className="w-full rounded-xl object-cover max-h-48" />
-            </div>
-          )}
+          {selectedReport.photoUrl && (() => {
+            let photos: {url:string;caption:string}[] = [];
+            try { const p = JSON.parse(selectedReport.photoUrl); photos = Array.isArray(p) ? p : [{url:selectedReport.photoUrl,caption:""}]; } catch { photos = [{url:selectedReport.photoUrl,caption:""}]; }
+            return (
+              <div className="bg-white rounded-2xl p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-bold text-gray-500">TBM 현장사진 <span className="text-gray-400 font-normal">{photos.length}장</span></h3>
+                  <button onClick={() => window.open(`/api/tbm/${selectedReport.id}/pdf`, "_blank")}
+                    className="text-xs px-2.5 py-1 rounded-lg border border-red-200 text-red-600 flex items-center gap-1 hover:bg-red-50">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    PDF
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {photos.map((photo, idx) => (
+                    <div key={idx} className="rounded-xl overflow-hidden border border-gray-100">
+                      <img src={photo.url} alt={photo.caption || `사진 ${idx+1}`} className="w-full object-cover max-h-48" />
+                      {photo.caption && (
+                        <div className="px-3 py-1.5 bg-gray-50 flex items-center gap-1.5">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                          <span className="text-xs text-gray-700">{photo.caption}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
           {(selectedReport.riskFactor1 || selectedReport.mainRiskFactor) && (
             <div className="bg-white rounded-2xl p-4 shadow-sm">
               <h3 className="text-xs font-bold text-gray-500 mb-2">위험요인 및 조치</h3>
