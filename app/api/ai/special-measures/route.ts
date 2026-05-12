@@ -74,7 +74,7 @@ ${docLabel} 신청서를 검토하고 구체적인 안전조치 검토의견 초
 5. "- "로 시작하는 문장으로 7개 이상 작성
 6. 마크다운 없이 순수 텍스트, 한국어 수식어체
 7. 각 항목은 2~3문장으로 작성하여 충분한 분량 유지`;
-      const specialMeasures = await callGemini(prompt, 3000);
+      const specialMeasures = await callGemini(prompt, 5000);
       return NextResponse.json({ specialMeasures });
     }
 
