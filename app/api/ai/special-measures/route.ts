@@ -5,143 +5,124 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
     }
-
     const body = await req.json();
     const { documentType, formData } = body;
-
     const fd = formData ?? {};
+
     const docTypeLabel =
       documentType === "SAFETY_WORK_PERMIT" ? "안전작업허가서" :
       documentType === "POWER_OUTAGE" ? "정전작업허가서" :
       documentType === "CONFINED_SPACE" ? "밀폐공간작업허가서" :
-      documentType === "HOLIDAY_WORK" ? "휴일작업신청서" : "안전작업허가서";
+      documentType === "HOLIDAY_WORK" ? "휴일작업신고서" : "안전작업허가서";
 
+    const taskName = fd.taskName || fd.serviceName || fd.projectName || "";
+    const workLocation = fd.facilityLocation || fd.workLocation || "";
+    const workContent = fd.workContents || fd.workContent || "";
+    const workPosition = fd.workPosition || "";
+
+    // 휴일작업 - 위험요소/개선대책 생성
+    if (documentType === "HOLIDAY_WORK") {
+      const prompt = `당신은 한국 건설현장 안전관리 전문가입니다.
+다음 휴일작업에 대해 위험요소 3가지와 각각의 개선대책을 작성해주세요.
+
+용역명: ${taskName}
+작업위치: ${workPosition} ${workLocation}
+작업공종: ${workContent}
+
+JSON 형식으로만 응답하세요 (설명 없이):
+{
+  "riskFactors": "1. 위험요소1 (위험성평가결과요약)\n2. 위험요소2 (위험성평가결과요약)\n3. 위험요소3 (위험성평가결과요약)",
+  "improvementMeasures": "1. 개선대책1 (개선대책결과요약)\n2. 개선대책2 (개선대책결과요약)\n3. 개선대책3 (개선대책결과요약)"
+}`;
+
+      const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.ANTHROPIC_API_KEY || "",
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 800,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+      const aiData = await aiRes.json();
+      const text = aiData.content?.[0]?.text || "";
+      try {
+        const clean = text.replace(/```json|```/g, "").trim();
+        const parsed = JSON.parse(clean);
+        return NextResponse.json({
+          riskFactors: parsed.riskFactors || "",
+          improvementMeasures: parsed.improvementMeasures || "",
+        });
+      } catch {
+        return NextResponse.json({ riskFactors: text, improvementMeasures: "" });
+      }
+    }
+
+    // 기존 특별조치사항 생성
     const riskItems: string[] = [];
-    if (fd.riskHighPlace) {
-      const details = Array.isArray(fd.riskHighPlaceItems) ? (fd.riskHighPlaceItems as string[]).join(", ") : "";
-      riskItems.push("고소작업(2m이상)" + (details ? ": " + details : "") + (fd.riskHighPlaceDetail ? ", " + fd.riskHighPlaceDetail : ""));
-    }
-    if (fd.riskWaterWork) {
-      const details = Array.isArray(fd.riskWaterWorkItems) ? (fd.riskWaterWorkItems as string[]).join(", ") : "";
-      riskItems.push("수상·수중작업" + (details ? ": " + details : "") + (fd.riskWaterWorkDetail ? ", " + fd.riskWaterWorkDetail : ""));
-    }
+    if (fd.riskHighPlace) riskItems.push("고소작업(2m이상)" + (fd.riskHighPlaceDetail ? ": " + fd.riskHighPlaceDetail : ""));
+    if (fd.riskWaterWork) riskItems.push("수상·수변작업" + (fd.riskWaterWorkDetail ? ": " + fd.riskWaterWorkDetail : ""));
     if (fd.riskConfinedSpace) riskItems.push("밀폐공간작업" + (fd.riskConfinedSpaceDetail ? ": " + fd.riskConfinedSpaceDetail : ""));
     if (fd.riskPowerOutage) riskItems.push("정전작업" + (fd.riskPowerOutageDetail ? ": " + fd.riskPowerOutageDetail : ""));
     if (fd.riskFireWork) riskItems.push("화기작업" + (fd.riskFireWorkDetail ? ": " + fd.riskFireWorkDetail : ""));
-    if (fd.riskOther) riskItems.push("기타" + (fd.riskOtherDetail ? ": " + fd.riskOtherDetail : ""));
+    if (fd.riskOther) riskItems.push("기타위험작업" + (fd.riskOtherDetail ? ": " + fd.riskOtherDetail : ""));
 
-    const factorLabels: Record<string, string> = {
-      factorNarrowAccess: "접근통로 협소",
-      factorSlippery: "미끄러운 지반",
+    const checkedFactors: string[] = [];
+    const factorMap: Record<string, string> = {
+      factorNarrowAccess: "진출입로 협소",
+      factorSlippery: "미끄러짐(이끼, 습기)",
       factorSteepSlope: "급경사면",
-      factorWaterHazard: "익수·유수",
-      factorRockfall: "낙석·굴러떨어짐",
-      factorNoRailing: "안전난간 미설치",
-      factorLadderNoGuard: "사다리 방호울 미설치",
-      factorSuffocation: "질식·산소결핍·유해가스",
-      factorElectricFire: "감전·전기화재요인",
-      factorSparkFire: "불꽃·불티에 의한 화재",
+      factorWaterHazard: "파랑·유수·수심",
+      factorRockfall: "낙석·토사붕괴",
+      factorNoRailing: "난간 미설치",
+      factorLadderNoGuard: "사다리·방호울 미설치",
+      factorSuffocation: "질식·화재·폭발",
+      factorElectricFire: "감전·전기불꽃 화재",
+      factorSparkFire: "스파크, 화염에 의한 화재",
     };
-    const checkedFactors = Object.entries(factorLabels)
-      .filter(([key]) => !!(fd as any)[key])
-      .map(([, label]) => label);
-
-    const safetyChecks: string[] = Array.isArray(fd.safetyChecks)
-      ? (fd.safetyChecks as any[]).filter(c => c.applicable === "해당").map((c: any) => c.label)
-      : [];
-
-    const riskRows: string[] = Array.isArray(fd.riskRows)
-      ? (fd.riskRows as any[])
-          .filter(r => r.riskFactor)
-          .map((r: any) => "위험요소: " + r.riskFactor + (r.improvement ? " / 개선대책: " + r.improvement : ""))
-      : [];
-
-    const riskItemsStr = riskItems.length > 0 ? riskItems.map(r => "- " + r).join("\n") : "- 없음";
-    const factorsStr = checkedFactors.length > 0 ? checkedFactors.map(f => "- " + f).join("\n") : "- 없음";
-    const safetyStr = safetyChecks.length > 0 ? safetyChecks.map(s => "- " + s).join("\n") : "- 없음";
-    const riskRowsStr = riskRows.length > 0 ? riskRows.join("\n") : "- 없음";
-
-    const workContent = String(fd.workContent || fd.workContents || "미입력");
-    const workLocation = String(fd.workLocation || fd.workAddress || fd.facilityLocation || "미입력");
-    const workStart = String(fd.workStartDate || fd.workDate || "미입력");
-    const workEnd = String(fd.workEndDate || "");
-    const entryList = String(fd.entryList || fd.participants || "미입력");
-    const workStartTime = String(fd.workStartTime || "");
-    const workEndTime = String(fd.workEndTime || "");
-    const needFire = fd.needFireWork || fd.riskFireWork ? "해당" : "해당없음";
-    const needConfined = fd.needConfinedSpace || fd.riskConfinedSpace ? "해당" : "해당없음";
-    const useEngine = String(fd.useInternalEngine || "미입력");
-
-    const prompt = [
-      "당신은 한국농어촌공사 안전관리 전문가입니다.",
-      "아래 " + docTypeLabel + "의 신청 내용을 면밀히 분석하여, 해당 작업의 특수성과 위험요소에 맞는 구체적인 특별조치 필요사항을 작성해주세요.",
-      "",
-      "[신청 작업 정보]",
-      "- 작업내용: " + workContent,
-      "- 작업장소: " + workLocation,
-      "- 작업기간: " + workStart + " ~ " + workEnd,
-      "- 작업시간: " + workStartTime + " ~ " + workEndTime,
-      "- 출입자 명단: " + entryList,
-      "",
-      "[위험공종 (신청자 선택)]",
-      riskItemsStr,
-      "",
-      "[발생 예상 위험요소 (신청자 선택)]",
-      factorsStr,
-      "",
-      "[안전조치 이행사항 (해당 항목)]",
-      safetyStr,
-      "",
-      "[위험요소 및 개선대책 (신청자 작성)]",
-      riskRowsStr,
-      "",
-      "[특별 조건]",
-      "- 밀폐공간 작업: " + needConfined,
-      "- 화기작업: " + needFire,
-      "- 내연기관 사용: " + useEngine,
-      "",
-      "위 신청 내용을 바탕으로, 이 작업에서 반드시 지켜야 할 특별조치 필요사항을 작성해주세요.",
-      "",
-      "작성 규칙:",
-      "1. 반드시 위 신청 내용(작업내용, 위험공종, 위험요소 등)을 구체적으로 반영할 것",
-      "2. 일반적인 안전수칙이 아닌, 이 작업에 특화된 조치사항을 작성할 것",
-      "3. 각 항목은 '- '로 시작하고 구체적인 수치나 방법을 포함할 것",
-      "4. 반드시 5개 이상 항목 작성(최대 8개), 각 항목은 완전한 문장 1~2줄로 작성할 것",
-      "5. 한국어로 작성하고, 다른 설명이나 제목 없이 항목만 출력할 것",
-      "6. 매우 중요: 각 항목은 '~할 것.' 또는 '~하여야 한다.' 식으로 나라하는 완전한 문장으로 끝내야 함",
-      "7. 절대 문장 도중에 끊어서는 안 됨 - 한 항목을 완전히 작성한 후 다음 항목으로 넘어갈 것",
-      "8. 잘만든 예시: '- 방조제 제방시면 배수갑문 작업시 납님방지를 위해 안전대(Y형 갑, 로프 쭐결)를 착용하고, 작업진해진에 돌입하기 전 채결기 연결 상태를 관리감독자가 친히 확인한 후 작업을 시작할 것.'",
-    ].join("\n");
-
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "Gemini API 키가 설정되지 않았습니다." }, { status: 500 });
+    for (const [key, label] of Object.entries(factorMap)) {
+      if (fd[key]) checkedFactors.push(label);
     }
 
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 4096, temperature: 0.4 },
-        }),
-      }
-    );
+    const prompt = `당신은 한국 건설현장 안전관리 전문가입니다.
+다음 ${docTypeLabel} 정보를 바탕으로 특별조치 필요사항을 작성해주세요.
 
-    if (!response.ok) {
-      const err = await response.json();
-      return NextResponse.json({ error: err.error?.message || "Gemini 오류" }, { status: 500 });
-    }
+용역명: ${taskName}
+작업위치: ${workLocation}
+작업내용: ${workContent}
+위험공종: ${riskItems.join(", ") || "없음"}
+위험요소: ${checkedFactors.join(", ") || "없음"}
 
-    const data = await response.json();
-    const result = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
-    return NextResponse.json({ specialMeasures: result });
+조건:
+- 실제 현장에서 적용 가능한 구체적인 안전조치 사항 5~8개 작성
+- 각 항목은 "- "로 시작
+- 법적 기준과 현장 실무를 반영
+- 한국어로 작성`;
+
+    const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.ANTHROPIC_API_KEY || "",
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    const aiData = await aiRes.json();
+    const specialMeasures = aiData.content?.[0]?.text || "AI 생성 실패";
+    return NextResponse.json({ specialMeasures });
   } catch (error) {
     console.error("[POST /api/ai/special-measures]", error);
-    return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+    return NextResponse.json({ error: `AI 생성 오류: ${error instanceof Error ? error.message : String(error)}` }, { status: 500 });
   }
 }

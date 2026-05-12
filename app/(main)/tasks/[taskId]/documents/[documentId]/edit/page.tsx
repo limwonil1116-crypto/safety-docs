@@ -1594,7 +1594,21 @@ export default function DocumentEditPage() {
       const [docRes, taskRes] = await Promise.all([fetch(`/api/documents/${documentId}`), fetch(`/api/tasks/${taskId}`)]);
       const docData = await docRes.json();
       const taskData = await taskRes.json();
-      if (taskRes.ok) setTaskName(taskData.task?.name ?? "");
+      if (taskRes.ok) {
+        const task = taskData.task;
+        setTaskName(task?.name ?? "");
+        // Form3(휴일작업)에 task 기본정보 자동입력
+        if (docData.document?.documentType === "HOLIDAY_WORK") {
+          const desc = (() => { try { return JSON.parse(task?.description || "{}"); } catch { return {}; } })();
+          setForm3(p => ({
+            ...p,
+            contractorCompany: p.contractorCompany || task?.contractorCompanyName || task?.contractorName || "",
+            contractPeriodStart: p.contractPeriodStart || desc.contractStart || "",
+            contractPeriodEnd: p.contractPeriodEnd || desc.contractEnd || "",
+            serviceName: p.serviceName || task?.name || "",
+          }));
+        }
+      }
       if (docRes.ok) {
         const doc = docData.document;
         setDocumentType(doc.documentType);
