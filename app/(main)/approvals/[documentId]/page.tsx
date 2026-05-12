@@ -1195,7 +1195,7 @@ export default function ApprovalDetailPage() {
             <p className="text-sm text-gray-500 mb-4">
               {isConfinedSpace
                 ? "서명 후 다음 단계가 진행됩니다."
-                : doc.currentApprovalOrder === 1 ? "승인자를 지정해주세요.
+                : doc.currentApprovalOrder === 1 ? "승인자를 지정해주세요." : "승인하시겠습니까?"}
             </p>
             <div className="flex gap-3">
               <button onClick={() => setShowApproveConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">취소</button>
