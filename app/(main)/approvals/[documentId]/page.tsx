@@ -748,7 +748,9 @@ function AiSpecialMeasuresButton({ doc, onGenerated, label = "AI 특별조치 �
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "AI 생성 오류");
-      onGenerated(data.specialMeasures);
+      const result = data.specialMeasures || data.riskFactors || data.text || "";
+      if (!result) throw new Error("AI 응답이 비어있습니다.");
+      onGenerated(result);
     } catch (e: unknown) { setError(e instanceof Error ? e.message : "오류가 발생했습니다."); }
     finally { setLoading(false); }
   };
@@ -1026,7 +1028,7 @@ export default function ApprovalDetailPage() {
             <textarea
               key={`result-${dataKey}`}
               ref={reviewResultRef}
-              defaultValue={reviewResult}
+              defaultValue={reviewResult || "이상없음"}
               placeholder="조치결과를 입력해주세요"
               rows={2}
               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
