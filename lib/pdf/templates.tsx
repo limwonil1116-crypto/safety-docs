@@ -601,10 +601,8 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
             <Text style={[S.th, { width: 52, textAlign: "center" }]}>측정시간</Text>
             <Text style={[S.th, { flex: 3 }]}>측정물질명 및 농도</Text>
             <Text style={[S.th, { flex: 1.2 }]}>측정자</Text>
-            <Text style={[S.th, { flex: 0.5, textAlign: "center" }]}>입장{"
-"}(명)</Text>
-            <Text style={[S.th, { flex: 0.5, borderRight: 0, textAlign: "center" }]}>퇴장{"
-"}(명)</Text>
+            <Text style={[S.th, { flex: 0.5, textAlign: "center" }]}>입장(명)</Text>
+            <Text style={[S.th, { flex: 0.5, borderRight: 0, textAlign: "center" }]}>퇴장(명)</Text>
           </View>
           {gasMeasureRows.map((row, idx) => (
             <View key={idx} style={{ flexDirection: "row", borderBottom: idx === gasMeasureRows.length - 1 ? 0 : "0.5px solid " + C.border, minHeight: 26 }}>
