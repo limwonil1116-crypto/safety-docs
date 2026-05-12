@@ -1383,8 +1383,7 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             <input type="text" value={form.workPosition} onChange={e => onChange("workPosition", e.target.value)} className={inputClass} placeholder="예) 여수로" />
           </FormInput>
           <FormInput label="작업공종">
-            <textarea value={form.workContents} onChange={e => onChange("workContents", e.target.value)} rows={3} className={textareaClass} placeholder={"예) 방수로 옹벽 재료조사
-감세공 제원 및 외관조사"} />
+            <textarea value={form.workContents} onChange={e => onChange("workContents", e.target.value)} rows={3} className={textareaClass} placeholder={"예) 방수로 옹벽 재료조사감세공 제원 및 외관조사"} />
           </FormInput>
         </div>
       </div>
