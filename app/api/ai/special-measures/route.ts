@@ -17,21 +17,14 @@ export async function POST(req: NextRequest) {
 
     if (documentType === "HOLIDAY_WORK") {
       const prompt = `당신은 한국 건설현장 안전관리 전문가입니다.
-다음 휴일작업에 대해 위험요소 3가지와 개선대유 3가지를 작성하세요.
+다음 휴일작업에 대해 위험요소 3가지와 개선대책 3가지를 작성하세요.
 
 용역명: ${taskName}
 작업위치: ${workPosition} ${workLocation}
 작업공종: ${workContent}
 
-아래 JSON 형식으로만 응답하세요 (설명 없이):
-{
-  "riskFactors": "1. (위험요소 1)
-2. (위험요소 2)
-3. (위험요소 3)",
-  "improvementMeasures": "1. (개선대유 1)
-2. (개선대유 2)
-3. (개선대유 3)"
-}`;
+반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트 없이 JSON만:
+{"riskFactors":"1. 위험요소1\n2. 위험요소2\n3. 위험요소3","improvementMeasures":"1. 개선대책1\n2. 개선대책2\n3. 개선대책3"}`;
 
       const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -47,7 +40,9 @@ export async function POST(req: NextRequest) {
         }),
       });
       const aiData = await aiRes.json();
+      console.log("AI raw response:", JSON.stringify(aiData).slice(0, 500));
       const text = aiData.content?.[0]?.text || "";
+      console.log("AI text:", text.slice(0, 300));
       try {
         const clean = text.replace(/```json|```/g, "").trim();
         const parsed = JSON.parse(clean);
@@ -55,11 +50,20 @@ export async function POST(req: NextRequest) {
           riskFactors: parsed.riskFactors || "",
           improvementMeasures: parsed.improvementMeasures || "",
         });
-      } catch {
+      } catch (e) {
+        console.error("JSON parse error:", e, "text:", text);
+        // JSON 파싱 실패시 텍스트에서 직접 추출
+        const rfMatch = text.match(/"riskFactors"\s*:\s*"([^"]+)"/);
+        const imMatch = text.match(/"improvementMeasures"\s*:\s*"([^"]+)"/);
+        if (rfMatch || imMatch) {
+          return NextResponse.json({
+            riskFactors: rfMatch?.[1]?.replace(/\n/g, "\n") || "",
+            improvementMeasures: imMatch?.[1]?.replace(/\n/g, "\n") || "",
+          });
+        }
         return NextResponse.json({ riskFactors: text, improvementMeasures: "" });
       }
     }
-
     // 기존 특별조치사항 생성
     const riskItems: string[] = [];
     if (fd.riskHighPlace) riskItems.push("고소작업(2m이상)" + (fd.riskHighPlaceDetail ? ": " + fd.riskHighPlaceDetail : ""));
