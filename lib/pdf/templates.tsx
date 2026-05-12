@@ -507,16 +507,26 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
   workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
 }) {
   const checks: Array<{ label: string; applicable: string; result: string }> = fd.safetyChecks ?? [];
-  const gasMeasureRows: Array<{ time: string; hour?: string; minute?: string; substances: string; measurer: string; entryCount: string; exitCount: string }> =
-    fd.gasMeasureRows ?? [
-      { time: "전", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
-      { time: "중", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
-      { time: "후", hour: "", minute: "", substances: "", measurer: "", entryCount: "", exitCount: "" },
-    ];
+  const gasMeasureRows: Array<any> = fd.gasMeasureRows ?? [
+    { time: "전", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
+    { time: "중", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
+    { time: "후", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
+  ];
   const a1 = approvalLines.find(l => l.approvalOrder === 1);
   const a2 = approvalLines.find(l => l.approvalOrder === 2);
   const periodText = buildPeriod(fd);
   const workLocationText = getWorkLocation(fd, workAddress);
+
+  const formatGasSubstances = (row: any) => {
+    const parts: string[] = [];
+    if (row.o2)  parts.push(`O₂: ${row.o2}%`);
+    if (row.co2) parts.push(`CO₂: ${row.co2}%`);
+    if (row.h2s) parts.push(`H₂S: ${row.h2s}ppm`);
+    if (row.co)  parts.push(`CO: ${row.co}ppm`);
+    if (row.ex)  parts.push(`EX: ${row.ex}%`);
+    if (row.substances) parts.push(row.substances);
+    return parts.join("  ");
+  };
 
   return (
     <Document>
@@ -527,7 +537,7 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
         <View style={S.table}>
           <ApplicantRow applicantCompany={fd.applicantCompany} applicantTitle={fd.applicantTitle} applicantName={fd.applicantName} signatureData={applicantSignature} labelWidth={100} />
           {[
-            { label: "용  역  명",    val: taskName || fd.serviceName || "" },
+            { label: "용 역 명",    val: taskName || fd.serviceName || "" },
             { label: "작업수행기간", val: periodText },
             { label: "작업장소",     val: workLocationText },
             { label: "작업내용",     val: fd.workContent || "" },
@@ -539,9 +549,8 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
             </View>
           ))}
         </View>
-        <Text style={{ fontSize: 9, textAlign: "center", marginBottom: 3 }}>위 공간에서의 작업을 다음의 조건하에서만 허가함.</Text>
+        <Text style={{ fontSize: 9, textAlign: "center", marginBottom: 3 }}>위 공간에서의 작업을 다음의 조건에서만 허함.</Text>
 
-        {/* 1. 화기작업 허가필요유무 */}
         <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "3 6", marginBottom: 1 }}>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Text style={{ fontSize: 10, fontWeight: "bold" }}>1. 화기작업 허가필요유무 :   </Text>
@@ -550,7 +559,6 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
           </View>
         </View>
 
-        {/* 2. 내연기관(양수기) 또는 갈탄 등의 사용여부 */}
         <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "3 6", marginBottom: 3 }}>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Text style={{ fontSize: 10, fontWeight: "bold" }}>2. 내연기관(양수기) 또는 갈탄 등의 사용여부 :   </Text>
@@ -559,59 +567,64 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
           </View>
         </View>
 
-        {/* 3. 안전조치 요구사항 */}
         <Text style={S.secHeader}>3. 안전조치 요구사항</Text>
         <View style={S.table}>
           <View style={S.tr}>
             <Text style={[S.th, { flex: 4 }]}>확인항목</Text>
-            <Text style={[S.th, { flex: 1 }]}>해당여부</Text>
-            <Text style={[S.th, { flex: 2, borderRight: 0 }]}>확인결과</Text>
+            <Text style={[S.th, { flex: 1, textAlign: "center" }]}>해당여부</Text>
+            <Text style={[S.th, { flex: 2, borderRight: 0, textAlign: "center" }]}>확인결과</Text>
           </View>
           {checks.map((item, idx) => {
-            const isBold = item.label.startsWith("●");
-            const displayLabel = item.label.replace(/^●/, "");
+            const isBold = item.label?.startsWith("●") || item.label?.startsWith("★");
+            const displayLabel = item.label?.replace(/^[●★]/, "") || item.label;
+            const applicable = item.applicable || "해당없음";
+            const result = item.result || (applicable === "해당" ? "조치완료" : "해당없음");
             return (
               <View key={idx} style={idx === checks.length - 1 ? S.trLast : S.tr}>
-                <Text style={[S.td, { flex: 4, minHeight: 14, fontWeight: isBold ? "bold" : "normal", backgroundColor: idx % 2 === 1 ? C.rowEven : C.white }]}>
-                  {`○ ${displayLabel}`}
+                <Text style={[S.td, { flex: 4, minHeight: 14, fontWeight: isBold ? "bold" : "normal", backgroundColor: isBold ? "#eef4fb" : C.white }]}>
+                  {isBold ? `●${displayLabel}` : `○${displayLabel}`}
                 </Text>
-                <Text style={[S.tdc, { flex: 1, minHeight: 14, backgroundColor: item.applicable === "해당" ? "#dce6f0" : C.white }]}>{item.applicable || ""}</Text>
-                <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 14, backgroundColor: item.result ? "#ebf3e8" : C.white }]}>{item.result || ""}</Text>
+                <Text style={[S.tdc, { flex: 1, minHeight: 14, fontSize: 8, backgroundColor: applicable === "해당" ? "#dce6f0" : C.white }]}>
+                  {applicable}
+                </Text>
+                <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 14, fontSize: 8, backgroundColor: applicable === "해당" ? "#ebf3e8" : C.white }]}>
+                  {result}
+                </Text>
               </View>
             );
           })}
         </View>
 
-        {/* 4. 산소 및 유해가스 농도 측정결과 */}
         <Text style={S.secHeader}>4. 산소 및 유해가스 농도 측정결과</Text>
         <View style={S.table}>
-          <View style={S.tr}>
-            <Text style={[S.th, { width: 55, textAlign: "center" }]}>측정시간</Text>
+          <View style={[S.tr, { alignItems: "stretch" }]}>
+            <Text style={[S.th, { width: 52, textAlign: "center" }]}>측정시간</Text>
             <Text style={[S.th, { flex: 3 }]}>측정물질명 및 농도</Text>
-            <Text style={[S.th, { flex: 1.5 }]}>측정자</Text>
+            <Text style={[S.th, { flex: 1.2 }]}>측정자</Text>
             <View style={{ flex: 1, borderRight: 0 }}>
-              <Text style={[S.th, { borderRight: 0, borderBottom: "0.5px solid " + C.border, textAlign: "center", paddingBottom: 3 }]}>인원 확인(감시인)</Text>
-              <View style={{ flexDirection: "row" }}>
-                <Text style={[S.th, { flex: 1, borderRight: "0.5px solid " + C.border, fontSize: 8.5 }]}>입</Text>
-                <Text style={[S.th, { flex: 1, borderRight: 0, fontSize: 8.5 }]}>출</Text>
+              <Text style={{ fontSize: 8.5, fontWeight: "bold", backgroundColor: C.labelBg, textAlign: "center", padding: "2 2", borderBottom: "0.5px solid " + C.border }}>인원 확인(감시인)</Text>
+              <View style={{ flexDirection: "row", flex: 1 }}>
+                <Text style={{ flex: 1, fontSize: 8, fontWeight: "bold", backgroundColor: C.labelBg, textAlign: "center", padding: "2 1", borderRight: "0.5px solid " + C.border }}>입</Text>
+                <Text style={{ flex: 1, fontSize: 8, fontWeight: "bold", backgroundColor: C.labelBg, textAlign: "center", padding: "2 1" }}>출</Text>
               </View>
             </View>
           </View>
           {gasMeasureRows.map((row, idx) => (
-            <View key={idx} style={idx === gasMeasureRows.length - 1 ? S.trLast : S.tr}>
-              <View style={{ width: 55, borderRight: "0.5px solid " + C.border, padding: "4 4", alignItems: "center", justifyContent: "center" }}>
-                <Text style={{ fontSize: 9.5, fontWeight: "bold" }}>{row.time}</Text>
-                <Text style={{ fontSize: 8.5 }}>{`${row.hour || "  "}시 ${row.minute || "  "}분`}</Text>
+            <View key={idx} style={[idx === gasMeasureRows.length - 1 ? S.trLast : S.tr, { alignItems: "stretch", minHeight: 28 }]}>
+              <View style={{ width: 52, borderRight: "0.5px solid " + C.border, padding: "3 3", alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 9, fontWeight: "bold" }}>{row.time}</Text>
+                <Text style={{ fontSize: 8 }}>{row.hour || "  "}시 {row.minute || "  "}분</Text>
               </View>
-              <Text style={[S.td, { flex: 3, minHeight: 18 }]}>{row.substances || ""}</Text>
-              <Text style={[S.td, { flex: 1.5, minHeight: 18 }]}>{row.measurer || ""}</Text>
-              <Text style={[S.tdc, { flex: 0.5, minHeight: 18 }]}>{row.entryCount || ""}</Text>
-              <Text style={[S.tdc, { flex: 0.5, borderRight: 0, minHeight: 18 }]}>{row.exitCount || ""}</Text>
+              <Text style={[S.td, { flex: 3, minHeight: 28, fontSize: 8 }]}>{formatGasSubstances(row)}</Text>
+              <Text style={[S.td, { flex: 1.2, minHeight: 28, fontSize: 8 }]}>{row.measurer || ""}</Text>
+              <View style={{ flex: 1, flexDirection: "row", borderRight: 0 }}>
+                <Text style={{ flex: 1, fontSize: 8, textAlign: "center", padding: "3 2", borderRight: "0.5px solid " + C.border }}>{row.entryCount || ""}</Text>
+                <Text style={{ flex: 1, fontSize: 8, textAlign: "center", padding: "3 2" }}>{row.exitCount || ""}</Text>
+              </View>
             </View>
           ))}
         </View>
 
-        {/* 5. 특별조치 필요사항 */}
         <Text style={S.secHeader}>5. 특별조치 필요사항</Text>
         <View style={[S.table, { marginBottom: 5 }]}>
           <Text style={[S.td, { borderRight: 0, minHeight: 20 }]}>{fd.specialMeasures || ""}</Text>
