@@ -1318,7 +1318,7 @@ interface Participant3 { role: string; name: string; phone: string; }
 interface Form3 {
   requestDate: string; workStartDate: string; workEndDate: string; workStartTime: string; workEndTime: string;
   serviceName: string; contractorCompany: string; contractPeriodStart: string; contractPeriodEnd: string;
-  facilityName: string; facilityLocation: string; facilityManager: string; facilityManagerGrade: string;
+  facilityName: string; facilityLocation: string; facilityAddress: string; facilityManager: string; facilityManagerGrade: string;
   workPosition: string; workContents: string; participants: Participant3[];
   riskFactors: string; improvementMeasures: string; reviewOpinion: string; reviewResult: string;
   applicantName: string; applicantOrg: string;
@@ -1326,7 +1326,7 @@ interface Form3 {
 const defaultForm3: Form3 = {
   requestDate: new Date().toISOString().split("T")[0], workStartDate: "", workEndDate: "", workStartTime: "09:00", workEndTime: "18:00",
   serviceName: "", contractorCompany: "", contractPeriodStart: "", contractPeriodEnd: "",
-  facilityName: "", facilityLocation: "", facilityManager: "", facilityManagerGrade: "",
+  facilityName: "", facilityLocation: "", facilityAddress: "", facilityManager: "", facilityManagerGrade: "",
   workPosition: "", workContents: "",
   participants: [{ role: "안전보건관리책임자", name: "", phone: "" }, { role: "현장참여직원", name: "", phone: "" }, { role: "시설관리자", name: "", phone: "" }],
   riskFactors: "", improvementMeasures: "", reviewOpinion: "", reviewResult: "", applicantName: "", applicantOrg: "",
@@ -1373,7 +1373,10 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         <SectionHeader num={2} title="휴일작업 개요" />
         <div className="space-y-3">
           <FormInput label="작업대상 시설물" required>
-            <input type="text" value={form.facilityName} onChange={e => onChange("facilityName", e.target.value)} className={inputClass + " mb-1.5"} placeholder="예) △△저수지 - 지도에서 위치 선택시 자동입력" />
+            <input type="text" value={form.facilityName} onChange={e => onChange("facilityName", e.target.value)} className={inputClass} placeholder="예) OO저수지" />
+          </FormInput>
+          <FormInput label="시설물 위치 (상세주소)">
+            <input type="text" value={(form as any).facilityAddress || ""} onChange={e => onChange("facilityAddress", e.target.value)} className={inputClass + " mb-1.5"} placeholder="지도에서 선택하면 자동입력" />
             <LocationField workLatitude={workLatitude} workAddress={workAddress} onOpenLocation={onOpenLocation} onClearLocation={onClearLocation} />
           </FormInput>
           <FormInput label="시설 관리자">
@@ -1626,12 +1629,11 @@ export default function DocumentEditPage() {
         setTaskName(task?.name ?? "");
         // Form3(휴일작업)에 task 기본정보 자동입력
         if (docData.document?.documentType === "HOLIDAY_WORK") {
-          const desc = (() => { try { return JSON.parse(task?.description || "{}"); } catch { return {}; } })();
           setForm3(p => ({
             ...p,
             contractorCompany: p.contractorCompany || task?.contractorCompanyName || task?.contractorName || "",
-            contractPeriodStart: p.contractPeriodStart || desc.contractStart || "",
-            contractPeriodEnd: p.contractPeriodEnd || desc.contractEnd || "",
+            contractPeriodStart: p.contractPeriodStart || task?.startDate?.split("T")[0] || "",
+            contractPeriodEnd: p.contractPeriodEnd || task?.endDate?.split("T")[0] || "",
             serviceName: p.serviceName || task?.name || "",
           }));
         }
@@ -1662,7 +1664,7 @@ export default function DocumentEditPage() {
     // 위치 선택 시 작업장소 input에 주소 자동 채우기
     if (documentType === "SAFETY_WORK_PERMIT") setForm1(p => ({ ...p, workLocation: addr }));
     else if (documentType === "CONFINED_SPACE") setForm2(p => ({ ...p, workLocation: addr }));
-    else if (documentType === "HOLIDAY_WORK")   setForm3(p => ({ ...p, facilityLocation: addr, facilityName: p.facilityName || addr }));
+    else if (documentType === "HOLIDAY_WORK")   setForm3(p => ({ ...p, facilityLocation: addr, facilityAddress: addr }));
     else if (documentType === "POWER_OUTAGE")   setForm4(p => ({ ...p, workLocation: addr }));
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
