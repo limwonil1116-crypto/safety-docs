@@ -4,37 +4,33 @@ import { auth } from "@/auth";
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user) {
-      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
-    }
+    if (!session?.user) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+
     const body = await req.json();
     const { documentType, formData } = body;
     const fd = formData ?? {};
 
-    const docTypeLabel =
-      documentType === "SAFETY_WORK_PERMIT" ? "안전작업허가서" :
-      documentType === "POWER_OUTAGE" ? "정전작업허가서" :
-      documentType === "CONFINED_SPACE" ? "밀폐공간작업허가서" :
-      documentType === "HOLIDAY_WORK" ? "휴일작업신고서" : "안전작업허가서";
-
     const taskName = fd.taskName || fd.serviceName || fd.projectName || "";
-    const workLocation = fd.facilityLocation || fd.workLocation || "";
+    const workLocation = fd.facilityLocation || fd.facilityAddress || fd.workLocation || "";
     const workContent = fd.workContents || fd.workContent || "";
     const workPosition = fd.workPosition || "";
 
-    // 휴일작업 - 위험요소/개선대책 생성
     if (documentType === "HOLIDAY_WORK") {
       const prompt = `당신은 한국 건설현장 안전관리 전문가입니다.
-다음 휴일작업에 대해 위험요소 3가지와 각각의 개선대책을 작성해주세요.
+다음 휴일작업에 대해 위험요소 3가지와 개선대유 3가지를 작성하세요.
 
 용역명: ${taskName}
 작업위치: ${workPosition} ${workLocation}
 작업공종: ${workContent}
 
-JSON 형식으로만 응답하세요 (설명 없이):
+아래 JSON 형식으로만 응답하세요 (설명 없이):
 {
-  "riskFactors": "1. 위험요소1 (위험성평가결과요약)\n2. 위험요소2 (위험성평가결과요약)\n3. 위험요소3 (위험성평가결과요약)",
-  "improvementMeasures": "1. 개선대책1 (개선대책결과요약)\n2. 개선대책2 (개선대책결과요약)\n3. 개선대책3 (개선대책결과요약)"
+  "riskFactors": "1. (위험요소 1)
+2. (위험요소 2)
+3. (위험요소 3)",
+  "improvementMeasures": "1. (개선대유 1)
+2. (개선대유 2)
+3. (개선대유 3)"
 }`;
 
       const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
@@ -76,7 +72,7 @@ JSON 형식으로만 응답하세요 (설명 없이):
     const checkedFactors: string[] = [];
     const factorMap: Record<string, string> = {
       factorNarrowAccess: "진출입로 협소",
-      factorSlippery: "미끄러짐(이끼, 습기)",
+      factorSlippery: "미끔러짐(이끼, 습기)",
       factorSteepSlope: "급경사면",
       factorWaterHazard: "파랑·유수·수심",
       factorRockfall: "낙석·토사붕괴",
@@ -89,6 +85,11 @@ JSON 형식으로만 응답하세요 (설명 없이):
     for (const [key, label] of Object.entries(factorMap)) {
       if (fd[key]) checkedFactors.push(label);
     }
+
+    const docTypeLabel =
+      documentType === "SAFETY_WORK_PERMIT" ? "안전작업허가서" :
+      documentType === "POWER_OUTAGE" ? "정전작업허가서" :
+      documentType === "CONFINED_SPACE" ? "밀폐공간작업허가서" : "안전작업허가서";
 
     const prompt = `당신은 한국 건설현장 안전관리 전문가입니다.
 다음 ${docTypeLabel} 정보를 바탕으로 특별조치 필요사항을 작성해주세요.
