@@ -714,6 +714,7 @@ export default function ApprovalDetailPage() {
   const [confinedNextAction, setConfinedNextAction] = useState<"PLAN_APPROVER"|"FINAL_CONFIRMER"|null>(null);
   const [specialMeasuresInput, setSpecialMeasuresInput] = useState("");
   const [gasMeasureRowsInput, setGasMeasureRowsInput] = useState<any[]>([]);
+  const gasMeasureRef = useRef<any[]>([]);
   const [pendingAction, setPendingAction] = useState<"APPROVE"|"REJECT"|null>(null);
   const [pendingOpinion, setPendingOpinion] = useState("");
   const [pendingResult, setPendingResult] = useState("");
@@ -817,7 +818,7 @@ export default function ApprovalDetailPage() {
       const isConfinedSpace = doc?.documentType === "CONFINED_SPACE";
       const confinedOrder = doc?.currentApprovalOrder ?? 0;
       if (isConfinedSpace && confinedOrder === 2 && specialMeasuresInput) extraBody.specialMeasures = specialMeasuresInput;
-      if (isConfinedSpace && confinedOrder === 3 && gasMeasureRowsInput.length > 0) extraBody.gasMeasureRows = gasMeasureRowsInput;
+      if (isConfinedSpace && confinedOrder === 3) extraBody.gasMeasureRows = gasMeasureRef.current.length > 0 ? gasMeasureRef.current : (gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : DEFAULT_GAS_ROWS);
       const res = await fetch(`/api/documents/${documentId}/approve`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: pendingAction, comment: pendingOpinion || null, reviewResult: pendingResult || null, signatureData, ...extraBody }),
@@ -877,7 +878,7 @@ export default function ApprovalDetailPage() {
           {confinedOrder === 3 && (
             <div className="space-y-3">
               <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">산소 및 유해가스 농도 측정결과를 입력해주세요.</p>
-              <GasMeasureInput rows={gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : DEFAULT_GAS_ROWS} onChange={setGasMeasureRowsInput} />
+              <GasMeasureInput rows={gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : DEFAULT_GAS_ROWS} onChange={(rows) => { gasMeasureRef.current = rows; }} />
             </div>
           )}
           {confinedOrder === 4 && (
@@ -1019,7 +1020,7 @@ export default function ApprovalDetailPage() {
           {/* 밀폐공간 3단계: 서명 없이 측정결과만 제출 */}
           {isConfinedSpace && confinedOrder === 3 ? (
             <button onClick={async () => {
-              const gasRows = gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : DEFAULT_GAS_ROWS;
+              const gasRows = gasMeasureRef.current.length > 0 ? gasMeasureRef.current : (gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : DEFAULT_GAS_ROWS);
               setProcessing(true);
               try {
                 const res = await fetch(`/api/documents/${documentId}/approve`, {
