@@ -1354,10 +1354,8 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
       const data = await res.json();
       // risk-rows API는 rows 배열 반환 - 텍스트로 변환
       if (Array.isArray(data.rows) && data.rows.length > 0) {
-        const risks = data.rows.map((r: any, i: number) => `${i+1}. ${r.riskFactor || ""}`).join("
-");
-        const measures = data.rows.map((r: any, i: number) => `${i+1}. ${r.improvement || ""}`).join("
-");
+        const risks = data.rows.map((r: any, i: number) => (i+1) + ". " + (r.riskFactor || "")).join("\n");
+        const measures = data.rows.map((r: any, i: number) => (i+1) + ". " + (r.improvement || "")).join("\n");
         onChange("riskFactors", risks);
         onChange("improvementMeasures", measures);
       }
