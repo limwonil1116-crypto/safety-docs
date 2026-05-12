@@ -364,7 +364,7 @@ function FinalApproverModal({ documentId, documentType, isFirstStep = false, onC
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
       <div className="bg-white w-full rounded-t-3xl p-6 pb-24 max-h-[85vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4"><h2 className="text-base font-bold text-gray-900">{finalRoleLabel} 지정</h2><button onClick={onClose} className="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-        <div className="bg-amber-50 rounded-xl p-3 mb-4 text-xs text-amber-700">{isFirstStep && documentType === "SAFETY_WORK_PERMIT" ? "신청서가 제출되었습니다. (계획확인)허가자를 지정해주세요." : "(계획확인) 검토가 완료되었습니다. (이행확인)확인자를 지정해주세요."}</div>
+        <div className="bg-amber-50 rounded-xl p-3 mb-4 text-xs text-amber-700">{isFirstStep && documentType === "SAFETY_WORK_PERMIT" ? "신청서가 제출되었습니다. (계획확인)허가자를 지정해주세요." : ""}</div>
         <div className={`p-3 rounded-xl border-2 mb-4 ${selected ? "border-green-400 bg-green-50" : "border-dashed border-gray-300"}`}>
           <div className="text-xs text-gray-500 mb-1">{finalRoleLabel} <span className="text-red-500">*</span></div>
           {selected ? (<div className="flex items-center justify-between"><div><span className="text-sm font-medium text-gray-900">{selected.name}</span><span className="text-xs text-gray-500 ml-2">{selected.organization}</span></div><button onClick={() => setSelected(null)} className="text-gray-400 hover:text-red-500"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>) : <p className="text-xs text-gray-400">아래 목록에서 선택해주세요</p>}
@@ -1190,12 +1190,12 @@ export default function ApprovalDetailPage() {
                 ? confinedOrder === 1 ? "감시인 서명 후 (계획확인)허가자를 지정합니다"
                   : confinedOrder === 2 ? "(계획확인) 허가자 서명을 완료합니다"
                   : "(이행확인) 최종 서명을 완료합니다"
-                : doc.currentApprovalOrder === 1 ? "검토완료 후 (이행확인)확인자를 지정합니다" : "최종 승인하시겠습니까?"}
+                : doc.currentApprovalOrder === 1 ? "검토완료 후 (승인자를 지정합니다" : "최종 승인하시겠습니까?"}
             </h3>
             <p className="text-sm text-gray-500 mb-4">
               {isConfinedSpace
                 ? "서명 후 다음 단계가 진행됩니다."
-                : doc.currentApprovalOrder === 1 ? "서명 후 (이행확인)확인자를 지정합니다." : "최종 승인 후 되돌릴 수 없습니다."}
+                : doc.currentApprovalOrder === 1 ? "승인자를 지정해주세요.
             </p>
             <div className="flex gap-3">
               <button onClick={() => setShowApproveConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">취소</button>
