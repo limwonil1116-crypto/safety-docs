@@ -1342,14 +1342,26 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
   const handleAiRisk = async () => {
     setAiLoading(true);
     try {
-      const res = await fetch("/api/ai/special-measures", {
+      const res = await fetch("/api/ai/risk-rows", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentType: "HOLIDAY_WORK", formData: { ...form, taskName } }),
+        body: JSON.stringify({
+          workContent: form.workContents || "",
+          workLocation: (form as any).facilityAddress || form.facilityLocation || form.workPosition || "",
+          riskItems: [],
+          checkedFactors: [],
+        }),
       });
       const data = await res.json();
-      if (data.riskFactors) onChange("riskFactors", data.riskFactors);
-      if (data.improvementMeasures) onChange("improvementMeasures", data.improvementMeasures);
-    } catch { alert("AI 생성 실패"); }
+      // risk-rows API는 rows 배열 반환 - 텍스트로 변환
+      if (Array.isArray(data.rows) && data.rows.length > 0) {
+        const risks = data.rows.map((r: any, i: number) => `${i+1}. ${r.riskFactor || ""}`).join("
+");
+        const measures = data.rows.map((r: any, i: number) => `${i+1}. ${r.improvement || ""}`).join("
+");
+        onChange("riskFactors", risks);
+        onChange("improvementMeasures", measures);
+      }
+    } catch (e) { console.error("AI error:", e); alert("AI 생성 실패"); }
     finally { setAiLoading(false); }
   };
   return (
