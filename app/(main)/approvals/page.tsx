@@ -51,7 +51,7 @@ const TABS = [
 ];
 
 const DATE_FILTERS = [
-  { key: "ALL",        label: "전체" },
+  { key: "ALL",                label: "전체" },
   { key: "THIS_WEEK",  label: "이번 주" },
   { key: "THIS_MONTH", label: "이번 달" },
 ];
