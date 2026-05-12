@@ -24,6 +24,46 @@ export async function POST(req: NextRequest) {
       documentType === "CONFINED_SPACE" ? "밀폐공간작업허가서" :
       documentType === "HOLIDAY_WORK" ? "휴일작업신고서" : "안전서류";
 
+
+    // 검토의견 초안 생성 (모든 문서 타입 공통)
+    if (documentType === "REVIEW_OPINION" || !["HOLIDAY_WORK","SAFETY_WORK_PERMIT","CONFINED_SPACE","POWER_OUTAGE"].includes(documentType)) {
+      const originalType = (body as any).originalType || documentType;
+      const typeLabel =
+        originalType === "SAFETY_WORK_PERMIT" ? "\uc548\uc804\uc791\uc5c5\ud5c8\uac00\uc11c" :
+        originalType === "CONFINED_SPACE" ? "\ubc00\ud3d0\uacf5\uac04\uc791\uc5c5\ud5c8\uac00\uc11c" :
+        originalType === "HOLIDAY_WORK" ? "\ud734\uc77c\uc791\uc5c5\uc2e0\uace0\uc11c" :
+        originalType === "POWER_OUTAGE" ? "\uc815\uc804\uc791\uc5c5\ud5c8\uac00\uc11c" : "\uc548\uc804\uc11c\ub958";
+      const prompt = [
+        "\ub2f9\uc2e0\uc740 \ud55c\uad6d\ub18d\uc5b4\uc584\uacf5\uc0ac \uc548\uc804\uad00\ub9ac \uc804\ubb38\uac00\uc785\ub2c8\ub2e4.",
+        `${typeLabel}\uc758 \uc6a9\uc5ed\uac10\ub3c5\uc6d0 \uac80\ud1a0\uc758\uacac \ucd08\uc548\uc744 \uc791\uc131\ud574\uc8fc\uc138\uc694.`,
+        "",
+        "[\uc791\uc5c5 \uc815\ubcf4]",
+        "- \uc6a9\uc5ed\uba85: " + (taskName || "\ubbf8\uc785\ub825"),
+        "- \uc791\uc5c5\ub0b4\uc6a9: " + (workContent || "\ubbf8\uc785\ub825"),
+        "- \uc791\uc5c5\uc704\uce58: " + (workLocation || "\ubbf8\uc785\ub825"),
+        "",
+        "\uc870\uac74:",
+        "- \ud604\uc7a5 \ud655\uc778 \uacb0\uacfc \ubc0f \uc548\uc804\uc870\uce58 \uc774\ud589\uc5ec\ubd80 \uc911\uc2ec\uc73c\ub85c 3~5\ubb38\uc7a5",
+        "- \ud55c\uad6d\uc5b4\ub85c \uc218\uc2dd\uc5b4\uccb4 \ubb38\uc7a5\uccb4",
+        "- \uc548\uc804\ubc95\ub839\uacfc \uc9c0\uce68 \uc900\uc218 \uc5ec\ubd80 \ud3ec\ud568",
+      ].join("\n");
+
+      const response = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: 800, temperature: 0.3 },
+          }),
+        }
+      );
+      const data = await response.json();
+      const specialMeasures = (data.candidates?.[0]?.content?.parts || []).map((p: any) => p.text || "").join("").trim();
+      return NextResponse.json({ specialMeasures });
+    }
+
     // HOLIDAY_WORK: 위험요소/개선대유 리스트 반환
     if (documentType === "HOLIDAY_WORK") {
       const prompt = [
