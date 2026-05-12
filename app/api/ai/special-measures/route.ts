@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: maxTokens, temperature: 0.3 },
+            generationConfig: { maxOutputTokens: maxTokens, temperature: 0.4 },
           }),
         }
       );
@@ -72,7 +72,7 @@ ${docLabel} 신청서를 검토하고 구체적인 안전조치 검토의견 초
 3. 최소 5가지 이상 항목을 "- "으로 시작하는 문장으로 작성
 4. 마크다운(해시, 볼드) 없이 순수 텍스트로 작성
 5. 한국어 수식어체 문장체`;
-      const specialMeasures = await callGemini(prompt, 1500);
+      const specialMeasures = await callGemini(prompt, 4000);
       return NextResponse.json({ specialMeasures });
     }
 
