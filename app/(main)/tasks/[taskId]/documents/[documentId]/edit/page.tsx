@@ -1419,14 +1419,10 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             {aiLoading ? "AI 생성 중..." : "✨ AI 위험요소/개선대유 자동 작성"}
           </button>
           <FormInput label="위험요소 (위험성 평가 결과 요약)">
-            <textarea value={form.riskFactors} onChange={e => onChange("riskFactors", e.target.value)} rows={3} className={textareaClass} placeholder={"예) 1. 급류부 조사시 미끔러짐
-2. 고소작업 중 추락
-3. 장비 협착 위험"} />
+            <textarea value={form.riskFactors} onChange={e => onChange("riskFactors", e.target.value)} rows={3} className={textareaClass} placeholder="예) 1. 급류부 조사시 미끄러짐 2. 고소작업 중 추락 3. 장비 협착 위험" />
           </FormInput>
           <FormInput label="개선대유 (개선대유 결과 요약)">
-            <textarea value={form.improvementMeasures} onChange={e => onChange("improvementMeasures", e.target.value)} rows={3} className={textareaClass} placeholder={"예) 1. 안전난간에 안전로프 설치
-2. 안전모·안전벨트 착용
-3. 신호수 배치"} />
+            <textarea value={form.improvementMeasures} onChange={e => onChange("improvementMeasures", e.target.value)} rows={3} className={textareaClass} placeholder="예) 1. 안전난간에 안전로프 설치 2. 안전모·안전벨트 착용 3. 신호수 배치" />
           </FormInput>
         </div>
       </div>
