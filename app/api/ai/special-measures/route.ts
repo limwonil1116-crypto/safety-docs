@@ -54,11 +54,12 @@ ${docLabel}에 대한 검토의견 초안을 작성해주세요.
 - 작업위치: ${workLocation || "미입력"}
 
 조건:
-- 3~5문장으로 작성
-- 현장 안전조치 이행 확인 중심
-- 안전법령 준수 여부 포함
+- 5문장 이상으로 작성
+- 현장 안전조치 이행 확인 및 미이행 사항 중심
+- 안전법령 및 지침 준수 여부 포함
+- 위험요소별 안전조치 권고사항 포함
 - 한국어 수식어체 문장 (마크다운 없이)`;
-      const specialMeasures = await callGemini(prompt, 600);
+      const specialMeasures = await callGemini(prompt, 1500);
       return NextResponse.json({ specialMeasures });
     }
 
