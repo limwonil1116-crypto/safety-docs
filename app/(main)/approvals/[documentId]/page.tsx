@@ -604,25 +604,45 @@ const DEFAULT_GAS_ROWS = [
 ];
 
 function GasRowInput({ rowIndex, initialRow, onRowChange }: { rowIndex: number; initialRow: any; onRowChange: (idx: number, field: string, value: string) => void }) {
-    const numVal = (f: string, refs: Record<string, React.RefObject<HTMLInputElement>>) => parseInt(refs[f]?.current?.value || "0", 10) || 0;
-    const refs: Record<string, React.RefObject<HTMLInputElement>> = {
-      hour: useRef<HTMLInputElement>(null),
-      minute: useRef<HTMLInputElement>(null),
-      o2: useRef<HTMLInputElement>(null),
-      co2: useRef<HTMLInputElement>(null),
-      h2s: useRef<HTMLInputElement>(null),
-      co: useRef<HTMLInputElement>(null),
-      ex: useRef<HTMLInputElement>(null),
-      measurer: useRef<HTMLInputElement>(null),
-      entryCount: useRef<HTMLInputElement>(null),
-      exitCount: useRef<HTMLInputElement>(null),
+    const [values, setValues] = useState<Record<string,string>>({
+      hour: initialRow.hour || "", minute: initialRow.minute || "",
+      o2: initialRow.o2 || "", co2: initialRow.co2 || "",
+      h2s: initialRow.h2s || "", co: initialRow.co || "",
+      ex: initialRow.ex || "", measurer: initialRow.measurer || "",
+      entryCount: initialRow.entryCount || "", exitCount: initialRow.exitCount || "",
+    });
+    const valRef = useRef<Record<string,string>>(values);
+
+    const GAS_LIMITS = [
+      {f:"o2",  label:"산소 O₂",               unit:"%",   ph:"18~23.5", min:18, max:23.5},
+      {f:"co2", label:"이산화탄소 CO₂", unit:"%",   ph:"1.5미만", max:1.5},
+      {f:"h2s", label:"황화수소 H₂S",       unit:"ppm", ph:"10미만",  max:10},
+      {f:"co",  label:"일산화탄소 CO",       unit:"ppm", ph:"30미만",  max:30},
+      {f:"ex",  label:"폭발하한 EX",             unit:"%",   ph:"10미만",  max:10},
+    ] as const;
+
+    const getStatus = (f: string, val: string) => {
+      const num = parseFloat(val);
+      if (!val || isNaN(num)) return "empty";
+      const limit = GAS_LIMITS.find(g => g.f === f);
+      if (!limit) return "ok";
+      if ("min" in limit && num < limit.min) return "danger";
+      if ("max" in limit && num > limit.max) return "danger";
+      return "ok";
     };
-    const handleStep = (f: string, delta: number) => {
-      const cur = numVal(f, refs);
+
+    const handleChange = (f: string, v: string) => {
+      valRef.current = { ...valRef.current, [f]: v };
+      setValues({ ...valRef.current });
+      onRowChange(rowIndex, f, v);
+    };
+
+    const numStep = (f: string, delta: number) => {
+      const cur = parseInt(valRef.current[f] || "0", 10) || 0;
       const next = Math.max(0, cur + delta);
-      if (refs[f]?.current) refs[f].current!.value = String(next);
-      onRowChange(rowIndex, f, String(next));
+      handleChange(f, String(next));
     };
+
     return (
       <div className="bg-gray-50 rounded-xl p-3 space-y-3 border border-gray-100">
         <div className="flex items-center gap-3">
@@ -630,9 +650,9 @@ function GasRowInput({ rowIndex, initialRow, onRowChange }: { rowIndex: number; 
           <div className="flex gap-4">
             {(["hour","minute"] as const).map(f => (
               <div key={f} className="flex flex-col items-center gap-0.5">
-                <button type="button" onMouseDown={e=>{e.preventDefault(); handleStep(f,1);}} className="w-8 h-7 flex items-center justify-center rounded-t-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-500 text-xs select-none">▲</button>
-                <input ref={refs[f]} type="number" min="0" defaultValue={initialRow[f] || ""} onChange={e => onRowChange(rowIndex, f, e.target.value)} className="w-12 h-8 text-center text-sm text-gray-900 border-x border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                <button type="button" onMouseDown={e=>{e.preventDefault(); handleStep(f,-1);}} className="w-8 h-7 flex items-center justify-center rounded-b-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-500 text-xs select-none">▼</button>
+                <button type="button" onMouseDown={e=>{e.preventDefault(); numStep(f,1);}} className="w-8 h-7 flex items-center justify-center rounded-t-lg border border-gray-200 bg-white hover:bg-gray-100 text-gray-500 text-xs select-none">▲</button>
+                <input type="number" min="0" value={values[f]} onChange={e => handleChange(f, e.target.value)} className="w-12 h-8 text-center text-sm text-gray-900 border-x border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                <button type="button" onMouseDown={e=>{e.preventDefault(); numStep(f,-1);}} className="w-8 h-7 flex items-center justify-center rounded-b-lg border border-gray-200 bg-white hover:bg-gray-100 text-gray-500 text-xs select-none">▼</button>
                 <span className="text-xs text-gray-500">{f==="hour"?"시":"분"}</span>
               </div>
             ))}
@@ -641,18 +661,42 @@ function GasRowInput({ rowIndex, initialRow, onRowChange }: { rowIndex: number; 
         <div>
           <p className="text-xs font-medium text-gray-600 mb-2">측정 농도</p>
           <div className="grid grid-cols-2 gap-2">
-            {([
-              {f:"o2",  label:"산소 O₂",               unit:"%",   ph:"18~23.5"},
-              {f:"co2", label:"이산화탄소 CO₂", unit:"%",   ph:"1.5미만"},
-              {f:"h2s", label:"황화수소 H₂S",       unit:"ppm", ph:"10미만"},
-              {f:"co",  label:"일산화탄소 CO",       unit:"ppm", ph:"30미만"},
-              {f:"ex",  label:"폭발하한 EX",             unit:"%",   ph:"10미만"},
-            ] as const).map(({f,label,unit,ph}) => (
-              <div key={f} className="flex flex-col gap-0.5">
-                <label className="text-[10px] text-gray-500">{label} ({unit})</label>
-                <input ref={refs[f]} type="text" defaultValue={initialRow[f] || ""} placeholder={ph} onChange={e => onRowChange(rowIndex, f, e.target.value)} className="px-2 py-1.5 text-sm text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white placeholder:text-gray-300" />
-              </div>
-            ))}
+            {GAS_LIMITS.map(({f,label,unit,ph}) => {
+              const status = getStatus(f, values[f]);
+              const isDanger = status === "danger";
+              return (
+                <div key={f} className="flex flex-col gap-0.5">
+                  <label className="text-[10px] text-gray-500">{label} ({unit})</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={values[f]}
+                      placeholder={ph}
+                      onChange={e => handleChange(f, e.target.value)}
+                      className={`w-full px-2 py-1.5 text-sm text-gray-900 border rounded-lg focus:outline-none focus:ring-1 bg-white placeholder:text-gray-300 ${
+                        isDanger
+                          ? "border-red-400 focus:ring-red-400 bg-red-50"
+                          : status === "ok"
+                          ? "border-green-400 focus:ring-green-400 bg-green-50"
+                          : "border-gray-200 focus:ring-blue-400"
+                      }`}
+                    />
+                    {isDanger && (
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold">⚠</span>
+                    )}
+                    {status === "ok" && (
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-green-500 text-[10px]">✓</span>
+                    )}
+                  </div>
+                  {isDanger && (
+                    <p className="text-[9px] text-red-500 font-medium">❌ 기준초과! 작업중지 필요</p>
+                  )}
+                  {status === "ok" && (
+                    <p className="text-[9px] text-green-600">✅ 정상범위</p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
         <div className="grid grid-cols-3 gap-2">
@@ -663,7 +707,7 @@ function GasRowInput({ rowIndex, initialRow, onRowChange }: { rowIndex: number; 
           ] as const).map(({f,label,type}) => (
             <div key={f}>
               <label className="text-xs text-gray-500 mb-1 block">{label}</label>
-              <input ref={refs[f]} type={type} min={type==="number"?"0":undefined} defaultValue={initialRow[f] || ""} onChange={e => onRowChange(rowIndex, f, e.target.value)} className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
+              <input type={type} min={type==="number"?"0":undefined} value={values[f]} onChange={e => handleChange(f, e.target.value)} className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
             </div>
           ))}
         </div>
@@ -678,8 +722,9 @@ function GasRowInput({ rowIndex, initialRow, onRowChange }: { rowIndex: number; 
     }, [onChange]);
     return (
       <div className="space-y-3">
-        <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
-          적정수치: O₂(18~23.5%) CO₂(1.5%미만) H₂S(10ppm미만) CO(30ppm미만) EX(10%미만)
+        <p className="text-xs bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+          <span className="font-medium text-blue-700">적정수치:</span>
+          <span className="text-blue-600"> O₂(18~23.5%) CO₂(1.5%미만) H₂S(10ppm미만) CO(30ppm미만) EX(10%미만)</span>
         </p>
         {rowsRef.current.map((row, idx) => (
           <GasRowInput key={idx} rowIndex={idx} initialRow={row} onRowChange={handleFieldChange} />
