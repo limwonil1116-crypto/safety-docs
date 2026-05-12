@@ -1438,6 +1438,33 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
   );
 }
 
+
+const POWER_CHECKS = [
+  { label: "회로차단 안전차단 확인", applicable: "해당없음", result: "" },
+  { label: "비상차단장치 확인", applicable: "해당없음", result: "" },
+  { label: "잠금조치", applicable: "해당없음", result: "" },
+  { label: "작업차단 장치", applicable: "해당없음", result: "" },
+  { label: "차단장치 감시", applicable: "해당없음", result: "" },
+  { label: "잔류전압 제거", applicable: "해당없음", result: "" },
+  { label: "접지선으로 접지 확인", applicable: "해당없음", result: "" },
+  { label: "작업범위 보호판 설치", applicable: "해당없음", result: "" },
+  { label: "당일 안전차단 확인", applicable: "해당없음", result: "" },
+];
+interface InspectionItem { equipment: string; cutoffConfirmer: string; electrician: string; siteRepair: string; }
+interface Form4 {
+  requestDate: string; workStartDate: string; workEndDate: string; workStartTime: string; workEndTime: string;
+  serviceName: string; applicantCompany: string; applicantTitle: string; applicantName: string;
+  workLocation: string; workContent: string; entryList: string; facilityName: string;
+  needConfinedSpace: string; needFireWork: string; safetyChecks: SafetyCheckItem[];
+  inspectionItems: InspectionItem[]; specialMeasures: string;
+}
+const defaultForm4: Form4 = {
+  requestDate: new Date().toISOString().split("T")[0], workStartDate: "", workEndDate: "", workStartTime: "09:00", workEndTime: "18:00",
+  serviceName: "", applicantCompany: "", applicantTitle: "", applicantName: "", workLocation: "", workContent: "", entryList: "", facilityName: "",
+  needConfinedSpace: "", needFireWork: "", safetyChecks: POWER_CHECKS.map(c => ({ ...c })),
+  inspectionItems: [{ equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" }], specialMeasures: "",
+};
+
 function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation, onClearLocation, taskName, documentId }: {
   form: Form4; onChange: (k: string, v: unknown) => void;
   workLatitude: number | null; workAddress: string; onOpenLocation: () => void; onClearLocation: () => void;
