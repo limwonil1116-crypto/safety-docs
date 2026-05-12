@@ -1,0 +1,1063 @@
+// lib/pdf/templates.tsx
+import React from "react";
+import { Document, Page, Text, View, Image, StyleSheet, Font } from "@react-pdf/renderer";
+import path from "path";
+
+const fontDir = path.join(process.cwd(), "public", "fonts");
+Font.register({
+  family: "NanumGothic",
+  fonts: [
+    { src: path.join(fontDir, "NanumGothic-Regular.ttf"), fontWeight: "normal" },
+    { src: path.join(fontDir, "NanumGothic-Bold.ttf"), fontWeight: "bold" },
+  ],
+});
+
+const C = {
+  navy: "#1a3a5c", sectionBg: "#bdd7ee", greenBg: "#e2efda",
+  thBg: "#9dc3e6", rowEven: "#deeaf1", border: "#7f9fbf",
+  labelBg: "#f2f2f2", white: "#ffffff", black: "#000000",
+};
+
+// ✅ 1번: 여백 최소화 + 폰트/표 크기 확대
+const S = StyleSheet.create({
+  page: { fontFamily: "NanumGothic", fontSize: 8.5, paddingTop: 4, paddingBottom: 12, paddingHorizontal: 9, color: "#000" },
+  titleBox: { border: "1.5px solid " + C.black, paddingVertical: 7, marginBottom: 2 },
+  titleMain: { fontSize: 17, fontWeight: "bold", textAlign: "center", letterSpacing: 2 },
+  secHeader: { backgroundColor: C.sectionBg, border: "0.8px solid " + C.border, padding: "3 6", fontSize: 9, fontWeight: "bold", marginBottom: 0 },
+  table: { border: "0.8px solid " + C.border, marginBottom: 3 },
+  tr: { flexDirection: "row", borderBottom: "0.5px solid " + C.border },
+  trLast: { flexDirection: "row" },
+  th: { backgroundColor: C.thBg, fontWeight: "bold", padding: "3 3", fontSize: 8.5, borderRight: "0.5px solid " + C.border, textAlign: "center" },
+  td: { padding: "3 4", fontSize: 8.5, borderRight: "0.5px solid " + C.border },
+  tdc: { padding: "3 4", fontSize: 8.5, borderRight: "0.5px solid " + C.border, textAlign: "center" },
+  il: { fontWeight: "bold", padding: "3 4", fontSize: 8.5, borderRight: "0.5px solid " + C.border, backgroundColor: C.labelBg },
+  iv: { flex: 1, padding: "3 4", fontSize: 8.5 },
+  footer: { position: "absolute", bottom: 6, left: 12, right: 12, borderTop: "0.5px solid #aaa", paddingTop: 3, flexDirection: "row", justifyContent: "space-between" },
+  footerText: { fontSize: 7.5, color: "#666" },
+});
+
+export interface AttachmentInfo {
+  id: string;
+  fileName: string;
+  fileUrl: string;
+  mimeType: string | null;
+  attachmentType: string;
+  description: string | null;
+}
+
+function CB({ checked, size = 9 }: { checked: boolean; size?: number }) {
+  return (
+    <View style={{ width: size, height: size, marginRight: 2, alignItems: "center", justifyContent: "center", border: "0.8px solid #444", backgroundColor: checked ? C.navy : C.white }}>
+      {checked && <Text style={{ color: "white", fontSize: size - 2.5, lineHeight: 1 }}>✓</Text>}
+    </View>
+  );
+}
+
+function Footer({ documentId, createdAt }: { documentId: string; createdAt: string }) {
+  return (
+    <View style={S.footer}>
+      <Text style={S.footerText}>{`문서번호: ${documentId.slice(0, 8)}`}</Text>
+      <Text style={S.footerText}>{`작성일시: ${new Date(createdAt).toLocaleString("ko-KR")} | 한국농어촌공사 안전기술본부`}</Text>
+    </View>
+  );
+}
+
+function fmtDateTime(dateStr?: string, timeStr?: string): string {
+  if (!dateStr) return "";
+  try {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const datePart = `${m}월 ${d}일`;
+    if (!timeStr) return datePart;
+    const [h, min] = timeStr.split(":");
+    const hNum = parseInt(h, 10);
+    const ampm = hNum < 12 ? "오전" : "오후";
+    const h12 = hNum === 0 ? 12 : hNum > 12 ? hNum - 12 : hNum;
+    return `${datePart} ${ampm} ${h12}시 ${min || "00"}분`;
+  } catch { return `${dateStr} ${timeStr || ""}`; }
+}
+
+function buildPeriod(fd: Record<string, any>): string {
+  const s = fmtDateTime(fd.workStartDate || fd.workDate, fd.workStartTime);
+  const e = fmtDateTime(fd.workEndDate || fd.workDate, fd.workEndTime);
+  if (!s) return "";
+  return s === e ? s : `${s} ~ ${e}`;
+}
+
+// ✅ 좌표값 감지 함수 (예: "36.70531, 126.83768" 형태)
+function isCoordinate(val: string): boolean {
+  return /^-?\d+\.\d+,?\s*-?\d+\.\d+$/.test(val.trim());
+}
+
+function getWorkLocation(fd: Record<string, any>, workAddress?: string | null): string {
+  // 1순위: DB의 workAddress (카카오 역지오코딩 주소) - 좌표가 아닌 경우만
+  if (workAddress && workAddress.trim() && !isCoordinate(workAddress)) return workAddress;
+  // 2순위: formData.workLocation - 좌표가 아닌 경우만
+  if (fd.workLocation && fd.workLocation.trim() && !isCoordinate(fd.workLocation)) return fd.workLocation;
+  // 3순위: facilityLocation (붙임3)
+  if (fd.facilityLocation && fd.facilityLocation.trim() && !isCoordinate(fd.facilityLocation)) return fd.facilityLocation;
+  // 4순위: workAddress가 좌표더라도 없는 것보다는 나음 (표시는 하되 빈칸 방지)
+  if (workAddress && workAddress.trim()) return workAddress;
+  if (fd.workLocation && fd.workLocation.trim()) return fd.workLocation;
+  if (fd.facilityLocation && fd.facilityLocation.trim()) return fd.facilityLocation;
+  return "";
+}
+
+function ApplicantRow({ applicantCompany, applicantTitle, applicantName, signatureData, labelWidth = 55 }: {
+  applicantCompany?: string; applicantTitle?: string; applicantName?: string;
+  signatureData?: string; labelWidth?: number;
+}) {
+  return (
+    <View style={[S.tr, { alignItems: "stretch", minHeight: 36 }]}>
+      <Text style={[S.il, { width: labelWidth }]}>신  청  인</Text>
+      <View style={{ flex: 1.5, borderRight: "0.5px solid " + C.border, padding: "4 4", justifyContent: "center" }}>
+        <Text style={{ fontSize: 9 }}>{`(업체명) ${applicantCompany || ""}`}</Text>
+      </View>
+      <View style={{ flex: 1, borderRight: "0.5px solid " + C.border, padding: "4 4", justifyContent: "center" }}>
+        <Text style={{ fontSize: 9 }}>{`(직책) ${applicantTitle || ""}`}</Text>
+      </View>
+      <View style={{ flex: 1, borderRight: "0.5px solid " + C.border, padding: "4 4", justifyContent: "center" }}>
+        <Text style={{ fontSize: 9 }}>{`(성명) ${applicantName || ""}`}</Text>
+      </View>
+      <View style={{ width: 95, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "4 4", gap: 4 }}>
+        <Text style={{ fontSize: 8, color: "#888" }}>(서명)</Text>
+        {signatureData
+          ? <Image src={signatureData} style={{ width: 60, height: 22, objectFit: "contain" }} />
+          : <View style={{ width: 60, height: 20, border: "0.5px dashed #ccc" }} />}
+      </View>
+    </View>
+  );
+}
+
+function ApproverRow({ roleLabel, deptLabel, name, signatureData, borderBottom = true }: {
+  roleLabel: string; deptLabel?: string; name?: string; signatureData?: string; borderBottom?: boolean;
+}) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "stretch", borderBottom: borderBottom ? "0.5px solid " + C.border : "none", minHeight: 36 }}>
+      <View style={{ width: 78, padding: "4 5", backgroundColor: C.labelBg, borderRight: "0.5px solid " + C.border, justifyContent: "center" }}>
+        <Text style={{ fontSize: 9, fontWeight: "bold", color: C.navy }}>{roleLabel}</Text>
+      </View>
+      <View style={{ flex: 2, borderRight: "0.5px solid " + C.border, padding: "4 5", justifyContent: "center" }}>
+        <Text style={{ fontSize: 8.5, color: "#555" }}>
+          {deptLabel || "(부서) 한국농어촌공사   (직책) 용역관리자"}
+        </Text>
+      </View>
+      <View style={{ width: 85, padding: "4 5", borderRight: "0.5px solid " + C.border, justifyContent: "center" }}>
+        <Text style={{ fontSize: 9.5 }}>{`(성명) ${name || ""}`}</Text>
+      </View>
+      <View style={{ width: 105, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "4 4", gap: 4 }}>
+        <Text style={{ fontSize: 8, color: "#888" }}>(서명)</Text>
+        {signatureData
+          ? <Image src={signatureData} style={{ width: 75, height: 22, objectFit: "contain" }} />
+          : <View style={{ width: 75, height: 20, border: "0.5px dashed #ccc" }} />}
+      </View>
+    </View>
+  );
+}
+
+function ApproverSection({ entries }: { entries: Array<{ roleLabel: string; deptLabel?: string; name?: string; signatureData?: string }> }) {
+  return (
+    <View style={{ border: "0.8px solid " + C.border, marginTop: 6 }}>
+      {entries.map((e, i) => (
+        <ApproverRow key={i} roleLabel={e.roleLabel} deptLabel={e.deptLabel} name={e.name} signatureData={e.signatureData} borderBottom={i < entries.length - 1} />
+      ))}
+    </View>
+  );
+}
+
+// ✅ 2번: 첨부파일 페이지들 (위험성평가표, 개선대책 사진/문서)
+// renderToBuffer는 Document 컴포넌트를 직접 받으므로 Document로 감싸서 반환
+export function AttachmentPagesPDF({ riskAssessFiles, safetyCheckPhotos, safetyCheckDocs, documentId, createdAt }: {
+  riskAssessFiles: AttachmentInfo[];
+  safetyCheckPhotos: AttachmentInfo[];
+  safetyCheckDocs: AttachmentInfo[];
+  documentId: string;
+  createdAt: string;
+}) {
+  return (
+    <Document>
+      {/* 위험성평가표 페이지 (각 파일을 1페이지씩) */}
+      {riskAssessFiles.map((file, idx) => {
+        const isImage = file.mimeType?.startsWith("image/");
+        return (
+          <Page key={`risk-${idx}`} size="A4" style={{ fontFamily: "NanumGothic", padding: 12, paddingBottom: 24 }}>
+            <View style={{ backgroundColor: C.sectionBg, padding: "6 8", marginBottom: 8, border: "0.8px solid " + C.border }}>
+              <Text style={{ fontSize: 12, fontWeight: "bold", color: C.navy }}>
+                {`붙임 1. 위험성평가표${riskAssessFiles.length > 1 ? ` (${idx + 1}/${riskAssessFiles.length})` : ""}`}
+              </Text>
+              <Text style={{ fontSize: 9, color: "#555", marginTop: 2 }}>{file.fileName}</Text>
+            </View>
+            {isImage ? (
+              <Image src={file.fileUrl} style={{ width: "100%", objectFit: "contain", maxHeight: 700 }} />
+            ) : (
+              <View style={{ flex: 1, alignItems: "center", justifyContent: "center", border: "1px solid #ddd" }}>
+                <Text style={{ fontSize: 11, color: "#666", marginBottom: 8 }}>{file.fileName}</Text>
+                <Text style={{ fontSize: 9, color: "#999" }}>PDF/Excel 파일 - 별도 확인 필요</Text>
+              </View>
+            )}
+            <Footer documentId={documentId} createdAt={createdAt} />
+          </Page>
+        );
+      })}
+
+      {/* 개선대책 확인자료 (사진) - 한 페이지에 최대 6장 그리드 */}
+      {(() => {
+        if (safetyCheckPhotos.length === 0) return null;
+        const photosPerPage = 6;
+        const chunks: AttachmentInfo[][] = [];
+        for (let i = 0; i < safetyCheckPhotos.length; i += photosPerPage) {
+          chunks.push(safetyCheckPhotos.slice(i, i + photosPerPage));
+        }
+        return chunks.map((chunk, pageIdx) => (
+          <Page key={`photo-${pageIdx}`} size="A4" style={{ fontFamily: "NanumGothic", padding: 12, paddingBottom: 24 }}>
+            <View style={{ backgroundColor: C.sectionBg, padding: "6 8", marginBottom: 8, border: "0.8px solid " + C.border }}>
+              <Text style={{ fontSize: 12, fontWeight: "bold", color: C.navy }}>
+                {`붙임 2. 개선대책 확인자료 (사진)${chunks.length > 1 ? ` (${pageIdx + 1}/${chunks.length})` : ""}`}
+              </Text>
+              <Text style={{ fontSize: 9, color: "#555", marginTop: 2 }}>{`${chunk.length}장`}</Text>
+            </View>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+              {chunk.map((photo, i) => (
+                <View key={i} style={{ width: "31%", marginBottom: 6 }}>
+                  <Image src={photo.fileUrl} style={{ width: "100%", height: 140, objectFit: "cover", border: "0.5px solid #ccc" }} />
+                  <Text style={{ fontSize: 7.5, color: "#666", marginTop: 2, textAlign: "center" }}>{photo.fileName}</Text>
+                </View>
+              ))}
+            </View>
+            <Footer documentId={documentId} createdAt={createdAt} />
+          </Page>
+        ));
+      })()}
+
+      {/* 개선대책 문서 파일 */}
+      {safetyCheckDocs.map((file, idx) => {
+        const isImage = file.mimeType?.startsWith("image/");
+        return (
+          <Page key={`doc-${idx}`} size="A4" style={{ fontFamily: "NanumGothic", padding: 12, paddingBottom: 24 }}>
+            <View style={{ backgroundColor: C.sectionBg, padding: "6 8", marginBottom: 8, border: "0.8px solid " + C.border }}>
+              <Text style={{ fontSize: 12, fontWeight: "bold", color: C.navy }}>개선대책 확인자료 (문서)</Text>
+              <Text style={{ fontSize: 9, color: "#555", marginTop: 2 }}>{file.fileName}</Text>
+            </View>
+            {isImage ? (
+              <Image src={file.fileUrl} style={{ width: "100%", objectFit: "contain", maxHeight: 700 }} />
+            ) : (
+              <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 11, color: "#666" }}>{file.fileName}</Text>
+              </View>
+            )}
+            <Footer documentId={documentId} createdAt={createdAt} />
+          </Page>
+        );
+      })}
+    </Document>
+  );
+}
+
+
+// ===== 첨부1: 안전작업허가서 =====
+export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+  formData: Record<string, any>;
+  approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+  documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
+  workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
+}) {
+  const a1 = approvalLines.find(l => l.approvalOrder === 1);
+  const a2 = approvalLines.find(l => l.approvalOrder === 2);
+  const riskRows: Array<{ riskFactor: string; improvement: string; disasterType: string }> =
+    fd.riskRows ?? [{ riskFactor: "", improvement: "", disasterType: "" }];
+  const periodText = buildPeriod(fd);
+  const workLocationText = getWorkLocation(fd, workAddress);
+
+  const P = StyleSheet.create({
+    page: { fontFamily: "NanumGothic", fontSize: 8, paddingTop: 6, paddingBottom: 14, paddingHorizontal: 8, color: "#000" },
+    titleBox: { border: "1.5px solid #000", paddingVertical: 6, marginBottom: 3 },
+    titleMain: { fontSize: 16, fontWeight: "bold", textAlign: "center", letterSpacing: 4 },
+    titleSub: { fontSize: 9, textAlign: "center", color: "#444", marginTop: 1 },
+    secHeader: { backgroundColor: "#bdd7ee", border: "0.8px solid #7f9fbf", padding: "2 5", fontSize: 8.5, fontWeight: "bold", marginBottom: 0 },
+    table: { border: "0.8px solid #7f9fbf", marginBottom: 2 },
+    tr: { flexDirection: "row", borderBottom: "0.5px solid #7f9fbf", minHeight: 16 },
+    trLast: { flexDirection: "row", minHeight: 16 },
+    th: { backgroundColor: "#9dc3e6", fontWeight: "bold", padding: "2 3", fontSize: 8, borderRight: "0.5px solid #7f9fbf", textAlign: "center", justifyContent: "center" },
+    td: { padding: "2 3", fontSize: 8, borderRight: "0.5px solid #7f9fbf" },
+    tdc: { padding: "2 3", fontSize: 8, borderRight: "0.5px solid #7f9fbf", textAlign: "center" },
+    il: { fontWeight: "bold", padding: "2 3", fontSize: 8, borderRight: "0.5px solid #7f9fbf", backgroundColor: "#f2f2f2" },
+    iv: { flex: 1, padding: "2 3", fontSize: 8 },
+    footer: { position: "absolute", bottom: 4, left: 8, right: 8, borderTop: "0.5px solid #aaa", paddingTop: 2, flexDirection: "row", justifyContent: "space-between" },
+    footerText: { fontSize: 6.5, color: "#666" },
+  });
+
+  const riskTypeItems = [
+    { key: "riskHighPlace",     label: "2.0m 이상 고소작업" },
+    { key: "riskWaterWork",     label: "수상 또는 수변작업" },
+    { key: "riskConfinedSpace", label: "밀폐공간(복통 포함)작업" },
+    { key: "riskPowerOutage",   label: "정전작업" },
+    { key: "riskFireWork",      label: "화기작업" },
+    { key: "riskOther",         label: `기타(발주자 요청)` },
+  ];
+
+  const relatedWorkByType: Array<{ typeName: string; details: string[] }> = [];
+  if (fd.riskHighPlace) {
+    const items = Array.isArray(fd.riskHighPlaceItems) ? fd.riskHighPlaceItems as string[] : [];
+    const details = [...items];
+    if (fd.riskHighPlaceDetail) details.push(fd.riskHighPlaceDetail as string);
+    if (details.length > 0) relatedWorkByType.push({ typeName: "고소작업", details });
+  }
+  if (fd.riskWaterWork) {
+    const items = Array.isArray(fd.riskWaterWorkItems) ? fd.riskWaterWorkItems as string[] : [];
+    const details = [...items];
+    if (fd.riskWaterWorkDetail) details.push(fd.riskWaterWorkDetail as string);
+    if (details.length > 0) relatedWorkByType.push({ typeName: "수변작업", details });
+  }
+  if (fd.riskConfinedSpace && fd.riskConfinedSpaceDetail) relatedWorkByType.push({ typeName: "밀폐공간", details: [fd.riskConfinedSpaceDetail as string] });
+  if (fd.riskPowerOutage && fd.riskPowerOutageDetail) relatedWorkByType.push({ typeName: "정전작업", details: [fd.riskPowerOutageDetail as string] });
+  if (fd.riskFireWork && fd.riskFireWorkDetail) relatedWorkByType.push({ typeName: "화기작업", details: [fd.riskFireWorkDetail as string] });
+  if (fd.riskOther && fd.riskOtherDetail) relatedWorkByType.push({ typeName: "기타", details: [fd.riskOtherDetail as string] });
+
+  const factorItems = [
+    { key: "factorNarrowAccess",  label: "진출입로 협소" },
+    { key: "factorSlippery",      label: "미끄러짐(이끼, 습기)" },
+    { key: "factorSteepSlope",    label: "급경사면" },
+    { key: "factorWaterHazard",   label: "파랑·유수·수심" },
+    { key: "factorRockfall",      label: "낙석·토사붕괴" },
+    { key: "factorNoRailing",     label: "난간 미설치" },
+    { key: "factorLadderNoGuard", label: "사다리·방호울 미설치" },
+    { key: "factorSuffocation",   label: "질식·화재·폭발" },
+    { key: "factorElectricFire",  label: "감전·전기불꽃 화재" },
+    { key: "factorSparkFire",     label: "스파크, 화염에 의한 화재" },
+    { key: "factorOther",         label: `기타${fd.factorOtherDetail ? "(" + fd.factorOtherDetail + ")" : ""}` },
+  ];
+  const checkedFactors = factorItems.filter(f => !!(fd as any)[f.key]);
+
+  const deptLabel = isSelf ? "안전기술본부" : "안전기술본부";
+  const titleLabel = isSelf ? "부장" : "용역감독원";
+
+  return (
+    <Document>
+      <Page size="A4" style={P.page}>
+        {/* 헤더 */}
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 2 }}>
+          <Text style={{ fontSize: 7, color: "#555" }}>{"신청일시 : " + (fd.requestDate || "")}</Text>
+          <Text style={{ fontSize: 7, color: "#555" }}>{"허가일시 : "}</Text>
+        </View>
+
+        <View style={P.titleBox}>
+          <Text style={P.titleMain}>안 전 작 업 허 가 서</Text>
+          <Text style={P.titleSub}>(수급 업체용)</Text>
+        </View>
+
+        {/* 1. 작업허가 신청개요 */}
+        <Text style={P.secHeader}>1. 작업허가 신청개요</Text>
+        <View style={[P.table, { marginBottom: 3 }]}>
+          <View style={P.tr}>
+            <Text style={[P.il, { width: 50 }]}>용 역 명</Text>
+            <Text style={[P.iv, { borderRight: 0 }]}>{taskName || fd.projectName || ""}</Text>
+          </View>
+          <View style={P.tr}>
+            <Text style={[P.il, { width: 50 }]}>신 청 인</Text>
+            <View style={{ flex: 1.5, borderRight: "0.5px solid #7f9fbf", padding: "2 3" }}>
+              <Text style={{ fontSize: 8 }}>{`(부서명) ${fd.applicantCompany || ""}`}</Text>
+            </View>
+            <View style={{ flex: 1, borderRight: "0.5px solid #7f9fbf", padding: "2 3" }}>
+              <Text style={{ fontSize: 8 }}>{`(직책) ${fd.applicantTitle || ""}`}</Text>
+            </View>
+            <View style={{ flex: 1, borderRight: "0.5px solid #7f9fbf", padding: "2 3" }}>
+              <Text style={{ fontSize: 8 }}>{`(성명) ${fd.applicantName || ""}`}</Text>
+            </View>
+            <View style={{ width: 70, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "2 3", gap: 3 }}>
+              <Text style={{ fontSize: 7, color: "#888" }}>(서명)</Text>
+              {applicantSignature
+                ? <Image src={applicantSignature} style={{ width: 45, height: 18, objectFit: "contain" }} />
+                : <View style={{ width: 45, height: 16, border: "0.5px dashed #ccc" }} />}
+            </View>
+          </View>
+          <View style={P.tr}>
+            <Text style={[P.il, { width: 50 }]}>작업시간</Text>
+            <Text style={[P.iv, { flex: 2, borderRight: "0.5px solid #7f9fbf" }]}>{periodText}</Text>
+            <Text style={[P.il, { width: 40 }]}>작업장소</Text>
+            <Text style={[P.iv, { flex: 2, borderRight: 0 }]}>{workLocationText}</Text>
+          </View>
+          <View style={P.tr}>
+            <Text style={[P.il, { width: 50 }]}>작업내용</Text>
+            <Text style={[P.iv, { borderRight: 0, minHeight: 24 }]}>{fd.workContent || ""}</Text>
+          </View>
+          <View style={P.trLast}>
+            <Text style={[P.il, { width: 50 }]}>작업자명단</Text>
+            <Text style={[P.iv, { borderRight: 0, minHeight: 14 }]}>{fd.participants || ""}</Text>
+          </View>
+        </View>
+
+        <Text style={{ fontSize: 8, textAlign: "center", marginBottom: 2 }}>위 작업을 다음의 조건하에서만 허함.</Text>
+
+        {/* 2. 위험공종 확인내용 */}
+        <Text style={P.secHeader}>2. 위험공종 확인내용</Text>
+        <View style={[P.table, { marginBottom: 3 }]}>
+          <View style={P.tr}>
+            <View style={[P.th, { width: 90, flexDirection: "column", justifyContent: "center" }]}>
+              <Text style={{ fontSize: 8, fontWeight: "bold", textAlign: "center" }}>작업허가제</Text>
+              <Text style={{ fontSize: 8, fontWeight: "bold", textAlign: "center" }}>대상공종</Text>
+              <Text style={{ fontSize: 8, fontWeight: "bold", textAlign: "center" }}>(관련공종☑)</Text>
+            </View>
+            <Text style={[P.th, { flex: 1 }]}>관련작업(장소)</Text>
+            <Text style={[P.th, { flex: 1, borderRight: 0 }]}>발생하는 위험요소</Text>
+          </View>
+          <View style={[P.trLast, { minHeight: 80 }]}>
+            <View style={[P.td, { width: 90 }]}>
+              {riskTypeItems.map(item => (
+                <View key={item.key} style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 3 }}>
+                  <CB checked={!!fd[item.key]} size={8} />
+                  <Text style={{ fontSize: 7.5, flex: 1 }}>{item.label}</Text>
+                </View>
+              ))}
+            </View>
+            <View style={[P.td, { flex: 1 }]}>
+              {relatedWorkByType.map((item, i) => (
+                <View key={i} style={{ marginBottom: 4 }}>
+                  <Text style={{ fontSize: 8, fontWeight: "bold", marginBottom: 1 }}>▶ {item.typeName}</Text>
+                  {item.details.map((d, j) => (
+                    <Text key={j} style={{ fontSize: 7.5, color: "#333", marginLeft: 6 }}>- {d}</Text>
+                  ))}
+                </View>
+              ))}
+            </View>
+            <View style={[P.td, { flex: 1, borderRight: 0 }]}>
+              {factorItems.map(f => (
+                <View key={f.key} style={{ flexDirection: "row", alignItems: "center", marginBottom: 3 }}>
+                  <CB checked={!!fd[f.key]} size={8} />
+                  <Text style={{ fontSize: 7.5 }}>{f.label}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        {/* 위험요소/개선대책/재해형태 */}
+        <View style={[P.table, { marginBottom: 3 }]}>
+          <View style={P.tr}>
+            <Text style={[P.th, { flex: 3 }]}>{"위험요소(위험성 평가 결과 포함)"}</Text>
+            <Text style={[P.th, { flex: 3 }]}>{"개선대책(개선대책 결과 포함)"}</Text>
+            <Text style={[P.th, { flex: 1, borderRight: 0 }]}>재해형태</Text>
+          </View>
+          {riskRows.map((row, idx) => (
+            <View key={idx} style={idx === riskRows.length - 1 ? P.trLast : P.tr}>
+              <Text style={[P.td, { flex: 3, minHeight: 18 }]}>{row.riskFactor || ""}</Text>
+              <Text style={[P.td, { flex: 3, minHeight: 18 }]}>{row.improvement || ""}</Text>
+              <Text style={[P.td, { flex: 1, borderRight: 0, minHeight: 18 }]}>{row.disasterType || ""}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* 3. 용역감독 검토내용 */}
+        <Text style={P.secHeader}>3. 용역감독 검토내용</Text>
+        <View style={[P.table, { marginBottom: 3 }]}>
+          <View style={P.tr}>
+            <Text style={[P.th, { flex: 1 }]}>검토의견</Text>
+            <Text style={[P.th, { flex: 1, borderRight: 0 }]}>조치결과</Text>
+          </View>
+          <View style={P.tr}>
+            <Text style={[P.td, { flex: 1, minHeight: 28 }]}>{fd.reviewOpinion || ""}</Text>
+            <Text style={[P.td, { flex: 1, borderRight: 0, minHeight: 28 }]}>{fd.reviewResult || "이상없음"}</Text>
+          </View>
+          {/* 계획확인허가자 */}
+          <View style={P.tr}>
+            <Text style={[P.il, { width: 80 }]}>(계획확인)허가자</Text>
+            <View style={{ flex: 2, borderRight: "0.5px solid #7f9fbf", padding: "2 4", justifyContent: "center" }}>
+              <Text style={{ fontSize: 7.5, color: "#555" }}>{`(부서) ${deptLabel}   (직책) ${titleLabel}`}</Text>
+            </View>
+            <View style={{ width: 70, padding: "2 4", borderRight: "0.5px solid #7f9fbf", justifyContent: "center" }}>
+              <Text style={{ fontSize: 8 }}>{`(성명) ${a1?.approverName || ""}`}</Text>
+            </View>
+            <View style={{ width: 90, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "2 3", gap: 3, borderRight: 0 }}>
+              <Text style={{ fontSize: 7, color: "#888" }}>(서명)</Text>
+              {a1?.signatureData
+                ? <Image src={a1.signatureData} style={{ width: 60, height: 18, objectFit: "contain" }} />
+                : <View style={{ width: 60, height: 16, border: "0.5px dashed #ccc" }} />}
+            </View>
+          </View>
+          {/* 이행확인자 */}
+          <View style={P.trLast}>
+            <Text style={[P.il, { width: 80 }]}>(이행확인)확인자</Text>
+            <View style={{ flex: 2, borderRight: "0.5px solid #7f9fbf", padding: "2 4", justifyContent: "center" }}>
+              <Text style={{ fontSize: 7.5, color: "#555" }}>{`(부서) ${deptLabel}   (직책) ${titleLabel}`}</Text>
+            </View>
+            <View style={{ width: 70, padding: "2 4", borderRight: "0.5px solid #7f9fbf", justifyContent: "center" }}>
+              <Text style={{ fontSize: 8 }}>{`(성명) ${a2?.approverName || ""}`}</Text>
+            </View>
+            <View style={{ width: 90, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "2 3", gap: 3, borderRight: 0 }}>
+              <Text style={{ fontSize: 7, color: "#888" }}>(서명)</Text>
+              {a2?.signatureData
+                ? <Image src={a2.signatureData} style={{ width: 60, height: 18, objectFit: "contain" }} />
+                : <View style={{ width: 60, height: 16, border: "0.5px dashed #ccc" }} />}
+            </View>
+          </View>
+        </View>
+
+        <Text style={{ fontSize: 7.5, color: "#555", marginTop: 1 }}>{"붙임 1. 해당공종 수시 위험성평가표  2. 개선대책 확인자료(사진 등)"}</Text>
+        <View style={P.footer}>
+          <Text style={P.footerText}>{`문서번호: ${documentId.slice(0, 8)}`}</Text>
+          <Text style={P.footerText}>{`작성일시: ${new Date(createdAt).toLocaleString("ko-KR")} | 한국농어촌공사 안전기술본부`}</Text>
+        </View>
+      </Page>
+    </Document>
+  );
+}
+
+export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+  formData: Record<string, any>;
+  approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+  documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
+  workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
+}) {
+  const checks: Array<{ label: string; applicable: string; result: string }> = fd.safetyChecks ?? [];
+  const gasMeasureRows: Array<any> = fd.gasMeasureRows ?? [
+    { time: "전", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
+    { time: "중", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
+    { time: "후", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
+  ];
+  const a1 = approvalLines.find(l => l.approvalOrder === 1);
+  const a2 = approvalLines.find(l => l.approvalOrder === 2);
+  const periodText = buildPeriod(fd);
+  const workLocationText = getWorkLocation(fd, workAddress);
+
+  const formatGasSubstances = (row: any) => {
+    const parts: string[] = [];
+    if (row.o2)  parts.push(`O₂: ${row.o2}%`);
+    if (row.co2) parts.push(`CO₂: ${row.co2}%`);
+    if (row.h2s) parts.push(`H₂S: ${row.h2s}ppm`);
+    if (row.co)  parts.push(`CO: ${row.co}ppm`);
+    if (row.ex)  parts.push(`EX: ${row.ex}%`);
+    if (row.substances) parts.push(row.substances);
+    return parts.join("  ");
+  };
+
+  return (
+    <Document>
+      <Page size="A4" style={S.page}>
+        <View style={S.titleBox}>
+          <Text style={S.titleMain}>밀폐공간 작업 허가서<Text style={{ fontSize: 13, fontWeight: "normal" }}>(용역업체용)</Text></Text>
+        </View>
+        <View style={S.table}>
+          <ApplicantRow applicantCompany={fd.applicantCompany} applicantTitle={fd.applicantTitle} applicantName={fd.applicantName} signatureData={applicantSignature} labelWidth={100} />
+          {[
+            { label: "용 역 명",    val: taskName || fd.serviceName || "" },
+            { label: "작업수행기간", val: periodText },
+            { label: "작업장소",     val: workLocationText },
+            { label: "작업내용",     val: fd.workContent || "" },
+            { label: "출입자 명단", val: fd.entryList || "" },
+          ].map((row, i, arr) => (
+            <View key={i} style={i === arr.length - 1 ? S.trLast : S.tr}>
+              <Text style={[S.il, { width: 100 }]}>{row.label}</Text>
+              <Text style={[S.iv, { borderRight: 0, minHeight: 16 }]}>{row.val}</Text>
+            </View>
+          ))}
+        </View>
+        <Text style={{ fontSize: 9, textAlign: "center", marginBottom: 3 }}>위 공간에서의 작업을 다음의 조건에서만 허함.</Text>
+
+        <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "3 6", marginBottom: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Text style={{ fontSize: 10, fontWeight: "bold" }}>1. 화기작업 허가필요유무 :   </Text>
+            <CB checked={fd.needFireWork === "필요"} /><Text style={{ fontSize: 10, marginRight: 14 }}> 필요   </Text>
+            <CB checked={fd.needFireWork === "불필요"} /><Text style={{ fontSize: 10 }}> 불필요</Text>
+          </View>
+        </View>
+
+        <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "3 6", marginBottom: 3 }}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Text style={{ fontSize: 10, fontWeight: "bold" }}>2. 내연기관(양수기) 또는 갈탄 등의 사용여부 :   </Text>
+            <CB checked={fd.useInternalEngine === "사용"} /><Text style={{ fontSize: 10, marginRight: 14 }}> 사용   </Text>
+            <CB checked={fd.useInternalEngine === "미사용"} /><Text style={{ fontSize: 10 }}> 미사용</Text>
+          </View>
+        </View>
+
+        <Text style={S.secHeader}>3. 안전조치 요구사항</Text>
+        <View style={S.table}>
+          <View style={S.tr}>
+            <Text style={[S.th, { flex: 4 }]}>확인항목</Text>
+            <Text style={[S.th, { flex: 1, textAlign: "center" }]}>해당여부</Text>
+            <Text style={[S.th, { flex: 2, borderRight: 0, textAlign: "center" }]}>확인결과</Text>
+          </View>
+          {checks.map((item, idx) => {
+            const isBold = item.label?.startsWith("●") || item.label?.startsWith("★");
+            const displayLabel = item.label?.replace(/^[●★]/, "") || item.label;
+            const applicable = item.applicable || "해당없음";
+            const result = item.result || (applicable === "해당" ? "조치완료" : "해당없음");
+            return (
+              <View key={idx} style={idx === checks.length - 1 ? S.trLast : S.tr}>
+                <Text style={[S.td, { flex: 4, minHeight: 14, fontWeight: isBold ? "bold" : "normal", backgroundColor: isBold ? "#eef4fb" : C.white }]}>
+                  {isBold ? `●${displayLabel}` : `○${displayLabel}`}
+                </Text>
+                <Text style={[S.tdc, { flex: 1, minHeight: 14, fontSize: 8, backgroundColor: applicable === "해당" ? "#dce6f0" : C.white }]}>
+                  {applicable}
+                </Text>
+                <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 14, fontSize: 8, backgroundColor: applicable === "해당" ? "#ebf3e8" : C.white }]}>
+                  {result}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+
+        <Text style={S.secHeader}>4. 산소 및 유해가스 농도 측정결과</Text>
+        <View style={S.table}>
+          <View style={[S.tr, { alignItems: "stretch" }]}>
+            <Text style={[S.th, { width: 52, textAlign: "center" }]}>측정시간</Text>
+            <Text style={[S.th, { flex: 3 }]}>측정물질명 및 농도</Text>
+            <Text style={[S.th, { flex: 1.2 }]}>측정자</Text>
+            <View style={{ flex: 1, borderRight: 0 }}>
+              <Text style={{ fontSize: 8.5, fontWeight: "bold", backgroundColor: C.labelBg, textAlign: "center", padding: "2 2", borderBottom: "0.5px solid " + C.border }}>인원 확인(감시인)</Text>
+              <View style={{ flexDirection: "row", flex: 1 }}>
+                <Text style={{ flex: 1, fontSize: 8, fontWeight: "bold", backgroundColor: C.labelBg, textAlign: "center", padding: "2 1", borderRight: "0.5px solid " + C.border }}>입</Text>
+                <Text style={{ flex: 1, fontSize: 8, fontWeight: "bold", backgroundColor: C.labelBg, textAlign: "center", padding: "2 1" }}>출</Text>
+              </View>
+            </View>
+          </View>
+          {gasMeasureRows.map((row, idx) => (
+            <View key={idx} style={[idx === gasMeasureRows.length - 1 ? S.trLast : S.tr, { alignItems: "stretch", minHeight: 28 }]}>
+              <View style={{ width: 52, borderRight: "0.5px solid " + C.border, padding: "3 3", alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ fontSize: 9, fontWeight: "bold" }}>{row.time}</Text>
+                <Text style={{ fontSize: 8 }}>{row.hour || "  "}시 {row.minute || "  "}분</Text>
+              </View>
+              <Text style={[S.td, { flex: 3, minHeight: 28, fontSize: 8 }]}>{formatGasSubstances(row)}</Text>
+              <Text style={[S.td, { flex: 1.2, minHeight: 28, fontSize: 8 }]}>{row.measurer || ""}</Text>
+              <View style={{ flex: 1, flexDirection: "row", borderRight: 0 }}>
+                <Text style={{ flex: 1, fontSize: 8, textAlign: "center", padding: "3 2", borderRight: "0.5px solid " + C.border }}>{row.entryCount || ""}</Text>
+                <Text style={{ flex: 1, fontSize: 8, textAlign: "center", padding: "3 2" }}>{row.exitCount || ""}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <Text style={S.secHeader}>5. 특별조치 필요사항</Text>
+        <View style={[S.table, { marginBottom: 5 }]}>
+          <Text style={[S.td, { borderRight: 0, minHeight: 20 }]}>{fd.specialMeasures || ""}</Text>
+        </View>
+
+        <ApproverSection entries={[
+          { roleLabel: "(계획확인) 허가자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a1?.approverName, signatureData: a1?.signatureData },
+          { roleLabel: "(이행확인) 확인자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a2?.approverName, signatureData: a2?.signatureData },
+        ]} />
+        <Footer documentId={documentId} createdAt={createdAt} />
+      </Page>
+    </Document>
+  );
+}
+
+// ===== 붙임3: 휴일작업신청서 =====
+export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+  formData: Record<string, any>;
+  approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+  documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
+  workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
+}) {
+  const participants: Array<{ role: string; name: string; phone: string }> = fd.participants ?? [];
+  const a1 = approvalLines.find(l => l.approvalOrder === 1);
+  const a2 = approvalLines.find(l => l.approvalOrder === 2);
+  const periodText = buildPeriod(fd);
+  const workLocationText = getWorkLocation(fd, workAddress);
+
+  return (
+    <Document>
+      <Page size="A4" style={S.page}>
+        <View style={S.titleBox}><Text style={S.titleMain}>안전관리 휴일작업 신청서</Text></View>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
+          <Text style={{ fontSize: 10.5 }}>{`작업일시: ${periodText}`}</Text>
+          <Text style={{ fontSize: 10 }}>{`신고일시: ${fd.requestDate || ""}`}</Text>
+        </View>
+        <Text style={[S.secHeader, { marginTop: 4 }]}>1. 용역 개요</Text>
+        <View style={S.table}>
+          <View style={S.tr}><Text style={[S.il, { width: 58 }]}>용역명</Text><Text style={[S.iv, { borderRight: 0 }]}>{taskName || fd.serviceName || ""}</Text></View>
+          <View style={S.trLast}>
+            <Text style={[S.il, { width: 58 }]}>수급인</Text>
+            <Text style={[S.iv, { flex: 1, borderRight: "0.5px solid " + C.border }]}>{fd.contractorCompany || ""}</Text>
+            <Text style={[S.il, { width: 55 }]}>용역기간</Text>
+            <Text style={[S.iv, { flex: 1, borderRight: 0 }]}>{`${fd.contractPeriodStart || fd.workStartDate || ""} ~ ${fd.contractPeriodEnd || fd.workEndDate || ""}`}</Text>
+          </View>
+        </View>
+        <Text style={S.secHeader}>2. 휴일작업 개요</Text>
+        <View style={S.table}>
+          {[
+            [{ w: 75, label: "작업대상 시설물", val: fd.facilityName }, { w: 55, label: "시설 관리자", val: `${fd.facilityManager || ""} (${fd.facilityManagerGrade || ""})` }],
+            [{ w: 75, label: "위치", val: workLocationText }, { w: 55, label: "작업위치", val: fd.workPosition }],
+            [{ w: 75, label: "작업공종", val: fd.workContents }, { w: 55, label: "위험요소", val: fd.riskFactors }],
+          ].map((cols, ri) => (
+            <View key={ri} style={S.tr}>
+              {cols.map((c, ci) => (
+                <React.Fragment key={ci}>
+                  <Text style={[S.il, { width: c.w }]}>{c.label}</Text>
+                  <Text style={[S.iv, ci < cols.length - 1 ? { borderRight: "0.5px solid " + C.border } : { borderRight: 0 }]}>{c.val || ""}</Text>
+                </React.Fragment>
+              ))}
+            </View>
+          ))}
+          <View style={S.trLast}><Text style={[S.il, { width: 75 }]}>개선대책</Text><Text style={[S.iv, { borderRight: 0 }]}>{fd.improvementMeasures || ""}</Text></View>
+        </View>
+        <Text style={S.secHeader}>휴일작업 참여자(감독사 포함)</Text>
+        <View style={S.table}>
+          <View style={S.tr}>
+            <Text style={[S.th, { flex: 2 }]}>직위구분</Text>
+            <Text style={[S.th, { flex: 2 }]}>성명</Text>
+            <Text style={[S.th, { flex: 2, borderRight: 0 }]}>연락처</Text>
+          </View>
+          {participants.map((p, idx) => (
+            <View key={idx} style={idx === participants.length - 1 ? S.trLast : S.tr}>
+              <Text style={[S.td, { flex: 2, minHeight: 24 }]}>{p.role || ""}</Text>
+              <Text style={[S.td, { flex: 2, minHeight: 24 }]}>{p.name || ""}</Text>
+              <Text style={[S.td, { flex: 2, borderRight: 0, minHeight: 24 }]}>{p.phone || ""}</Text>
+            </View>
+          ))}
+        </View>
+        <Text style={S.secHeader}>3. 용역감독 검토내용</Text>
+        <View style={S.table}>
+          <View style={S.tr}>
+            <Text style={[S.th, { flex: 1 }]}>검토의견</Text>
+            <Text style={[S.th, { flex: 1, borderRight: 0 }]}>조치결과</Text>
+          </View>
+          <View style={S.trLast}>
+            <Text style={[S.td, { flex: 1, minHeight: 50 }]}>{fd.reviewOpinion || ""}</Text>
+            <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 50 }]}>{fd.reviewResult || ""}</Text>
+          </View>
+        </View>
+        <Text style={{ fontSize: 10, textAlign: "center", marginVertical: 4 }}>위와 같이 휴일작업을 신청하오니 검토하여 승인하여 주시기 바랍니다.</Text>
+        <View style={{ border: "0.8px solid " + C.border, marginBottom: 3 }}>
+          {/* 신청자 행 */}
+          <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 36 }}>
+            <Text style={{ fontSize: 9, width: 55, color: C.black }}>신청자</Text>
+            <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${fd.applicantOrg || ""}  (안전보건관리책임자) ${fd.applicantName || ""}`}</Text>
+            <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
+            {applicantSignature
+              ? <Image src={applicantSignature} style={{ width: 50, height: 28, objectFit: "contain" }} />
+              : <View style={{ width: 50, height: 28 }} />}
+          </View>
+          {/* 검토자 행 */}
+          <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 28, borderTop: "0.5px solid " + C.border }}>
+            <Text style={{ fontSize: 9, width: 55, color: C.black }}>검토자</Text>
+            <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${a1?.approverOrg || ""}  (용역감독원) ${a1?.approverName || ""}`}</Text>
+            <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
+            {a1?.signatureData
+              ? <Image src={a1.signatureData} style={{ width: 50, height: 28, objectFit: "contain" }} />
+              : <View style={{ width: 50, height: 28 }} />}
+          </View>
+          {/* 승인자 행 */}
+          <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 28, borderTop: "0.5px solid " + C.border }}>
+            <Text style={{ fontSize: 9, width: 55, color: C.black }}>승인자</Text>
+            <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${a2?.approverOrg || ""}  (관리감독자) ${a2?.approverName || ""}`}</Text>
+            <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
+            {a2?.signatureData
+              ? <Image src={a2.signatureData} style={{ width: 50, height: 28, objectFit: "contain" }} />
+              : <View style={{ width: 50, height: 28 }} />}
+          </View>
+        </View>
+        <Text style={{ fontSize: 13, fontWeight: "bold", textAlign: "center", marginTop: 6 }}>한국농어촌공사 안전기술본부 귀하</Text>
+        <Footer documentId={documentId} createdAt={createdAt} />
+      </Page>
+    </Document>
+  );
+}
+
+// ===== 붙임4: 정전작업허가서 =====
+export function PowerOutagePDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+  formData: Record<string, any>;
+  approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+  documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
+  workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
+}) {
+  const checks: Array<{ label: string; applicable: string; result: string }> = fd.safetyChecks ?? [];
+  const inspItems: Array<{ equipment: string; cutoffConfirmer: string; electrician: string; siteRepair: string }> = fd.inspectionItems ?? [];
+  const a1 = approvalLines.find(l => l.approvalOrder === 1);
+  const a2 = approvalLines.find(l => l.approvalOrder === 2);
+  const inspRows = inspItems.length > 0 ? inspItems : [
+    { equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" },
+    { equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" },
+  ];
+  const periodText = buildPeriod(fd);
+  const workLocationText = getWorkLocation(fd, workAddress);
+
+  return (
+    <Document>
+      <Page size="A4" style={S.page}>
+        <View style={[S.titleBox, { marginBottom: 5 }]}>
+          <Text style={{ fontSize: 20, fontWeight: "bold", textAlign: "center" }}>
+            {"정전작업 허가서"}
+            <Text style={{ fontSize: 13, fontWeight: "normal" }}>{"(용역업체용)"}</Text>
+          </Text>
+        </View>
+        <View style={S.table}>
+          <ApplicantRow applicantCompany={fd.applicantCompany} applicantTitle={fd.applicantTitle} applicantName={fd.applicantName} signatureData={applicantSignature} labelWidth={102} />
+          {[
+            { label: "용  역  명",    val: taskName || fd.serviceName || "" },
+            { label: "작업수행기간", val: periodText },
+            { label: "작업장소",     val: workLocationText },
+            { label: "작업내용",     val: fd.workContent || "" },
+            { label: "입장자 명단", val: fd.entryList || "" },
+          ].map((row, i, arr) => (
+            <View key={i} style={i === arr.length - 1 ? S.trLast : S.tr}>
+              <Text style={[S.il, { width: 102 }]}>{row.label}</Text>
+              <Text style={[S.iv, { borderRight: 0, minHeight: 20 }]}>{row.val}</Text>
+            </View>
+          ))}
+        </View>
+        <Text style={{ fontSize: 10, textAlign: "center", marginBottom: 4 }}>위 작업을 다음의 조건하에서만 허가함.</Text>
+        <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "3 6", marginBottom: 1 }}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Text style={{ fontSize: 10, fontWeight: "bold" }}>1. 밀폐공간작업 허가 필요여부 :   </Text>
+            <CB checked={fd.needConfinedSpace === "필요"} /><Text style={{ fontSize: 10, marginRight: 14 }}> 필요   </Text>
+            <CB checked={fd.needConfinedSpace === "불필요"} /><Text style={{ fontSize: 10 }}> 불필요</Text>
+          </View>
+        </View>
+        <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "3 6", marginBottom: 3 }}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Text style={{ fontSize: 10, fontWeight: "bold" }}>2. 화기작업 허가 필요여부 :   </Text>
+            <CB checked={fd.needFireWork === "필요"} /><Text style={{ fontSize: 10, marginRight: 14 }}> 필요   </Text>
+            <CB checked={fd.needFireWork === "불필요"} /><Text style={{ fontSize: 10 }}> 불필요</Text>
+          </View>
+        </View>
+        <Text style={S.secHeader}>3. 안전조치 이행사항</Text>
+        <View style={S.table}>
+          <View style={S.tr}>
+            <Text style={[S.th, { flex: 4 }]}>확인항목</Text>
+            <Text style={[S.th, { flex: 1 }]}>해당여부</Text>
+            <Text style={[S.th, { flex: 2, borderRight: 0 }]}>확인결과</Text>
+          </View>
+          {checks.map((item, idx) => (
+            <View key={idx} style={idx === checks.length - 1 ? S.trLast : S.tr}>
+              <Text style={[S.td, { flex: 4, minHeight: 14, backgroundColor: idx % 2 === 1 ? C.rowEven : C.white }]}>{`▶ ${item.label}`}</Text>
+              <Text style={[S.tdc, { flex: 1, minHeight: 14, backgroundColor: item.applicable === "해당" ? "#dce6f0" : C.white }]}>{item.applicable || ""}</Text>
+              <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 14, backgroundColor: item.result ? "#ebf3e8" : C.white }]}>{item.result || ""}</Text>
+            </View>
+          ))}
+        </View>
+        <Text style={S.secHeader}>4. 기기 확인 결과</Text>
+        <View style={S.table}>
+          <View style={S.tr}>
+            <Text style={[S.th, { flex: 1 }]}>점검기기</Text>
+            <Text style={[S.th, { flex: 1 }]}>차단확인자</Text>
+            <Text style={[S.th, { flex: 1 }]}>전기담당자</Text>
+            <Text style={[S.th, { flex: 1, borderRight: 0 }]}>현장정비</Text>
+          </View>
+          {inspRows.map((item, idx) => (
+            <View key={idx} style={idx === inspRows.length - 1 ? S.trLast : S.tr}>
+              <Text style={[S.td, { flex: 1, minHeight: 22 }]}>{item.equipment || ""}</Text>
+              <Text style={[S.td, { flex: 1, minHeight: 22 }]}>{item.cutoffConfirmer || ""}</Text>
+              <Text style={[S.td, { flex: 1, minHeight: 22 }]}>{item.electrician || ""}</Text>
+              <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 22 }]}>{item.siteRepair || ""}</Text>
+            </View>
+          ))}
+        </View>
+        <Text style={S.secHeader}>5. 특별조치 필요사항</Text>
+        <View style={[S.table, { marginBottom: 5 }]}>
+          <Text style={[S.td, { borderRight: 0, minHeight: 20 }]}>{fd.specialMeasures || ""}</Text>
+        </View>
+        <ApproverSection entries={[
+          { roleLabel: "(계획확인) 허가자", name: a1?.approverName, signatureData: a1?.signatureData },
+          { roleLabel: "(이행확인) 확인자", name: a2?.approverName, signatureData: a2?.signatureData },
+        ]} />
+        <Footer documentId={documentId} createdAt={createdAt} />
+      </Page>
+    </Document>
+  );
+}
+
+// ===== TBM Tool Box Meeting 회의록 PDF =====
+export function TbmReportPDF({ report }: { report: Record<string, any> }) {
+  const T = StyleSheet.create({
+    page: { fontFamily: "NanumGothic", fontSize: 8.5, paddingTop: 8, paddingBottom: 20, paddingHorizontal: 10, color: "#000" },
+    topNote: { fontSize: 7, color: "#555", marginBottom: 4 },
+    titleBox: { borderBottom: "1.5px solid #000", paddingVertical: 7, marginBottom: 4 },
+    titleMain: { fontSize: 16, fontWeight: "bold", textAlign: "center" },
+    table: { border: "0.8px solid #000", marginBottom: 3 },
+    tr: { flexDirection: "row", borderBottom: "0.5px solid #000", minHeight: 20 },
+    trLast: { flexDirection: "row", minHeight: 20 },
+    th: { backgroundColor: "#d9e1f2", fontWeight: "bold", padding: "3 5", fontSize: 8.5, borderRight: "0.5px solid #000", justifyContent: "center" },
+    td: { padding: "3 5", fontSize: 8.5, borderRight: "0.5px solid #000", flexShrink: 1 },
+    tdLast: { padding: "3 5", fontSize: 8.5, flexShrink: 1 },
+    secHeader: { backgroundColor: "#bdd7ee", padding: "2 5", fontSize: 8.5, fontWeight: "bold", borderBottom: "0.5px solid #000", borderTop: "0.5px solid #000" },
+    footer: { position: "absolute", bottom: 6, left: 10, right: 10, borderTop: "0.5px solid #aaa", paddingTop: 2, flexDirection: "row", justifyContent: "space-between" },
+    footerText: { fontSize: 6.5, color: "#666" },
+    checkBox: { width: 9, height: 9, border: "0.8px solid #333", marginRight: 2, alignItems: "center", justifyContent: "center" },
+  });
+
+  // photoUrl 파싱: JSON 배열 또는 단일 URL
+  const parsePhotos = (photoUrl: string): Array<{url: string; caption: string}> => {
+    if (!photoUrl) return [];
+    try {
+      const parsed = JSON.parse(photoUrl);
+      if (Array.isArray(parsed)) return parsed;
+      return [{ url: photoUrl, caption: "" }];
+    } catch {
+      return [{ url: photoUrl, caption: "" }];
+    }
+  };
+
+  const photos = parsePhotos(report.photoUrl || "");
+
+  const timeStr = report.eduStartTime && report.eduEndTime
+    ? `${report.reportDate} ${report.eduStartTime}:00 (${report.eduStartTime}~${report.eduEndTime}) 작업 날짜와 동일함`
+    : report.reportDate || "";
+
+  const riskRows = [
+    { factor: report.riskFactor1, measure: report.riskMeasure1 },
+    { factor: report.riskFactor2, measure: report.riskMeasure2 },
+    { factor: report.riskFactor3, measure: report.riskMeasure3 },
+  ].filter(r => r.factor);
+
+  const elements = [
+    report.riskElement1, report.riskElement2, report.riskElement3,
+  ].filter(Boolean);
+
+  // 사진을 2장씩 나눠 표시 (A4에 맞게)
+  const photoRows: Array<Array<{url:string;caption:string}>> = [];
+  for (let i = 0; i < photos.length; i += 2) {
+    photoRows.push(photos.slice(i, i + 2));
+  }
+
+  return (
+    <Document>
+      <Page size="A4" style={T.page}>
+        <Text style={T.topNote}>건설기술 진흥법 시행령 103조(안전교육) 제3항에 따른 안전교육내용 기록</Text>
+
+        <View style={T.titleBox}>
+          <Text style={T.titleMain}>Tool Box Meeting 회의록</Text>
+        </View>
+
+        <View style={T.table}>
+          <View style={T.tr}>
+            <Text style={[T.th, { width: 60 }]}>TBM리더</Text>
+            <View style={[T.td, { flex: 2, flexDirection: "row", alignItems: "center" }]}>
+              <Text style={{ fontSize: 8.5 }}>{"◆ 소속 : "}{report.contractorName || ""}</Text>
+            </View>
+            <Text style={[T.th, { width: 35 }]}>이름</Text>
+            <Text style={[T.td, { width: 55 }]}>{report.instructorName || ""}</Text>
+            <View style={{ width: 70, padding: "2 4", flexDirection: "row", alignItems: "center", justifyContent: "flex-start", gap: 4 }}>
+              <Text style={{ fontSize: 8, color: "#888" }}>(서명)</Text>
+              {report.signatureData
+                ? <Image src={report.signatureData} style={{ height: 22, width: 50, objectFit: "contain" }} />
+                : <View style={{ width: 50, height: 18, border: "0.5px dashed #ccc" }} />}
+            </View>
+          </View>
+          <View style={T.tr}>
+            <Text style={[T.th, { width: 60 }]}>TBM 일시</Text>
+            <Text style={[T.tdLast, { flex: 1 }]}>{timeStr}</Text>
+          </View>
+          <View style={T.tr}>
+            <Text style={[T.th, { width: 60 }]}>작업명</Text>
+            <Text style={[T.tdLast, { flex: 1 }]}>{report.projectName || ""}</Text>
+          </View>
+          <View style={T.tr}>
+            <Text style={[T.th, { width: 60 }]}>작업내용</Text>
+            <Text style={[T.tdLast, { flex: 1 }]}>{report.workToday || ""}</Text>
+          </View>
+          <View style={T.trLast}>
+            <Text style={[T.th, { width: 60 }]}>TBM 장소</Text>
+            <Text style={[T.td, { flex: 2 }]}>{report.workAddress || ""}</Text>
+            <View style={{ width: 55, backgroundColor: "#d9e1f2", borderRight: "0.5px solid #000", padding: "3 3", justifyContent: "center" }}>
+              <Text style={{ fontSize: 7.5, fontWeight: "bold", textAlign: "center" }}>위험성평가</Text>
+              <Text style={{ fontSize: 7.5, fontWeight: "bold", textAlign: "center" }}>실시여부</Text>
+            </View>
+            <View style={{ width: 70, flexDirection: "row", alignItems: "center", padding: "3 5", gap: 4 }}>
+              <View style={T.checkBox}><Text style={{ fontSize: 7, color: "#000" }}>v</Text></View>
+              <Text style={{ fontSize: 8 }}>예  </Text>
+              <View style={T.checkBox} />
+              <Text style={{ fontSize: 8 }}>아니오</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={T.table}>
+          <View style={T.tr}>
+            <Text style={[T.th, { flex: 1 }]}>잠재위험요인(수시위험성평가와 연계)</Text>
+            <Text style={[T.th, { flex: 1, borderRight: 0 }]}>대책(제거&gt;대체&gt;통제 순서고려)</Text>
+          </View>
+          {riskRows.length > 0 ? riskRows.map((r, i) => (
+            <View key={i} style={i === riskRows.length - 1 ? T.trLast : T.tr}>
+              <Text style={[T.td, { flex: 1, minHeight: 18 }]}>{`${i + 1}. ${r.factor}`}</Text>
+              <Text style={[T.tdLast, { flex: 1, minHeight: 18 }]}>{`${i + 1}. ${r.measure || ""}`}</Text>
+            </View>
+          )) : (
+            <View style={T.trLast}>
+              <Text style={[T.td, { flex: 1, minHeight: 18 }]}></Text>
+              <Text style={[T.tdLast, { flex: 1, minHeight: 18 }]}></Text>
+            </View>
+          )}
+        </View>
+
+        {(report.mainRiskFactor || report.mainRiskMeasure) ? (
+          <View style={[T.table, { marginBottom: 3 }]}>
+            <View style={T.trLast}>
+              <Text style={[T.th, { width: 60, fontSize: 8 }]}>중점위험 요인</Text>
+              <Text style={[T.td, { flex: 1 }]}>{"선정: "}{report.mainRiskFactor || ""}</Text>
+              <Text style={[T.th, { width: 35, fontSize: 8 }]}>대책</Text>
+              <Text style={[T.tdLast, { flex: 1 }]}>{report.mainRiskMeasure || ""}</Text>
+            </View>
+          </View>
+        ) : null}
+
+        <Text style={T.secHeader}>{"■ 작업 전 안전조치 확인 ※ 위 잠재위험요인(중점위험 포함) 안전조치 여부 재확인"}</Text>
+        <View style={[T.table, { marginTop: 0 }]}>
+          <View style={T.tr}>
+            <Text style={[T.th, { flex: 2 }]}>잠재위험요소(중점위험 포함)</Text>
+            <Text style={[T.th, { width: 100, borderRight: 0 }]}>조치여부</Text>
+          </View>
+          {elements.length > 0 ? elements.map((el, i) => (
+            <View key={i} style={i === elements.length - 1 ? T.trLast : T.tr}>
+              <Text style={[T.td, { flex: 2 }]}>{`${i + 1}. ${el}`}</Text>
+              <View style={{ width: 100, flexDirection: "row", alignItems: "center", padding: "3 5", gap: 4 }}>
+                <View style={T.checkBox}><Text style={{ fontSize: 7 }}>v</Text></View>
+                <Text style={{ fontSize: 8 }}>예  </Text>
+                <View style={T.checkBox} />
+                <Text style={{ fontSize: 8 }}>아니오</Text>
+              </View>
+            </View>
+          )) : (
+            <View style={T.trLast}>
+              <Text style={[T.td, { flex: 2, minHeight: 16 }]}></Text>
+              <Text style={[T.tdLast, { width: 100, minHeight: 16 }]}></Text>
+            </View>
+          )}
+        </View>
+
+        <Text style={T.secHeader}>{"■ 작업 전 일일 안전점검 시행 결과 ※ 공사현장 일일안전점검을 통해 위험성평가 이행 확인"}</Text>
+        <Text style={T.secHeader}>{"■ 기타사항(교육내용, 제안사항, 아차사고 등)"}</Text>
+        <View style={{ border: "0.5px solid #000", borderTop: 0, padding: "3 5", minHeight: 35, marginBottom: 3 }}>
+          <Text style={{ fontSize: 8.5 }}>{report.otherContent || ""}</Text>
+        </View>
+
+        {/* TBM 실시사진 + 투입인원 + 투입장비 */}
+        <View style={T.table}>
+          <View style={T.tr}>
+            <Text style={[T.th, { flex: 2 }]}>TBM 실시사진</Text>
+            <Text style={[T.th, { flex: 1 }]}>투입인원</Text>
+            <Text style={[T.th, { flex: 1, borderRight: 0 }]}>투입장비</Text>
+          </View>
+          <View style={T.trLast}>
+            <View style={[T.td, { flex: 2, minHeight: photos.length > 0 ? 160 : 80 }]}>
+              {photos.length > 0 ? (
+                <View style={{ flexDirection: "column", gap: 4 }}>
+                  {photoRows.map((row, ri) => (
+                    <View key={ri} style={{ flexDirection: "row", gap: 4 }}>
+                      {row.map((photo, pi) => (
+                        <View key={pi} style={{ flex: 1 }}>
+                          <Image src={photo.url} style={{ width: "100%", height: photos.length === 1 ? 130 : 75, objectFit: "cover" }} />
+                          {photo.caption ? <Text style={{ fontSize: 7, color: "#555", marginTop: 1, textAlign: "center" }}>{photo.caption}</Text> : null}
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={{ fontSize: 8, color: "#aaa", textAlign: "center", marginTop: 20 }}>사진 없음</Text>
+              )}
+            </View>
+            <View style={[T.td, { flex: 1, minHeight: 80, padding: "3 5" }]}>
+              <Text style={{ fontSize: 8.5 }}>{report.workerCount ? `${report.workerCount}명` : ""}</Text>
+              {report.newWorkerCount ? <Text style={{ fontSize: 8 }}>{`(신규 ${report.newWorkerCount}명)`}</Text> : null}
+            </View>
+            <Text style={[T.tdLast, { flex: 1, minHeight: 80 }]}>{report.equipment || "없음"}</Text>
+          </View>
+        </View>
+
+        <View style={T.footer}>
+          <Text style={T.footerText}>{`TBM ID: ${(report.id || "").slice(0, 8)}`}</Text>
+          <Text style={T.footerText}>{`발급일시: ${new Date().toLocaleString("ko-KR")} | 본 문서는 전자문서로 발급되었습니다`}</Text>
+        </View>
+      </Page>
+    </Document>
+  );
+}
