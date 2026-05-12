@@ -1386,7 +1386,7 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             <input type="text" value={form.facilityName} onChange={e => onChange("facilityName", e.target.value)} className={inputClass} placeholder="예) OO저수지" />
           </FormInput>
           <FormInput label="시설물 위치 (상세주소)">
-            <input type="text" value={(form as any).facilityAddress || ""} onChange={e => onChange("facilityAddress", e.target.value)} className={inputClass + " mb-1.5"} placeholder="지도에서 선택하면 자동입력" />
+            <input type="text" value={form.facilityLocation || ""} onChange={e => onChange("facilityLocation", e.target.value)} className={inputClass + " mb-1.5"} placeholder="지도에서 선택하면 자동입력" />
             <LocationField workLatitude={workLatitude} workAddress={workAddress} onOpenLocation={onOpenLocation} onClearLocation={onClearLocation} />
           </FormInput>
           <FormInput label="시설 관리자">

@@ -32,7 +32,7 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> 
   DRAFT:           { bg: "bg-gray-100",   text: "text-gray-500",   label: "작성중" },
   SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료" },
   IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중" },
-  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종검토 진행중" },
+  IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종결재 진행중" },
   APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료" },
   REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "반려" },
 };
