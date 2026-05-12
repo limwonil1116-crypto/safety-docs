@@ -45,20 +45,33 @@ export async function POST(req: NextRequest) {
     const originalType = (body as any).originalType || documentType;
     if (documentType === "REVIEW_OPINION") {
       const docLabel = typeLabel[originalType] || "안전서류";
+      // formData에서 위험요소/안전조치 정보 추출
+      const riskHighPlace = fd.riskHighPlace ? "고소작업(2m이상)" : "";
+      const riskWater = fd.riskWaterWork ? "수상·수변작업" : "";
+      const riskConfined = fd.riskConfinedSpace ? "밀폐공간작업" : "";
+      const riskFire = fd.riskFireWork ? "화기작업" : "";
+      const riskPower = fd.riskPowerOutage ? "정전작업" : "";
+      const riskList = [riskHighPlace,riskWater,riskConfined,riskFire,riskPower].filter(Boolean).join(", ") || "미입력";
+      const safetyChecks = Array.isArray(fd.safetyChecks)
+        ? (fd.safetyChecks as any[]).filter((c:any) => c.applicable === "해당").map((c:any) => c.label?.replace(/^[\u25cf\u2605]/,"")||"").join(", ")
+        : "";
+      const participants = fd.participants || fd.workContent || "";
       const prompt = `당신은 한국농어얄공사 안전관리 용역감독원입니다.
-${docLabel}에 대한 검토의견 초안을 작성해주세요.
+${docLabel} 신청서를 검토하고 구체적인 안전조치 검토의견 초안을 작성해주세요.
 
 [작업 정보]
 - 용역명: ${taskName || "미입력"}
 - 작업내용: ${workContent || "미입력"}
 - 작업위치: ${workLocation || "미입력"}
+- 위험공종: ${riskList}
+- 안전조치 해당항목: ${safetyChecks || "미입력"}
 
-조건:
-- 5문장 이상으로 작성
-- 현장 안전조치 이행 확인 및 미이행 사항 중심
-- 안전법령 및 지침 준수 여부 포함
-- 위험요소별 안전조치 권고사항 포함
-- 한국어 수식어체 문장 (마크다운 없이)`;
+작성 요령:
+1. 각 위험공종별 구체적인 안전조치 사항을 상세히 서술
+2. 법적 근거(산업안전보건법 등)를 포함하여 작성
+3. 최소 5가지 이상 항목을 "- "으로 시작하는 문장으로 작성
+4. 마크다운(해시, 볼드) 없이 순수 텍스트로 작성
+5. 한국어 수식어체 문장체`;
       const specialMeasures = await callGemini(prompt, 1500);
       return NextResponse.json({ specialMeasures });
     }
