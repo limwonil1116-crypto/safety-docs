@@ -1338,6 +1338,20 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
 }) {
   const updateP = (idx: number, f: keyof Participant3, v: string) =>
     onChange("participants", form.participants.map((p, i) => i === idx ? { ...p, [f]: v } : p));
+  const [aiLoading, setAiLoading] = useState(false);
+  const handleAiRisk = async () => {
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/ai/special-measures", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentType: "HOLIDAY_WORK", formData: { ...form, taskName } }),
+      });
+      const data = await res.json();
+      if (data.riskFactors) onChange("riskFactors", data.riskFactors);
+      if (data.improvementMeasures) onChange("improvementMeasures", data.improvementMeasures);
+    } catch { alert("AI 생성 실패"); }
+    finally { setAiLoading(false); }
+  };
   return (
     <>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -1348,7 +1362,7 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             onChangeStartDate={v => onChange("workStartDate", v)} onChangeEndDate={v => onChange("workEndDate", v)}
             onChangeStartTime={v => onChange("workStartTime", v)} onChangeEndTime={v => onChange("workEndTime", v)} />
           <FormInput label="용역명" required><input type="text" value={taskName} readOnly className="w-full px-3 py-3 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
-          <FormInput label="시공사업체명"><input type="text" value={form.contractorCompany} onChange={e => onChange("contractorCompany", e.target.value)} className={inputClass} /></FormInput>
+          <FormInput label="시공사업체명"><input type="text" value={form.contractorCompany} onChange={e => onChange("contractorCompany", e.target.value)} className={inputClass} placeholder="예) (주)한국건설" /></FormInput>
           <div className="grid grid-cols-2 gap-3">
             <FormInput label="용역기간 시작"><input type="date" value={form.contractPeriodStart} onChange={e => onChange("contractPeriodStart", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
             <FormInput label="용역기간 종료"><input type="date" value={form.contractPeriodEnd} onChange={e => onChange("contractPeriodEnd", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
@@ -1358,17 +1372,20 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={2} title="휴일작업 개요" />
         <div className="space-y-3">
-          <FormInput label="작업대상 시설물" required><input type="text" value={form.facilityName} onChange={e => onChange("facilityName", e.target.value)} className={inputClass} /></FormInput>
-          <FormInput label="시설물 위치">
-            <input type="text" value={form.facilityLocation} onChange={e => onChange("facilityLocation", e.target.value)} className={inputClass + " mb-1.5"} />
+          <FormInput label="작업대상 시설물" required>
+            <input type="text" value={form.facilityName} onChange={e => onChange("facilityName", e.target.value)} className={inputClass + " mb-1.5"} placeholder="예) △△저수지 - 지도에서 위치 선택시 자동입력" />
             <LocationField workLatitude={workLatitude} workAddress={workAddress} onOpenLocation={onOpenLocation} onClearLocation={onClearLocation} />
           </FormInput>
-          <div className="grid grid-cols-2 gap-3">
-            <FormInput label="시설 관리자"><input type="text" value={form.facilityManager} onChange={e => onChange("facilityManager", e.target.value)} className={inputClass} /></FormInput>
-            <FormInput label="관리자 직급"><input type="text" value={form.facilityManagerGrade} onChange={e => onChange("facilityManagerGrade", e.target.value)} className={inputClass} /></FormInput>
-          </div>
-          <FormInput label="작업위치"><input type="text" value={form.workPosition} onChange={e => onChange("workPosition", e.target.value)} className={inputClass} /></FormInput>
-          <FormInput label="작업공종"><textarea value={form.workContents} onChange={e => onChange("workContents", e.target.value)} rows={3} className={textareaClass} /></FormInput>
+          <FormInput label="시설 관리자">
+            <input type="text" value={form.facilityManager} onChange={e => onChange("facilityManager", e.target.value)} className={inputClass} placeholder="예) OO지사 OO급 홍길동" />
+          </FormInput>
+          <FormInput label="작업위치">
+            <input type="text" value={form.workPosition} onChange={e => onChange("workPosition", e.target.value)} className={inputClass} placeholder="예) 여수로" />
+          </FormInput>
+          <FormInput label="작업공종">
+            <textarea value={form.workContents} onChange={e => onChange("workContents", e.target.value)} rows={3} className={textareaClass} placeholder={"예) 방수로 옹벽 재료조사
+감세공 제원 및 외관조사"} />
+          </FormInput>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -1378,27 +1395,40 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             <div key={idx} className="border border-gray-200 rounded-xl p-3">
               <div className="flex items-center justify-between mb-2">
                 <select value={p.role} onChange={e => updateP(idx, "role", e.target.value)} className="text-xs px-2 py-1 border border-gray-200 rounded-lg text-gray-700 bg-white focus:outline-none">
-                  <option>안전보건관리책임자</option><option>현장참여직원</option><option>시설관리자</option>
+                  <option>안전보건관리책임자</option><option>참여기술인</option><option>현장인부</option>
                 </select>
                 {idx >= 1 && <button onClick={() => onChange("participants", form.participants.filter((_, i) => i !== idx))} className="text-gray-400 hover:text-red-500"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <FormInput label="성명"><input type="text" value={p.name} onChange={e => updateP(idx, "name", e.target.value)} className={inputClass} /></FormInput>
-                <FormInput label="연락처"><input type="tel" value={p.phone} onChange={e => updateP(idx, "phone", e.target.value)} placeholder="010-0000-0000" className={inputClass} /></FormInput>
+                <FormInput label="연락체"><input type="tel" value={p.phone} onChange={e => updateP(idx, "phone", e.target.value)} placeholder="010-0000-0000" className={inputClass} /></FormInput>
               </div>
             </div>
           ))}
         </div>
-        <button onClick={() => onChange("participants", [...form.participants, { role: "현장참여직원", name: "", phone: "" }])}
+        <button onClick={() => onChange("participants", [...form.participants, { role: "참여기술인", name: "", phone: "" }])}
           className="w-full py-2 rounded-xl border border-dashed border-gray-300 text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 flex items-center justify-center gap-1">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>참여자 추가
         </button>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={4} title="위험요소 및 개선대책" />
+        <SectionHeader num={4} title="위험요소 및 개선대유" />
         <div className="space-y-3">
-          <FormInput label="위험요소"><textarea value={form.riskFactors} onChange={e => onChange("riskFactors", e.target.value)} rows={2} className={textareaClass} /></FormInput>
-          <FormInput label="개선대책"><textarea value={form.improvementMeasures} onChange={e => onChange("improvementMeasures", e.target.value)} rows={2} className={textareaClass} /></FormInput>
+          <button onClick={handleAiRisk} disabled={aiLoading}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-60"
+            style={{ background: "linear-gradient(135deg,#7c3aed,#2563eb)" }}>
+            {aiLoading ? "AI 생성 중..." : "✨ AI 위험요소/개선대유 자동 작성"}
+          </button>
+          <FormInput label="위험요소 (위험성 평가 결과 요약)">
+            <textarea value={form.riskFactors} onChange={e => onChange("riskFactors", e.target.value)} rows={3} className={textareaClass} placeholder={"예) 1. 급류부 조사시 미끔러짐
+2. 고소작업 중 추락
+3. 장비 협착 위험"} />
+          </FormInput>
+          <FormInput label="개선대유 (개선대유 결과 요약)">
+            <textarea value={form.improvementMeasures} onChange={e => onChange("improvementMeasures", e.target.value)} rows={3} className={textareaClass} placeholder={"예) 1. 안전난간에 안전로프 설치
+2. 안전모·안전벨트 착용
+3. 신호수 배치"} />
+          </FormInput>
         </div>
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -1413,31 +1443,6 @@ function Form3Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
   );
 }
 
-const POWER_CHECKS: SafetyCheckItem[] = [
-  { label: "전로차단 안전장치 확인", applicable: "해당없음", result: "" },
-  { label: "변압기차단기 확인", applicable: "해당없음", result: "" },
-  { label: "잠금조치", applicable: "해당없음", result: "" },
-  { label: "접지설비 차단", applicable: "해당없음", result: "" },
-  { label: "차단여부 감시", applicable: "해당없음", result: "" },
-  { label: "잔여전기 방전", applicable: "해당없음", result: "" },
-  { label: "검전기로 방전여부 확인", applicable: "해당없음", result: "" },
-  { label: "활선작업 규정대로 설치", applicable: "해당없음", result: "" },
-  { label: "현장 안전장치 확인", applicable: "해당없음", result: "" },
-];
-interface InspectionItem { equipment: string; cutoffConfirmer: string; electrician: string; siteRepair: string; }
-interface Form4 {
-  requestDate: string; workStartDate: string; workEndDate: string; workStartTime: string; workEndTime: string;
-  serviceName: string; applicantCompany: string; applicantTitle: string; applicantName: string;
-  workLocation: string; workContent: string; entryList: string; facilityName: string;
-  needConfinedSpace: string; needFireWork: string; safetyChecks: SafetyCheckItem[];
-  inspectionItems: InspectionItem[]; specialMeasures: string;
-}
-const defaultForm4: Form4 = {
-  requestDate: new Date().toISOString().split("T")[0], workStartDate: "", workEndDate: "", workStartTime: "09:00", workEndTime: "18:00",
-  serviceName: "", applicantCompany: "", applicantTitle: "", applicantName: "", workLocation: "", workContent: "", entryList: "", facilityName: "",
-  needConfinedSpace: "", needFireWork: "", safetyChecks: POWER_CHECKS.map(c => ({ ...c })),
-  inspectionItems: [{ equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" }], specialMeasures: "",
-};
 function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation, onClearLocation, taskName, documentId }: {
   form: Form4; onChange: (k: string, v: unknown) => void;
   workLatitude: number | null; workAddress: string; onOpenLocation: () => void; onClearLocation: () => void;
@@ -1635,7 +1640,7 @@ export default function DocumentEditPage() {
     // 위치 선택 시 작업장소 input에 주소 자동 채우기
     if (documentType === "SAFETY_WORK_PERMIT") setForm1(p => ({ ...p, workLocation: addr }));
     else if (documentType === "CONFINED_SPACE") setForm2(p => ({ ...p, workLocation: addr }));
-    else if (documentType === "HOLIDAY_WORK")   setForm3(p => ({ ...p, facilityLocation: addr }));
+    else if (documentType === "HOLIDAY_WORK")   setForm3(p => ({ ...p, facilityLocation: addr, facilityName: p.facilityName || addr }));
     else if (documentType === "POWER_OUTAGE")   setForm4(p => ({ ...p, workLocation: addr }));
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
