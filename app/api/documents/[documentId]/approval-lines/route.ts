@@ -72,6 +72,7 @@ export async function POST(
       return NextResponse.json({ error: "제출할 수 없는 상태입니다." }, { status: 400 });
     }
     const isConfinedSpace = doc.documentType === "CONFINED_SPACE";
+    const isPowerOutage = doc.documentType === "POWER_OUTAGE";
     const step1UserId = isConfinedSpace ? monitorUserId : reviewerUserId;
     if (!step1UserId) {
       return NextResponse.json({ error: isConfinedSpace ? "감시인을 지정해주세요." : "결재자를 지정해주세요." }, { status: 400 });
