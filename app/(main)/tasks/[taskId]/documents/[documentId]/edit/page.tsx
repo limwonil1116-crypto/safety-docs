@@ -1504,7 +1504,7 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             <input type="text" value={form.workLocation} onChange={e => onChange("workLocation", e.target.value)} className={inputClass + " mb-1.5"} />
             <LocationField workLatitude={workLatitude} workAddress={workAddress} onOpenLocation={onOpenLocation} onClearLocation={onClearLocation} />
           </FormInput>
-          <FormInput label="시설물명"><input type="text" value={form.facilityName||""} onChange={e => onChange("facilityName", e.target.value)} className={inputClass} placeholder="시설물명을 입력하세요" /></FormInput>
+          <FormInput label="시설물명"><input type="text" value={form.facilityName||""} onChange={e => onChange("facilityName", e.target.value)} className={inputClass} placeholder="시설물명을 입력해주세요" /></FormInput>
           <FormInput label="작업 내용" required><textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} /></FormInput>
           <FormInput label="출입자 명단"><textarea value={form.entryList} onChange={e => onChange("entryList", e.target.value)} rows={2} className={textareaClass} /></FormInput>
         </div>
@@ -1537,9 +1537,9 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         <SafetyCheckTable items={form.safetyChecks} onChange={updated => onChange("safetyChecks", updated)} />
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={4} title="기기 확인 결과" />
+        <SectionHeader num={4} title="점검 확인 결과" />
         <div className="grid grid-cols-4 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg mb-2">
-          {["기기기관", "차단확인자", "전기담당자", "현장수리"].map(h => (
+          {["점검기기", "차단확인자", "전기담당자", "현장정비"].map(h => (
             <div key={h} className="text-xs font-medium text-gray-600 text-center">{h}</div>
           ))}
         </div>
@@ -1561,7 +1561,7 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
       </div>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <SectionHeader num={5} title="특별조치 필요사항" />
-        <textarea value={form.specialMeasures} onChange={e => onChange("specialMeasures", e.target.value)} rows={3} className={textareaClass} />
+        <textarea value={form.specialMeasures} onChange={e => onChange("specialMeasures", e.target.value)} rows={3} className={textareaClass} placeholder="계획확인 허가자가 작성하는 항목입니다" />
       </div>
       <PhotoAttachSection documentId={documentId} canAdd={true} />
     </>
