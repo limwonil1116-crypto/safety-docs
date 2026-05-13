@@ -19,7 +19,7 @@ const DOC_TYPE_INFO: Record<string, { title: string; short: string; approverLabe
   SAFETY_WORK_PERMIT: { title: "안전작업허가서",    short: "붙임 1", approverLabel: "(계획확인)허가자", confirmerLabel: "(이행확인)확인자" },
   CONFINED_SPACE:     { title: "밀폐공간작업허가서", short: "붙임2", approverLabel: "허가자",    confirmerLabel: "확인자" },
   HOLIDAY_WORK:       { title: "휴일작업신청서",     short: "붙임3", approverLabel: "검토자",    confirmerLabel: "승인자" },
-  POWER_OUTAGE:       { title: "정전작업허가서",     short: "붙임4", approverLabel: "허가자",    confirmerLabel: "확인자" },
+  POWER_OUTAGE:       { title: "정전작업허가서",     short: "불임윤도4", approverLabel: "계획확인허가자",    confirmerLabel: "이행확인확인자" },
 };
 
 const inputClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none";
@@ -807,28 +807,26 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
   const [users, setUsers] = useState<UserItem[]>([]);
   const [keyword, setKeyword] = useState("");
   const [reviewer, setReviewer] = useState<UserItem | null>(null);
+  const [inspectionWriter, setInspectionWriter] = useState<UserItem | null>(null);
+  const [inspectionKeyword, setInspectionKeyword] = useState("");
+  const [inspectionUsers, setInspectionUsers] = useState<UserItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawing = useRef(false);
   const isConfinedModal = documentType === "CONFINED_SPACE";
+  const isPowerOutage = documentType === "POWER_OUTAGE";
   const info = DOC_TYPE_INFO[documentType] ?? DOC_TYPE_INFO.SAFETY_WORK_PERMIT;
-
   useEffect(() => {
     const q = keyword ? `&keyword=${encodeURIComponent(keyword)}` : "";
     fetch(`/api/users?krcOnly=true${q}`).then(r => r.json()).then(d => setUsers(d.users ?? []));
   }, [keyword]);
-
   useEffect(() => {
-    if (step === "sign") {
-      setTimeout(() => {
-        const canvas = canvasRef.current; if (!canvas) return;
-        const ctx = canvas.getContext("2d"); if (!ctx) return;
-        ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = "#1e3a5f"; ctx.lineWidth = 2.5; ctx.lineCap = "round";
-      }, 100);
-    }
-  }, [step]);
+    if (!isPowerOutage) return;
+    const q = inspectionKeyword ? `&keyword=${encodeURIComponent(inspectionKeyword)}` : "";
+    fetch(`/api/users?krcOnly=true${q}`).then(r => r.json()).then(d => setInspectionUsers(d.users ?? []));
+  }, [inspectionKeyword, isPowerOutage]);
+
 
   const getPos = (e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) => {
     const rect = canvas.getBoundingClientRect();
@@ -843,7 +841,8 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
   const handleSubmit = async () => {
     const canvas = canvasRef.current; if (!canvas) return;
     const signatureData = canvas.toDataURL("image/png");
-    if (!reviewer) { setError(info.approverLabel + "를 선택해주세요."); return; }
+    if (!reviewer) { setError(info.approverLabel + "을 지정해주세요."); return; }
+    if (isPowerOutage && !inspectionWriter) { setError("점검확인작성자를 지정해주세요."); return; }
     setSubmitting(true); setError("");
     try {
       const isConfined = documentType === "CONFINED_SPACE";
@@ -851,6 +850,9 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
       if (isConfined) {
         submitBody.monitorUserId = reviewer.id;
         if (measurerUserId) submitBody.measurerUserId = measurerUserId;
+      } else if (isPowerOutage) {
+        submitBody.reviewerUserId = reviewer.id;
+        submitBody.inspectionWriterUserId = inspectionWriter!.id;
       } else {
         submitBody.reviewerUserId = reviewer.id;
       }
@@ -863,6 +865,7 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
     } catch (e: unknown) { setError(e instanceof Error ? e.message : "오류가 발생했습니다."); }
     finally { setSubmitting(false); }
   };
+
 
 
   return (
@@ -915,6 +918,31 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
               <button onClick={clearCanvas} className="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">서명 지우기</button>
               <button onClick={() => setStep("approver")} className="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-600">이전으로</button>
             </div>
+            {isPowerOutage && (
+              <div className="mt-4">
+                <div className="text-xs font-medium text-gray-600 mb-2">점검확인작성자 <span className="text-red-500">*</span></div>
+                <div className={\`p-3 rounded-xl border-2 mb-2 \${inspectionWriter ? "border-green-400 bg-green-50" : "border-dashed border-gray-300"}\`}>
+                  {inspectionWriter ? (
+                    <div className="flex items-center justify-between">
+                      <div><span className="text-sm font-medium text-gray-900">{inspectionWriter.name}</span><span className="text-xs text-gray-500 ml-2">{inspectionWriter.organization}</span></div>
+                      <button onClick={() => setInspectionWriter(null)} className="text-gray-400 hover:text-red-500"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                  ) : <p className="text-xs text-gray-400">점검확인작성자를 선택해주세요</p>}
+                </div>
+                <input value={inspectionKeyword} onChange={e => setInspectionKeyword(e.target.value)} placeholder="이름으로 검색"
+                  className="w-full pl-3 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2" />
+                <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                  {inspectionUsers.filter(u => u.id !== inspectionWriter?.id).map(u => (
+                    <button key={u.id} onClick={() => setInspectionWriter(u)}
+                      className="w-full flex items-center gap-3 p-2.5 rounded-xl border border-gray-100 hover:border-green-400 hover:bg-green-50 text-left">
+                      <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-sm shrink-0">{u.name[0]}</div>
+                      <div><div className="text-sm font-medium text-gray-900">{u.name}</div><div className="text-xs text-gray-500">{u.organization}</div></div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
             <button onClick={handleSubmit} disabled={submitting}
               className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50" style={{ background: "#2563eb" }}>

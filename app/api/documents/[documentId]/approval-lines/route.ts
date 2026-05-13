@@ -62,7 +62,7 @@ export async function POST(
     }
     const { documentId } = await params;
     const body = await req.json();
-    const { reviewerUserId, monitorUserId, measurerUserId, formDataJson, signatureData } = body;
+    const { reviewerUserId, monitorUserId, measurerUserId, inspectionWriterUserId, formDataJson, signatureData } = body;
     // 밀폐공간: monitorUserId(감시인) 필수, 일반: reviewerUserId 필수
     const [doc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
     if (!doc || doc.deletedAt) {
@@ -104,6 +104,9 @@ export async function POST(
     };
     if (isConfinedSpace && measurerUserId) {
       updatedFormData.measurerUserId = measurerUserId;
+    }
+    if (isPowerOutage && inspectionWriterUserId) {
+      updatedFormData.inspectionWriterUserId = inspectionWriterUserId;
     }
     await db.update(documents).set({
       status: "SUBMITTED",
