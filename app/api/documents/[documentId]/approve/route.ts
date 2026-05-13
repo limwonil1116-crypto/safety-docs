@@ -157,6 +157,27 @@ export async function POST(
       // =============================================
       // 일반 문서 2단계 분기 (기존 로직)
       // =============================================
+      // POWER_OUTAGE 4단계
+      const isPowerOutage = doc.documentType === "POWER_OUTAGE";
+      if (isPowerOutage) {
+        if (body.specialMeasures !== undefined) updatedFd.specialMeasures = body.specialMeasures;
+        if (comment?.trim()) updatedFd.reviewOpinion = comment.trim();
+        if (reviewResult?.trim()) updatedFd.reviewResult = reviewResult.trim();
+        if (body.inspectionItems) updatedFd.inspectionItems = body.inspectionItems;
+        if (order === 1) {
+          await db.update(documents).set({ status: "IN_REVIEW", currentApproverUserId: null, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
+          return NextResponse.json({ success: true, action: "NEED_INSPECTION_WRITER" });
+        } else if (order === 2) {
+          await db.update(documents).set({ status: "IN_REVIEW", currentApproverUserId: null, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
+          return NextResponse.json({ success: true, action: "NEED_FINAL_CONFIRMER_POWER" });
+        } else if (order === 3) {
+          await db.update(documents).set({ status: "APPROVED", approvedAt: new Date(), currentApproverUserId: null, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
+          await db.insert(notifications).values({ userId: doc.createdBy, type: "APPROVED", title: "정전작업허가서 최종 승인", body: "완료되었습니다.", targetDocumentId: documentId, isRead: false });
+          generatePDFBackground(documentId, doc).catch(console.error);
+          return NextResponse.json({ success: true, action: "APPROVED" });
+        }
+      }
+
       if (comment?.trim()) updatedFd.reviewOpinion = comment.trim();
       if (reviewResult?.trim()) updatedFd.reviewResult = reviewResult.trim();
 

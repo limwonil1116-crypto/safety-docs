@@ -925,6 +925,8 @@ export default function ApprovalDetailPage() {
       else if (data.action === "NEED_PLAN_APPROVER") { setConfinedNextAction("PLAN_APPROVER"); setShowConfinedNextModal(true); }
       else if (data.action === "NEED_MEASUREMENT") { alert("(계획확인) 서명이 완료됩니다."); router.push("/approvals"); }
       else if (data.action === "NEED_FINAL_CONFIRMER") { setConfinedNextAction("FINAL_CONFIRMER"); setShowConfinedNextModal(true); }
+      else if (data.action === "NEED_INSPECTION_WRITER") { setPowerNextAction("INSPECTION_WRITER"); setShowPowerNextModal(true); }
+      else if (data.action === "NEED_FINAL_CONFIRMER_POWER") { setPowerNextAction("FINAL_CONFIRMER_POWER"); setShowPowerNextModal(true); }
       else if (data.action === "APPROVED") { alert("최종 승인이 완료됩니다."); router.push("/approvals"); }
       else { alert("처리됩니다."); router.push("/approvals"); }
     } catch (e: unknown) { alert(e instanceof Error ? e.message : "오류가 발생했습니다."); }
