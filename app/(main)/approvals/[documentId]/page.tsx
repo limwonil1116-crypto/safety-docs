@@ -806,6 +806,8 @@ export default function ApprovalDetailPage() {
   const [showSign, setShowSign] = useState(false);
   const [showFinalApprover, setShowFinalApprover] = useState(false);
   const [showConfinedNextModal, setShowConfinedNextModal] = useState(false);
+  const [showPowerNextModal, setShowPowerNextModal] = useState(false);
+  const [powerNextAction, setPowerNextAction] = useState<"INSPECTION_WRITER" | "FINAL_CONFIRMER_POWER">("INSPECTION_WRITER");
   const [confinedNextAction, setConfinedNextAction] = useState<"PLAN_APPROVER"|"FINAL_CONFIRMER"|null>(null);
   const [specialMeasuresInput, setSpecialMeasuresInput] = useState("");
   const [gasMeasureRowsInput, setGasMeasureRowsInput] = useState<any[]>([]);
