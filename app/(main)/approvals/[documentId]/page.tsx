@@ -820,7 +820,7 @@ export default function ApprovalDetailPage() {
   const [showFinalApprover, setShowFinalApprover] = useState(false);
   const [showConfinedNextModal, setShowConfinedNextModal] = useState(false);
   const [showPowerNextModal, setShowPowerNextModal] = useState(false);
-  const [powerNextAction, setPowerNextAction] = useState<"FINAL_CONFIRMER_POWER">("FINAL_CONFIRMER_POWER");
+  const [powerNextAction, setPowerNextAction] = useState("");
   const [confinedNextAction, setConfinedNextAction] = useState<"PLAN_APPROVER"|"FINAL_CONFIRMER"|null>(null);
   const [specialMeasuresInput, setSpecialMeasuresInput] = useState("");
   const inspectionItemsRef = useRef<any[]>([]);
@@ -943,9 +943,6 @@ export default function ApprovalDetailPage() {
       else if (data.action === "NEED_FINAL_CONFIRMER") { setConfinedNextAction("FINAL_CONFIRMER"); setShowConfinedNextModal(true); }
       else if (data.action === "NEED_FINAL_CONFIRMER_POWER") { setShowPowerNextModal(true); }
       else if (data.action === "NEED_INSPECTION_WRITER") { alert("점검확인작성자를 지정해주세요."); router.push("/approvals"); }
-      else if (data.action === "NEED_FINAL_CONFIRMER_POWER") { setPowerNextAction("FINAL_CONFIRMER_POWER"); setShowPowerNextModal(true); }
-      else if (data.action === "NEED_INSPECTION_WRITER") { setPowerNextAction("INSPECTION_WRITER"); setShowPowerNextModal(true); }
-      else if (data.action === "NEED_FINAL_CONFIRMER_POWER") { setPowerNextAction("FINAL_CONFIRMER_POWER"); setShowPowerNextModal(true); }
       else if (data.action === "APPROVED") { alert("최종 승인이 완료됩니다."); router.push("/approvals"); }
       else { alert("처리됩니다."); router.push("/approvals"); }
     } catch (e: unknown) { alert(e instanceof Error ? e.message : "오류가 발생했습니다."); }
