@@ -1485,6 +1485,7 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
 }) {
   const updateInsp = (idx: number, f: keyof InspectionItem, v: string) =>
     onChange("inspectionItems", form.inspectionItems.map((m, i) => i === idx ? { ...m, [f]: v } : m));
+  const [showInspWriterPicker, setShowInspWriterPicker] = useState(false);
   return (
     <>
       <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -1504,7 +1505,7 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
             <input type="text" value={form.workLocation} onChange={e => onChange("workLocation", e.target.value)} className={inputClass + " mb-1.5"} />
             <LocationField workLatitude={workLatitude} workAddress={workAddress} onOpenLocation={onOpenLocation} onClearLocation={onClearLocation} />
           </FormInput>
-          <FormInput label="시설물명"><input type="text" value={form.facilityName||""} onChange={e => onChange("facilityName", e.target.value)} className={inputClass} placeholder="시설물명을 입력해주세요" /></FormInput>
+          <FormInput label="시설물명"><input type="text" value={form.facilityName||""} onChange={e => onChange("facilityName", e.target.value)} className={inputClass} placeholder="시설물명을 입력하세요" /></FormInput>
           <FormInput label="작업 내용" required><textarea value={form.workContent} onChange={e => onChange("workContent", e.target.value)} rows={3} className={textareaClass} /></FormInput>
           <FormInput label="출입자 명단"><textarea value={form.entryList} onChange={e => onChange("entryList", e.target.value)} rows={2} className={textareaClass} /></FormInput>
         </div>
@@ -1536,32 +1537,24 @@ function Form4Fields({ form, onChange, workLatitude, workAddress, onOpenLocation
         <SectionHeader num={3} title="안전조치 이행사항" />
         <SafetyCheckTable items={form.safetyChecks} onChange={updated => onChange("safetyChecks", updated)} />
       </div>
-      <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={4} title="점검 확인 결과" />
-        <div className="grid grid-cols-4 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg mb-2">
-          {["점검기기", "차단확인자", "전기담당자", "현장정비"].map(h => (
-            <div key={h} className="text-xs font-medium text-gray-600 text-center">{h}</div>
-          ))}
-        </div>
-        <div className="space-y-2 mb-3">
-          {form.inspectionItems.map((item, idx) => (
-            <div key={idx} className="grid grid-cols-4 gap-1 items-center">
-              {(["equipment", "cutoffConfirmer", "electrician", "siteRepair"] as (keyof InspectionItem)[]).map(f => (
-                <input key={f} type="text" value={item[f]} onChange={e => updateInsp(idx, f, e.target.value)}
-                  className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
-              ))}
-            </div>
-          ))}
-        </div>
-        <button onClick={() => onChange("inspectionItems", [...form.inspectionItems, { equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" }])}
-          className="w-full py-2 rounded-xl border border-dashed border-gray-300 text-sm text-gray-500 hover:border-blue-400 hover:text-blue-500 flex items-center justify-center gap-1">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          행 추가
+      <div className="bg-blue-50 rounded-2xl p-4">
+        <p className="text-xs font-semibold text-blue-700 mb-2">점검확인결과 작성자 지정</p>
+        <p className="text-xs text-blue-600 mb-3">승인 완료 후 점검확인결과를 입력할 담당자를 지정하세요.</p>
+        <button onClick={() => setShowInspWriterPicker(true)}
+          className={"w-full flex items-center justify-between px-3 py-2.5 rounded-xl border text-sm font-medium " + ((form as any).inspectionWriterName ? "border-green-400 bg-white text-gray-900" : "border-gray-300 bg-white text-gray-400")}>
+          <span>{(form as any).inspectionWriterName || "점검확인작성자 선택"}</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
+        {showInspWriterPicker && (
+          <UserPickerModal
+            title="점검확인작성자 선택"
+            onSelect={u => { onChange("inspectionWriterUserId", u.id); onChange("inspectionWriterName", u.name); setShowInspWriterPicker(false); }}
+            onClose={() => setShowInspWriterPicker(false)}
+          />
+        )}
       </div>
-      <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <SectionHeader num={5} title="특별조치 필요사항" />
-        <textarea value={form.specialMeasures} onChange={e => onChange("specialMeasures", e.target.value)} rows={3} className={textareaClass} placeholder="계획확인 허가자가 작성하는 항목입니다" />
+      <div className="bg-gray-100 rounded-2xl p-4">
+        <p className="text-xs text-gray-500 text-center">점검 확인 결과 및 특별조치 필요사항은 다음 단계에서 작성됩니다</p>
       </div>
       <PhotoAttachSection documentId={documentId} canAdd={true} />
     </>
