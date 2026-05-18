@@ -823,7 +823,7 @@ export default function ApprovalDetailPage() {
   const [powerNextAction, setPowerNextAction] = useState<"INSPECTION_WRITER" | "FINAL_CONFIRMER_POWER">("INSPECTION_WRITER");
   const [confinedNextAction, setConfinedNextAction] = useState<"PLAN_APPROVER"|"FINAL_CONFIRMER"|null>(null);
   const [specialMeasuresInput, setSpecialMeasuresInput] = useState("");
-  const inspectionItemsRef = React.useRef<any[]>([]);
+  const inspectionItemsRef = useRef<any[]>([]);
   const [gasMeasureRowsInput, setGasMeasureRowsInput] = useState<any[]>([]);
   const gasMeasureRef = useRef<any[]>([]);
   const [pendingAction, setPendingAction] = useState<"APPROVE"|"REJECT"|null>(null);
