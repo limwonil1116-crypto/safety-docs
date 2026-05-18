@@ -821,8 +821,6 @@ export default function ApprovalDetailPage() {
   const [showConfinedNextModal, setShowConfinedNextModal] = useState(false);
   const [showPowerNextModal, setShowPowerNextModal] = useState(false);
   const [powerNextAction, setPowerNextAction] = useState<"FINAL_CONFIRMER_POWER">("FINAL_CONFIRMER_POWER");
-  const [showPowerNextModal, setShowPowerNextModal] = useState(false);
-  const [powerNextAction, setPowerNextAction] = useState<"INSPECTION_WRITER" | "FINAL_CONFIRMER_POWER">("INSPECTION_WRITER");
   const [confinedNextAction, setConfinedNextAction] = useState<"PLAN_APPROVER"|"FINAL_CONFIRMER"|null>(null);
   const [specialMeasuresInput, setSpecialMeasuresInput] = useState("");
   const inspectionItemsRef = useRef<any[]>([]);
