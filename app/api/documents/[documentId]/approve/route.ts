@@ -165,8 +165,16 @@ export async function POST(
         if (reviewResult?.trim()) updatedFd.reviewResult = reviewResult.trim();
         if (body.inspectionItems) updatedFd.inspectionItems = body.inspectionItems;
         if (order === 1) {
-          await db.update(documents).set({ status: "IN_REVIEW", currentApproverUserId: null, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
-          return NextResponse.json({ success: true, action: "NEED_INSPECTION_WRITER" });
+          const inspWriterId = updatedFd.inspectionWriterUserId as string | undefined;
+          if (inspWriterId) {
+            await db.insert(documentApprovalLines).values({ documentId, approverUserId: inspWriterId, approvalOrder: 2, approvalRole: "REVIEWER", stepStatus: "WAITING", signatureRequired: true });
+            await db.update(documents).set({ status: "IN_REVIEW", currentApprovalOrder: 2, currentApproverUserId: inspWriterId, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
+            await db.insert(notifications).values({ userId: inspWriterId, type: "MY_TURN", title: "정전작업허가서 - 점검확인결과 입력 요청", body: "점검확인결과를 입력하고 서명해주세요.", targetDocumentId: documentId, isRead: false });
+            return NextResponse.json({ success: true, action: "APPROVED" });
+          } else {
+            await db.update(documents).set({ status: "IN_REVIEW", currentApproverUserId: null, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
+            return NextResponse.json({ success: true, action: "NEED_INSPECTION_WRITER" });
+          }
         } else if (order === 2) {
           await db.update(documents).set({ status: "IN_REVIEW", currentApproverUserId: null, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
           return NextResponse.json({ success: true, action: "NEED_FINAL_CONFIRMER_POWER" });
