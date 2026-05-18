@@ -1316,6 +1316,14 @@ export default function ApprovalDetailPage() {
       )}
 
       {/* 밀폐공간 다음단계 지정 모달 */}
+      {showPowerNextModal && doc && (
+        <ConfinedNextModal
+          documentId={documentId}
+          action="FINAL_CONFIRMER"
+          onClose={() => setShowPowerNextModal(false)}
+          onAssigned={() => { setShowPowerNextModal(false); loadData(); }}
+        />
+      )}
       {showConfinedNextModal && confinedNextAction && doc && (
         <ConfinedNextModal
           documentId={documentId}
