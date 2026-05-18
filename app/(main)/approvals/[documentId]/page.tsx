@@ -1316,7 +1316,7 @@ export default function ApprovalDetailPage() {
           documentId={documentId}
           action="FINAL_CONFIRMER"
           onClose={() => setShowPowerNextModal(false)}
-          onAssigned={() => { setShowPowerNextModal(false); loadData(); }}
+          onAssigned={() => { setShowPowerNextModal(false); router.refresh(); window.location.reload(); }}
         />
       )}
       {showConfinedNextModal && confinedNextAction && doc && (
