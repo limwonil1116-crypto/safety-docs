@@ -250,6 +250,19 @@ function ApprovalFlow({ doc, approvalLines, writerName, applicantSignature }: { 
       mkStep(3, "측정담당자", "review", (fd.measurerName as string) || ""),
       mkStep(4, "(이행확인)확인자", "approve", ""),
     ];
+  } else if (doc.documentType === "POWER_OUTAGE") {
+    const lineMap = Object.fromEntries(approvalLines.map(l => [l.approvalOrder, l]));
+    const mkStepP = (order: number, label: string, type: "submit" | "review" | "approve", name: string) => {
+      const line = lineMap[order];
+      const status = line ? getStepStatus(line) : "pending";
+      return { icon: <StepIcon type={type} status={status} />, label, name: line?.approverName ?? name, comment: line?.comment, actedAt: line?.actedAt, signatureData: line?.signatureData, status };
+    };
+    steps = [
+      { icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />, label: "신청자", name: writerName, signatureData: isSubmitted ? applicantSignature : undefined, status: isSubmitted ? "done" : "active" },
+      mkStepP(1, "계획확인허가자", "approve", ""),
+      mkStepP(2, "점검확인작성자", "review", (fd.inspectionWriterName as string) || ""),
+      mkStepP(3, "이행확인확인자", "approve", ""),
+    ];
   } else {
     const line1 = approvalLines.find(l => l.approvalOrder === 1);
     const line2 = approvalLines.find(l => l.approvalOrder === 2);
