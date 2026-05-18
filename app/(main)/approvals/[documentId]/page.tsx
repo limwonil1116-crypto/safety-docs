@@ -313,7 +313,8 @@ function ConfinedNextModal({ documentId, action, onClose, onAssigned }: { docume
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const label = action === "PLAN_APPROVER" ? "(계획확인) 허가자" : "(이행확인) 확인자";
-  const nextOrder = action === "PLAN_APPROVER" ? 2 : 4;
+  const nextOrderProp = (props as any).nextOrderOverride;
+  const nextOrder = nextOrderProp ?? (action === "PLAN_APPROVER" ? 2 : 4);
   const nextTitle = action === "PLAN_APPROVER" ? "밀폐공간 작업허가 - (계획확인) 허가자 서명 요청" : "밀폐공간 작업허가 - (이행확인) 최종 확인 요청";
   useEffect(() => { const q = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""; fetch(`/api/users?krcOnly=true&role=FINAL_APPROVER${q}`).then(r => r.json()).then(d => setUsers(d.users ?? [])); }, [keyword]);
   const handleAssign = async () => {
@@ -1315,6 +1316,7 @@ export default function ApprovalDetailPage() {
         <ConfinedNextModal
           documentId={documentId}
           action="FINAL_CONFIRMER"
+          {...{nextOrderOverride: 3} as any}
           onClose={() => setShowPowerNextModal(false)}
           onAssigned={() => { setShowPowerNextModal(false); router.refresh(); window.location.reload(); }}
         />
