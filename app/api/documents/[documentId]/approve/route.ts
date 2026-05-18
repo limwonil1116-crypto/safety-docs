@@ -158,14 +158,6 @@ export async function POST(
       // 일반 문서 2단계 분기 (기존 로직)
       // =============================================
       // POWER_OUTAGE 4단계
-      const isPowerOutage = doc.documentType === "POWER_OUTAGE";
-      if (isPowerOutage) {
-        if (body.specialMeasures !== undefined) updatedFd.specialMeasures = body.specialMeasures;
-      // POWER_OUTAGE 4단계
-      const isPowerOutage = doc.documentType === "POWER_OUTAGE";
-      if (isPowerOutage) {
-        if (body.specialMeasures !== undefined) updatedFd.specialMeasures = body.specialMeasures;
-        if (comment?.trim()) updatedFd.reviewOpinion = comment.trim();
         if (body.reviewResult?.trim()) updatedFd.reviewResult = body.reviewResult.trim();
         if (body.inspectionItems) updatedFd.inspectionItems = body.inspectionItems;
 
