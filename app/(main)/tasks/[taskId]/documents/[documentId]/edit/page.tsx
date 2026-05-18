@@ -16,10 +16,10 @@ interface RiskAssessRow {
 declare global { interface Window { kakao: any; daum: any; } }
 
 const DOC_TYPE_INFO: Record<string, { title: string; short: string; approverLabel: string; confirmerLabel: string }> = {
-  SAFETY_WORK_PERMIT: { title: "안전작업허가서",    short: "붙임 1", approverLabel: "(계획확인)허가자", confirmerLabel: "(이행확인)확인자" },
-  CONFINED_SPACE:     { title: "밀폐공간작업허가서", short: "붙임2", approverLabel: "허가자",    confirmerLabel: "확인자" },
-  HOLIDAY_WORK:       { title: "휴일작업신청서",     short: "붙임3", approverLabel: "검토자",    confirmerLabel: "승인자" },
-  POWER_OUTAGE:       { title: "정전작업허가서",     short: "붙임4", approverLabel: "허가자",    confirmerLabel: "확인자" },
+  SAFETY_WORK_PERMIT: { title: "안전작업허가서",    short: "불임윜1", approverLabel: "(계획확인)허가자", confirmerLabel: "(이행확인)확인자" },
+  CONFINED_SPACE:     { title: "밀폐공간작업허가서", short: "불임윜2", approverLabel: "허가자",    confirmerLabel: "확인자" },
+  HOLIDAY_WORK:       { title: "휴일작업신고서",     short: "불임윜3", approverLabel: "검토자",    confirmerLabel: "승인자" },
+  POWER_OUTAGE:       { title: "정전작업허가서",     short: "불임윜4", approverLabel: "계획확인허가자",    confirmerLabel: "이행확인확인자" },
 };
 
 const inputClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none";
