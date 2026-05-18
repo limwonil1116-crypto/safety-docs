@@ -158,47 +158,9 @@ export async function POST(
       // 일반 문서 2단계 분기 (기존 로직)
       // =============================================
       // POWER_OUTAGE 4단계
-        if (body.reviewResult?.trim()) updatedFd.reviewResult = body.reviewResult.trim();
-        if (body.inspectionItems) updatedFd.inspectionItems = body.inspectionItems;
-
-        if (order === 1) {
-          // 계획확인허가자 서명 → 점검확인작성자 자동 지정
-          const inspectionWriterUserId = updatedFd.inspectionWriterUserId as string | undefined;
-          if (inspectionWriterUserId) {
-            await db.insert(documentApprovalLines).values({
-              documentId, approverUserId: inspectionWriterUserId,
-              approvalOrder: 2, approvalRole: "REVIEWER",
-              stepStatus: "WAITING", signatureRequired: true,
-            });
-            await db.update(documents).set({
-              status: "IN_REVIEW", currentApprovalOrder: 2,
-              currentApproverUserId: inspectionWriterUserId,
-              formDataJson: updatedFd, updatedAt: new Date(),
-            }).where(eq(documents.id, documentId));
-            await db.insert(notifications).values({
-              userId: inspectionWriterUserId, type: "MY_TURN",
-              title: "정전작업허가서 - 점검확인결과 입력 요청",
-              body: "점검확인결과를 입력하고 서명해주세요.",
-              targetDocumentId: documentId, isRead: false,
-            });
-            return NextResponse.json({ success: true, action: "APPROVED" });
-          } else {
-            await db.update(documents).set({ status: "IN_REVIEW", currentApproverUserId: null, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
-            return NextResponse.json({ success: true, action: "NEED_INSPECTION_WRITER" });
-          }
-        } else if (order === 2) {
-          // 점검확인작성자 → 이행확인자 지정 필요
-          await db.update(documents).set({ status: "IN_REVIEW", currentApproverUserId: null, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
-          return NextResponse.json({ success: true, action: "NEED_FINAL_CONFIRMER_POWER" });
-        } else if (order === 3) {
-          // 이행확인자 → 문서 완료
-          await db.update(documents).set({ status: "APPROVED", approvedAt: new Date(), currentApproverUserId: null, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
-          await db.insert(notifications).values({ userId: doc.createdBy, type: "APPROVED", title: "정전작업허가서 최종 승인", body: "모든 단계가 완료되었습니다.", targetDocumentId: documentId, isRead: false });
-          generatePDFBackground(documentId, doc).catch(console.error);
-          return NextResponse.json({ success: true, action: "APPROVED" });
-        }
-      }
-
+      const isPowerOutage = doc.documentType === "POWER_OUTAGE";
+      if (isPowerOutage) {
+        if (body.specialMeasures !== undefined) updatedFd.specialMeasures = body.specialMeasures;
         if (comment?.trim()) updatedFd.reviewOpinion = comment.trim();
         if (reviewResult?.trim()) updatedFd.reviewResult = reviewResult.trim();
         if (body.inspectionItems) updatedFd.inspectionItems = body.inspectionItems;

@@ -779,39 +779,7 @@ function AiSpecialMeasuresButton({ doc, onGenerated, label = "AI 특별조치 �
   );
 }
 
-function SpecialMeasuresInput({ value, onChange }:
-
-function InspectionItemsInput({ items, onChange }: { items: any[]; onChange: (items: any[]) => void }) {
-  const [rows, setRows] = React.useState(items.length > 0 ? items : [{ equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" }]);
-  const update = (idx: number, f: string, v: string) => {
-    const next = rows.map((r, i) => i === idx ? { ...r, [f]: v } : r);
-    setRows(next); onChange(next);
-  };
-  return (
-    <div>
-      <div className="grid grid-cols-4 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg mb-2">
-        {["점검기기", "차단확인자", "전기담당자", "현장정비"].map(h => (
-          <div key={h} className="text-xs font-medium text-gray-600 text-center">{h}</div>
-        ))}
-      </div>
-      <div className="space-y-2 mb-2">
-        {rows.map((item, idx) => (
-          <div key={idx} className="grid grid-cols-4 gap-1">
-            {(["equipment", "cutoffConfirmer", "electrician", "siteRepair"] as const).map(f => (
-              <input key={f} type="text" value={item[f] || ""} onChange={e => update(idx, f, e.target.value)}
-                className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-900 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
-            ))}
-          </div>
-        ))}
-      </div>
-      <button onClick={() => { const next = [...rows, { equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" }]; setRows(next); onChange(next); }}
-        className="w-full py-1.5 rounded-xl border border-dashed border-gray-300 text-xs text-gray-500 hover:border-blue-400 hover:text-blue-500">
-        + 행 추가
-      </button>
-    </div>
-  );
-}
- { value: string; onChange: (v: string) => void }) {
+function SpecialMeasuresInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => { if (ref.current) ref.current.value = value; }, []);
   return (
@@ -855,7 +823,6 @@ export default function ApprovalDetailPage() {
   const [powerNextAction, setPowerNextAction] = useState<"INSPECTION_WRITER" | "FINAL_CONFIRMER_POWER">("INSPECTION_WRITER");
   const [confinedNextAction, setConfinedNextAction] = useState<"PLAN_APPROVER"|"FINAL_CONFIRMER"|null>(null);
   const [specialMeasuresInput, setSpecialMeasuresInput] = useState("");
-  const inspectionItemsRef = useRef<any[]>([]);
   const [gasMeasureRowsInput, setGasMeasureRowsInput] = useState<any[]>([]);
   const gasMeasureRef = useRef<any[]>([]);
   const [pendingAction, setPendingAction] = useState<"APPROVE"|"REJECT"|null>(null);
@@ -964,7 +931,7 @@ export default function ApprovalDetailPage() {
       if (isConfinedSpace && confinedOrder === 3) extraBody.gasMeasureRows = gasMeasureRef.current.length > 0 ? gasMeasureRef.current : (gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : DEFAULT_GAS_ROWS);
       const res = await fetch(`/api/documents/${documentId}/approve`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: pendingAction, comment: pendingOpinion || null, reviewResult: pendingResult || null, signatureData, inspectionItems: inspectionItemsRef.current.length > 0 ? inspectionItemsRef.current : undefined, ...extraBody }),
+        body: JSON.stringify({ action: pendingAction, comment: pendingOpinion || null, reviewResult: pendingResult || null, signatureData, ...extraBody }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "오류 발생");
@@ -1028,39 +995,6 @@ export default function ApprovalDetailPage() {
           )}
           {confinedOrder === 4 && (
             <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">측정결과를 최종 확인하고 서명해주세요.</p>
-          )}
-        </div>
-      );
-    }
-
-    // POWER_OUTAGE 단계별 UI
-    const isPowerOutage = doc?.documentType === "POWER_OUTAGE";
-    const powerOrder = doc?.currentApprovalOrder ?? 0;
-    if (isPowerOutage) {
-      return (
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
-          <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
-            {powerOrder === 1 ? "계획확인허가자 - 특별조치 입력" : powerOrder === 2 ? "점검확인결과 작성자 - 점검결과 입력" : "이행확인확인자 - 최종 서명"}
-          </h3>
-          {powerOrder === 1 && (
-            <div className="space-y-2">
-              <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">특별조치 필요사항을 입력하고 서명하세요.</p>
-              <AiSpecialMeasuresButton doc={doc} onGenerated={setSpecialMeasuresInput} />
-              <SpecialMeasuresInput value={specialMeasuresInput} onChange={setSpecialMeasuresInput} />
-            </div>
-          )}
-          {powerOrder === 2 && (
-            <div className="space-y-3">
-              <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">점검기기, 차단확인자, 전기담당자, 현장정비를 입력하고 서명하세요.</p>
-              <InspectionItemsInput
-                items={(fd.inspectionItems as any[]) || [{ equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" }]}
-                onChange={(items) => { inspectionItemsRef.current = items; }}
-              />
-            </div>
-          )}
-          {powerOrder === 3 && (
-            <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">정전작업이 완료되었음을 확인하고 서명하세요.</p>
           )}
         </div>
       );
