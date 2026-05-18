@@ -306,15 +306,14 @@ function ApprovalFlow({ doc, approvalLines, writerName, applicantSignature }: { 
     </div>
   );
 }
-function ConfinedNextModal({ documentId, action, onClose, onAssigned }: { documentId: string; action: "PLAN_APPROVER" | "FINAL_CONFIRMER"; onClose: () => void; onAssigned: () => void }) {
+function ConfinedNextModal({ documentId, action, onClose, onAssigned, nextOrderOverride }: { documentId: string; action: "PLAN_APPROVER" | "FINAL_CONFIRMER"; onClose: () => void; onAssigned: () => void; nextOrderOverride?: number }) {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [keyword, setKeyword] = useState("");
   const [selected, setSelected] = useState<UserItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const label = action === "PLAN_APPROVER" ? "(계획확인) 허가자" : "(이행확인) 확인자";
-  const nextOrderProp = (props as any).nextOrderOverride;
-  const nextOrder = nextOrderProp ?? (action === "PLAN_APPROVER" ? 2 : 4);
+  const nextOrder = nextOrderOverride ?? (action === "PLAN_APPROVER" ? 2 : 4);
   const nextTitle = action === "PLAN_APPROVER" ? "밀폐공간 작업허가 - (계획확인) 허가자 서명 요청" : "밀폐공간 작업허가 - (이행확인) 최종 확인 요청";
   useEffect(() => { const q = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""; fetch(`/api/users?krcOnly=true&role=FINAL_APPROVER${q}`).then(r => r.json()).then(d => setUsers(d.users ?? [])); }, [keyword]);
   const handleAssign = async () => {
