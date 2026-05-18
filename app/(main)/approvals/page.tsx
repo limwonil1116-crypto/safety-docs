@@ -58,6 +58,7 @@ const DATE_FILTERS = [
 
 function ApprovalStepFlow({ doc }: { doc: ApprovalDoc }) {
   const isConfined = doc.document_type === "CONFINED_SPACE";
+  const isPowerOutage = doc.document_type === "POWER_OUTAGE";
   type StepStatus = "done" | "active" | "pending" | "rejected";
 
   const stepColor = (s: StepStatus) => {
@@ -120,6 +121,28 @@ function ApprovalStepFlow({ doc }: { doc: ApprovalDoc }) {
     );
   }
 
+  if (isPowerOutage) {
+    const ord = doc.current_approval_order ?? 0;
+    const st = doc.status;
+    const sp0: StepStatus = st !== "DRAFT" ? "done" : "active";
+    const sp1: StepStatus = st === "SUBMITTED" ? "active" : ord >= 1 ? (st === "REJECTED" && ord === 1 ? "rejected" : ord === 1 && st === "IN_REVIEW" ? "active" : "done") : "pending";
+    const sp2: StepStatus = ord === 2 && st === "IN_REVIEW" ? "active" : ord > 2 || st === "APPROVED" ? "done" : "pending";
+    const sp3: StepStatus = ord === 3 && st === "IN_REVIEW" ? "active" : st === "APPROVED" ? "done" : "pending";
+    return (
+      <div className="flex items-center gap-0.5 mt-2.5">
+        <StepDot s={sp0} label="신청" type="doc" />
+        <Line active={sp1 === "done" || sp1 === "active"} />
+        <StepDot s={sp1} label="계획확인" type="shield" />
+        <Line active={sp2 === "done" || sp2 === "active"} />
+        <StepDot s={sp2} label="점검확인" type="search" />
+        <Line active={sp3 === "done" || sp3 === "active"} />
+        <StepDot s={sp3} label="이행확인" type="shield" />
+        {doc.current_approver_name && (
+          <div className="ml-1 text-[9px] text-amber-600 font-medium shrink-0 max-w-[50px] truncate">{doc.current_approver_name}</div>
+        )}
+      </div>
+    );
+  }
   const step1: StepStatus = doc.status !== "DRAFT" ? "done" : "active";
   let step2: StepStatus = "pending";
   let step3: StepStatus = "pending";
