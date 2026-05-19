@@ -102,7 +102,7 @@ export async function POST(
 
     const { documentId } = await params;
     const body = await req.json();
-    const { formDataJson } = body;
+    const { formDataJson, workLatitude, workLongitude, workAddress, gasMeasureRowsOnly } = body;
 
     const [existing] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
     if (!existing || existing.deletedAt) {
