@@ -619,6 +619,7 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
   const [gpsLoading, setGpsLoading] = useState(false);
   // ✅ 클로저 문제 해결: setAddress를 ref로 저장
   const setAddressRef = useRef(setAddress);
+  const addressRef = useRef(address);
   const setLatRef = useRef(setLat);
   const setLngRef = useRef(setLng);
   useEffect(() => { setAddressRef.current = setAddress; setLatRef.current = setLat; setLngRef.current = setLng; });
@@ -658,7 +659,7 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
               const addr = result[0].road_address
                 ? result[0].road_address.address_name
                 : result[0].address.address_name;
-              setAddressRef.current(addr);
+              setAddressRef.current(addr); addressRef.current = addr;
             }
           });
         }
@@ -678,7 +679,7 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
             ? result[0].road_address.address_name
             : result[0].address.address_name;
           // ✅ ref로 최신 setter 호출 → 상단 input 주소 업데이트
-          setAddressRef.current(addr);
+          setAddressRef.current(addr); addressRef.current = addr;
         }
       });
     });
@@ -725,13 +726,13 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
               {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-50"><p className="text-sm text-gray-400">지도 로딩 중...</p></div>}
             </div>
           </div>
-          {lat && lng && address && !address.match(/^[0-9]/) && (
+          {lat && lng && address  && (
             <div className="bg-gray-50 rounded-xl px-3 py-2 text-xs text-gray-900 font-medium flex items-center gap-2 border border-gray-200">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
               {address}
             </div>
           )}
-          <button onClick={() => { if (lat && lng) onConfirm(address, lat, lng); }} disabled={!lat || !lng}
+          <button onClick={() => { if (lat && lng) onConfirm(addressRef.current || address, lat, lng); }} disabled={!lat || !lng}
             className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-40" style={{ background: "#2563eb" }}>
             ✓ 위치로 설정
           </button>
