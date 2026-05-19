@@ -110,7 +110,7 @@ ${docLabel} 신청서를 검토하고 구체적인 안전조치 검토의견 초
     if (fd.riskPowerOutage) riskItems.push("정전작업" + (fd.riskPowerOutageDetail ? ": " + fd.riskPowerOutageDetail : ""));
     if (fd.riskFireWork) riskItems.push("화기작업" + (fd.riskFireWorkDetail ? ": " + fd.riskFireWorkDetail : ""));
     const factorMap: Record<string, string> = {
-      factorNarrowAccess: "진출입로 협소", factorSlippery: "미끔러짐(이끼,습기)",
+      factorNarrowAccess: "진출입로 협소", factorSlippery: "미끄러짐(이끼, 습기)",
       factorSteepSlope: "급경사면", factorWaterHazard: "파랑·유수·수심",
       factorRockfall: "낙석·토사붕괴", factorNoRailing: "난간 미설치",
       factorLadderNoGuard: "사다리·방호울 미설치", factorSuffocation: "질식·화재·폭발",
