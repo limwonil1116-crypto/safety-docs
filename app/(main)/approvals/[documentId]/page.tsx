@@ -1010,7 +1010,7 @@ export default function ApprovalDetailPage() {
                         await fetch(`/api/documents/${documentId}`, {
                           method: "PATCH",
                           headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ formDataJson: { ...(fd as any), gasMeasureRows: merged } }),
+                          body: JSON.stringify({ formDataJson: { ...(fd as any), gasMeasureRows: merged }, gasMeasureRowsOnly: true }),
                         });
                         alert(`[${phase}] 임시저장 및 실시간 보고 완료!`);
                       }}

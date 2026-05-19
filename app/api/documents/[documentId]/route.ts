@@ -39,18 +39,24 @@ export async function PATCH(
 
     const { documentId } = await params;
     const body = await req.json();
-    const { formDataJson, workLatitude, workLongitude, workAddress } = body;
+    const { formDataJson, workLatitude, workLongitude, workAddress, gasMeasureRowsOnly } = body;
 
     const [existing] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
     if (!existing || existing.deletedAt) {
       return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
     }
-    if (!["DRAFT", "REJECTED"].includes(existing.status)) {
+    if (!["DRAFT", "REJECTED"].includes(existing.status) && !gasMeasureRowsOnly) {
       return NextResponse.json({ error: "저장할 수 없는 상태입니다." }, { status: 400 });
     }
 
     // ✅ workAddress가 들어오면 formDataJson의 workLocation/facilityLocation도 주소로 동기화
-    let mergedFormData = formDataJson ?? existing.formDataJson;
+    // gasMeasureRows 전용 임시저장
+    if (gasMeasureRowsOnly && formDataJson?.gasMeasureRows) {
+      const merged = { ...(existing.formDataJson as object), gasMeasureRows: formDataJson.gasMeasureRows };
+      await db.update(documents).set({ formDataJson: merged, updatedAt: new Date() }).where(eq(documents.id, documentId));
+      return NextResponse.json({ success: true });
+    }
+        let mergedFormData = formDataJson ?? existing.formDataJson;
     if (workAddress && typeof workAddress === "string" && workAddress.trim()) {
       const fd = (mergedFormData ?? {}) as Record<string, unknown>;
       const docType = existing.documentType;
@@ -102,7 +108,7 @@ export async function POST(
     if (!existing || existing.deletedAt) {
       return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
     }
-    if (!["DRAFT", "REJECTED"].includes(existing.status)) {
+    if (!["DRAFT", "REJECTED"].includes(existing.status) && !gasMeasureRowsOnly) {
       return NextResponse.json({ error: "제출할 수 없는 상태입니다." }, { status: 400 });
     }
 
