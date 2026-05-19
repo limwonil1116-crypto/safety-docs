@@ -19,6 +19,7 @@ interface DocumentMapItem {
   workStartDate: string | null;
   workEndDate: string | null;
   documentType: string;
+  formDataJson?: Record<string, unknown>;
 }
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string; pin: string }> = {
@@ -80,6 +81,120 @@ function getDateRange(startStr: string, endStr: string): string[] {
 }
 
 // ===== 캘린더 (구글 캘린더 스타일) =====
+
+// ===== 밀폐공간 실시간 모니터링 =====
+function ConfinedSpaceMonitor({ documents }: { documents: DocumentMapItem[] }) {
+  const today = toDateKey(new Date());
+  // 당일 진행중인 밀폐공간 작업 필터
+  const activeConfined = documents.filter(d =>
+    d.documentType === "CONFINED_SPACE" &&
+    ["SUBMITTED", "IN_REVIEW", "IN_REVIEW_FINAL"].includes(d.status) &&
+    d.workStartDate && d.workEndDate &&
+    today >= d.workStartDate && today <= d.workEndDate
+  );
+  const [selected, setSelected] = useState<DocumentMapItem | null>(null);
+  const [gasRows, setGasRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string>("");
+
+  const loadGasRows = async (doc: DocumentMapItem) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/documents/${doc.id}`);
+      const data = await res.json();
+      const rows = data.document?.formDataJson?.gasMeasureRows ?? [];
+      setGasRows(rows);
+      setLastUpdated(new Date().toLocaleTimeString("ko-KR"));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!selected) return;
+    loadGasRows(selected);
+    const interval = setInterval(() => loadGasRows(selected), 30000); // 30초마다 갱신
+    return () => clearInterval(interval);
+  }, [selected]);
+
+  if (activeConfined.length === 0) return null;
+
+  const getGasStatus = (oxygen: string, co: string, h2s: string) => {
+    const o2 = parseFloat(oxygen); const coV = parseFloat(co); const h2sV = parseFloat(h2s);
+    if (o2 < 18 || coV > 30 || h2sV > 10) return "danger";
+    if (o2 < 19.5 || coV > 20 || h2sV > 5) return "warning";
+    return "safe";
+  };
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-4 border-l-4 border-purple-500">
+      <div className="flex items-center gap-2 px-4 py-3 bg-purple-50">
+        <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse inline-block"/>
+        <h3 className="text-sm font-bold text-purple-800">밀폐공간 실시간 모니터링</h3>
+        <span className="text-xs text-purple-600 ml-1">({activeConfined.length}건 진행중)</span>
+      </div>
+      <div className="p-4 space-y-3">
+        <div className="flex gap-2 flex-wrap">
+          {activeConfined.map(doc => (
+            <button key={doc.id}
+              onClick={() => setSelected(doc)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${selected?.id === doc.id ? "bg-purple-600 text-white border-purple-600" : "bg-white text-gray-700 border-gray-200 hover:border-purple-400"}`}>
+              {doc.taskName}
+            </button>
+          ))}
+        </div>
+        {selected && (
+          <div className="bg-gray-50 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-gray-700">{selected.taskName} - 산소/유해가스 농도</span>
+              <div className="flex items-center gap-2">
+                {lastUpdated && <span className="text-[10px] text-gray-400">마지막 갱신: {lastUpdated}</span>}
+                <button onClick={() => loadGasRows(selected)} className="text-[10px] text-blue-500 hover:underline">{loading ? "갱신중..." : "새로고침"}</button>
+              </div>
+            </div>
+            {gasRows.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-3">아직 측정값이 입력되지 않았습니다.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead><tr className="bg-white">
+                    {["측정시간", "측정자", "산소(%)", "CO(ppm)", "H₂S(ppm)", "기타", "상태"].map(h =>
+                      <th key={h} className="px-2 py-1.5 text-gray-500 font-medium text-left">{h}</th>)}
+                  </tr></thead>
+                  <tbody>{gasRows.map((r: any, idx: number) => {
+                    const st = getGasStatus(r.oxygen, r.co, r.h2s);
+                    return (
+                      <tr key={idx} className={`border-t border-gray-100 ${st === "danger" ? "bg-red-50" : st === "warning" ? "bg-amber-50" : ""}`}>
+                        <td className="px-2 py-1.5 text-gray-700">{r.time}</td>
+                        <td className="px-2 py-1.5 text-gray-700">{r.measurer}</td>
+                        <td className={`px-2 py-1.5 font-semibold ${parseFloat(r.oxygen) < 18 ? "text-red-600" : parseFloat(r.oxygen) < 19.5 ? "text-amber-600" : "text-green-600"}`}>{r.oxygen || "-"}</td>
+                        <td className={`px-2 py-1.5 font-semibold ${parseFloat(r.co) > 30 ? "text-red-600" : parseFloat(r.co) > 20 ? "text-amber-600" : "text-green-600"}`}>{r.co || "-"}</td>
+                        <td className={`px-2 py-1.5 font-semibold ${parseFloat(r.h2s) > 10 ? "text-red-600" : parseFloat(r.h2s) > 5 ? "text-amber-600" : "text-green-600"}`}>{r.h2s || "-"}</td>
+                        <td className="px-2 py-1.5 text-gray-600">{r.other}</td>
+                        <td className="px-2 py-1.5">
+                          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${st === "danger" ? "bg-red-100 text-red-700" : st === "warning" ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}`}>
+                            {st === "danger" ? "위험" : st === "warning" ? "주의" : "적정"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}</tbody>
+                </table>
+              </div>
+            )}
+            <div className="mt-2 flex gap-3 text-[10px] text-gray-500">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block"/>산소 19.5~23.5% / CO ≤30ppm / H₂S ≤10ppm: 적정</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block"/>기준 초과: 위험</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function CalendarView({ documents, onDocClick, selectedTaskId, taskList, onTaskChange }: {
   documents: DocumentMapItem[];
   onDocClick: (doc: DocumentMapItem) => void;
@@ -579,7 +694,8 @@ export default function DashboardPage() {
 
       {viewMode === "calendar" && (
         <div className="mx-4 mt-4 rounded-2xl overflow-hidden shadow-sm border border-gray-100 bg-white">
-          {loading ? (
+          <ConfinedSpaceMonitor documents={documents} />
+      {loading ? (
             <div className="p-8 text-center text-sm text-gray-400">불러오는 중...</div>
           ) : (
             <CalendarView
