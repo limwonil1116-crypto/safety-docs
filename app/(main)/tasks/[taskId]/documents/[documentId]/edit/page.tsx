@@ -1743,7 +1743,7 @@ export default function DocumentEditPage() {
         </button>
         <button onClick={async () => { await handleSave(true); setShowApproval(true); }}
           className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#2563eb" }}>
-          결재자 지정 및 제출
+          {documentType === "CONFINED_SPACE" ? "서명하기" : "결재자 지정 및 제출"}
         </button>
       </div>
 
