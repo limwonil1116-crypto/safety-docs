@@ -44,13 +44,20 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ buffer
   const TYPE_MAP: Record<string, string> = {
     SAFETY_WORK_PERMIT: "안전작업허가서",
     CONFINED_SPACE:     "밀폐공간작업허가서",
-    HOLIDAY_WORK:       "휴일작업신청서",
+    HOLIDAY_WORK:       "휴일작업신고서",
     POWER_OUTAGE:       "정전작업허가서",
   };
 
   const typeName = TYPE_MAP[documentType] ?? "안전서류";
   const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  const filename = `${typeName}_${dateStr}_${documentId.slice(0, 8)}.pdf`;
+  const now = new Date();
+  const dateTimeStr = now.getFullYear().toString() +
+    String(now.getMonth()+1).padStart(2,"0") +
+    String(now.getDate()).padStart(2,"0") + "_" +
+    String(now.getHours()).padStart(2,"0") +
+    String(now.getMinutes()).padStart(2,"0");
+  const safeTaskName = (taskName || "").replace(/[^\w\uAC00-\uD7A3]/g, "_").slice(0, 20);
+  const filename = `${dateTimeStr}_${safeTaskName}_${typeName}.pdf`;
 
   const commonProps = {
     formData: formData as Record<string, any>,
