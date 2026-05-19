@@ -140,7 +140,10 @@ export default function DocumentDetailPage() {
       const a = document.createElement("a");
       a.href = url;
       const typeLabel = doc ? (DOCUMENT_TYPE_LABELS[doc.documentType] ?? "서류") : "서류";
-      a.download = `${typeLabel}_${documentId.slice(0, 8)}.pdf`;
+      const now = new Date();
+      const dt = now.getFullYear().toString() + String(now.getMonth()+1).padStart(2,"0") + String(now.getDate()).padStart(2,"0") + "_" + String(now.getHours()).padStart(2,"0") + String(now.getMinutes()).padStart(2,"0");
+      const safeTask = (doc?.task?.name || "").replace(/[^\w\uAC00-\uD7A3]/g, "_").slice(0, 20);
+      a.download = `${dt}_${safeTask}_${typeLabel}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
