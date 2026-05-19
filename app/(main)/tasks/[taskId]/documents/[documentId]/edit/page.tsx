@@ -844,16 +844,16 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
   const handleSubmit = async () => {
     const canvas = canvasRef.current; if (!canvas) return;
     const signatureData = canvas.toDataURL("image/png");
-    if (!reviewer) { setError(info.approverLabel + "를 선택해주세요."); return; }
+    if (!reviewer && !isConfinedModal) { setError(info.approverLabel + " 선택해주세요."); return; }
     setSubmitting(true); setError("");
     try {
       const isConfined = documentType === "CONFINED_SPACE";
       const submitBody: Record<string, unknown> = { signatureData };
       if (isConfined) {
-        submitBody.monitorUserId = reviewer.id;
+        if (reviewer) submitBody.monitorUserId = reviewer.id;
         if (measurerUserId) submitBody.measurerUserId = measurerUserId;
       } else {
-        submitBody.reviewerUserId = reviewer.id;
+        if (reviewer) submitBody.reviewerUserId = reviewer.id;
       }
       const res = await fetch(`/api/documents/${documentId}/approval-lines`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -899,7 +899,7 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
               ))}
             </div>
             {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
-            <button onClick={() => { if (!reviewer) { setError(info.approverLabel + "를 선택해주세요."); return; } setError(""); setStep("sign"); }}
+            <button onClick={() => { if (!reviewer && !isConfinedModal) { setError(info.approverLabel + " 선택해주세요."); return; } setError(""); setStep("sign"); }}
               disabled={!reviewer} className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50" style={{ background: "#2563eb" }}>
               다음 - 서명하기
             </button>
