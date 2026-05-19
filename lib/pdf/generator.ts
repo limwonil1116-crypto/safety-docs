@@ -49,7 +49,6 @@ export async function generatePDF(options: GeneratePDFOptions): Promise<{ buffer
   };
 
   const typeName = TYPE_MAP[documentType] ?? "안전서류";
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   const now = new Date();
   const dateTimeStr = now.getFullYear().toString() +
     String(now.getMonth()+1).padStart(2,"0") +
