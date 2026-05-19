@@ -991,7 +991,11 @@ export default function ApprovalDetailPage() {
           {confinedOrder === 3 && (
             <div className="space-y-3">
               <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">산소 및 유해가스 농도 측정결과를 입력해주세요.</p>
-              <GasMeasureInput rows={gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : DEFAULT_GAS_ROWS} onChange={(rows) => { gasMeasureRef.current = rows; }} />
+              <GasMeasureInput
+                rows={gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput :
+                  DEFAULT_GAS_ROWS.map((r, idx) => idx === 0 ? { ...r, measurer: (fd.measurerName as string) || "" } : r)}
+                onChange={(rows) => { gasMeasureRef.current = rows; }}
+              />
             </div>
           )}
           {confinedOrder === 4 && (
