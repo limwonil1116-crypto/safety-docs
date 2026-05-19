@@ -73,9 +73,11 @@ export async function POST(
     }
     const isConfinedSpace = doc.documentType === "CONFINED_SPACE";
     const isPowerOutage = doc.documentType === "POWER_OUTAGE";
-    const step1UserId = isConfinedSpace ? monitorUserId : reviewerUserId;
+    // 밀폐공간: body에 monitorUserId 없으면 formData에서 가져오기
+    const fdMonitorId = isConfinedSpace ? ((doc.formDataJson as any)?.monitorUserId || monitorUserId) : null;
+    const step1UserId = isConfinedSpace ? fdMonitorId : reviewerUserId;
     if (!step1UserId) {
-      return NextResponse.json({ error: isConfinedSpace ? "감시인을 지정해주세요." : "결재자를 지정해주세요." }, { status: 400 });
+      return NextResponse.json({ error: isConfinedSpace ? "밀폐공간 작업허가서에 감시인이 지정되지 않았습니다." : "결재자를 지정해주세요." }, { status: 400 });
     }
     // 기존 결재선 삭제
     await db.delete(documentApprovalLines).where(eq(documentApprovalLines.documentId, documentId));
