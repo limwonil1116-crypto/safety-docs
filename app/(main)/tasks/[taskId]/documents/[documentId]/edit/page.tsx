@@ -622,7 +622,7 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
   const addressRef = useRef(address);
   const setLatRef = useRef(setLat);
   const setLngRef = useRef(setLng);
-  useEffect(() => { setAddressRef.current = setAddress; setLatRef.current = setLat; setLngRef.current = setLng; });
+  useEffect(() => { setAddressRef.current = setAddress; setLatRef.current = setLat; setLngRef.current = setLng; addressRef.current = address; });
 
   useEffect(() => {
     const initMap = () => { window.kakao.maps.load(() => setMapLoaded(true)); };
