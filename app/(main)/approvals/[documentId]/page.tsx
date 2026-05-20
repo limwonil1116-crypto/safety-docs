@@ -615,7 +615,7 @@ const DEFAULT_GAS_ROWS = [
   { time: "중", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
 ];
 
-function GasRowInput({ rowIndex, initialRow, onRowChange }: { rowIndex: number; initialRow: any; onRowChange: (idx: number, field: string, value: string) => void }) {
+function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { rowIndex: number; initialRow: any; onRowChange: (idx: number, field: string, value: string) => void; onSave?: () => void; phase?: string }) {
     const [values, setValues] = useState<Record<string,string>>({
       hour: initialRow.hour || "", minute: initialRow.minute || "",
       o2: initialRow.o2 || "", co2: initialRow.co2 || "",
@@ -707,6 +707,12 @@ function GasRowInput({ rowIndex, initialRow, onRowChange }: { rowIndex: number; 
                     <p className="text-[9px] text-green-600">✅ 정상범위</p>
                   )}
                 </div>
+      {onSave && phase && (
+        <button onClick={onSave}
+          className="w-full py-2 mt-2 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700">
+          [{phase}] 임시저장 및 실시간보고
+        </button>
+      )}
               );
             })}
           </div>
@@ -726,7 +732,7 @@ function GasRowInput({ rowIndex, initialRow, onRowChange }: { rowIndex: number; 
       </div>
     );
   }
-  function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any[]) => void }) {
+  function GasMeasureInput({ rows, onChange, documentId, fd }: { rows: any[]; onChange: (rows: any[]) => void; documentId?: string; fd?: any }) {
     const rowsRef = useRef<any[]>(rows.map(r => ({...r})));
     const handleFieldChange = useCallback((idx: number, field: string, value: string) => {
       rowsRef.current = rowsRef.current.map((r, i) => i === idx ? { ...r, [field]: value } : r);
@@ -739,7 +745,23 @@ function GasRowInput({ rowIndex, initialRow, onRowChange }: { rowIndex: number; 
           <span className="text-blue-600"> O₂(18~23.5%) CO₂(1.5%미만) H₂S(10ppm미만) CO(30ppm미만) EX(10%미만)</span>
         </p>
         {rowsRef.current.map((row, idx) => (
-          <GasRowInput key={idx} rowIndex={idx} initialRow={row} onRowChange={handleFieldChange} />
+          <GasRowInput key={idx} rowIndex={idx} initialRow={row} onRowChange={handleFieldChange}
+            phase={["작업 전", "작업 중(1차)", "작업 중(2차)"][idx]}
+            onSave={documentId && fd ? async () => {
+              const allRows = rowsRef.current;
+              const phase = ["작업 전", "작업 중(1차)", "작업 중(2차)"][idx];
+              const row = allRows[idx];
+              if (!row) return;
+              const existing = Array.isArray(fd.gasMeasureRows) ? fd.gasMeasureRows : [];
+              const tagged = { ...row, phase };
+              const merged = [...existing.filter((r: any) => r.phase !== phase), tagged];
+              const res = await fetch(`/api/documents/${documentId}`, {
+                method: "PATCH", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ formDataJson: { ...fd, gasMeasureRows: merged }, gasMeasureRowsOnly: true }),
+              });
+              if (res.ok) alert(`[${phase}] 실시간보고 완료!`);
+              else alert("저장 실패.");
+            } : undefined} />
         ))}
       </div>
     );
@@ -995,30 +1017,9 @@ export default function ApprovalDetailPage() {
                 rows={gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput :
                   DEFAULT_GAS_ROWS.map((r, idx) => idx === 0 ? { ...r, measurer: (fd.measurerName as string) || "" } : r)}
                 onChange={(rows) => { gasMeasureRef.current = rows; }}
+              documentId={documentId}
+                fd={fd}
               />
-              {/* 단계별 임시저장 및 실시간보고 */}
-              {["작업 전", "작업 중(1차)", "작업 중(2차)"].map((phase, phaseIdx) => (
-                <button key={phase}
-                  onClick={async () => {
-                    const allRows = gasMeasureRef.current;
-                    if (!allRows || allRows.length === 0) { alert("측정값을 먼저 입력하세요."); return; }
-                    const row = allRows[phaseIdx];
-                    if (!row) { alert("해당 단계 측정값이 없습니다."); return; }
-                    const existing = Array.isArray(fd.gasMeasureRows) ? (fd.gasMeasureRows as any[]) : [];
-                    const tagged = { ...row, phase };
-                    const merged = [...existing.filter((r: any) => r.phase !== phase), tagged];
-                    const res = await fetch(`/api/documents/${documentId}`, {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ formDataJson: { ...(fd as any), gasMeasureRows: merged }, gasMeasureRowsOnly: true }),
-                    });
-                    if (res.ok) alert(`[${phase}] 실시간보고 완료!`);
-                    else alert("저장 실패. 다시 시도해주세요.");
-                  }}
-                  className="w-full py-2 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700 mt-1">
-                  [{phase}] 임시저장 및 실시간보고
-                </button>
-              ))}
             </div>
           )}
           {confinedOrder === 4 && (
