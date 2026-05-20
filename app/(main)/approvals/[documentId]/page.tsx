@@ -706,13 +706,13 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
                   {status === "ok" && (
                     <p className="text-[9px] text-green-600">✅ 정상범위</p>
                   )}
+                {onSave && phase && (
+                <button onClick={onSave}
+                className="w-full py-2 mt-2 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700">
+                [{phase}] 임시저장 및 실시간보고
+                </button>
+                )}
                 </div>
-      {onSave && phase && (
-        <button onClick={onSave}
-          className="w-full py-2 mt-2 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700">
-          [{phase}] 임시저장 및 실시간보고
-        </button>
-      )}
               );
             })}
           </div>
