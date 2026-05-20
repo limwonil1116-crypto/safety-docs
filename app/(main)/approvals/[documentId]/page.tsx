@@ -59,6 +59,12 @@ function Field({ label, value }: { label: string; value?: string | null }) {
     <div className="flex gap-3">
       <span className="text-gray-400 w-24 flex-shrink-0 text-sm">{label}</span>
       <span className="text-gray-900 text-sm font-medium">{value}</span>
+      {onSave && phase && (
+        <button onClick={onSave}
+          className="w-full py-2 mt-1 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700">
+          [{phase}] 임시저장 및 실시간보고
+        </button>
+      )}
     </div>
   );
 }
@@ -706,12 +712,6 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
                   {status === "ok" && (
                     <p className="text-[9px] text-green-600">✅ 정상범위</p>
                   )}
-                {onSave && phase && (
-                <button onClick={onSave}
-                className="w-full py-2 mt-2 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700">
-                [{phase}] 임시저장 및 실시간보고
-                </button>
-                )}
                 </div>
               );
             })}
@@ -729,6 +729,12 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
             </div>
           ))}
         </div>
+      {onSave && phase && (
+        <button onClick={onSave}
+          className="w-full py-2 mt-2 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700">
+          [{phase}] 임시저장 및 실시간보고
+        </button>
+      )}
       </div>
     );
   }
@@ -1365,4 +1371,10 @@ export default function ApprovalDetailPage() {
       )}
     </div>
   );
+      {onSave && phase && (
+        <button onClick={onSave}
+          className="w-full py-2 mt-2 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700">
+          [{phase}] 임시저장 및 실시간보고
+        </button>
+      )}
 }
