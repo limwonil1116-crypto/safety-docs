@@ -995,6 +995,7 @@ export default function ApprovalDetailPage() {
                 rows={gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput :
                   DEFAULT_GAS_ROWS.map((r, idx) => idx === 0 ? { ...r, measurer: (fd.measurerName as string) || "" } : r)}
                 onChange={(rows) => { gasMeasureRef.current = rows; }}
+              />
               {/* 단계별 임시저장 및 실시간보고 */}
               {["작업 전", "작업 중(1차)", "작업 중(2차)"].map((phase, phaseIdx) => (
                 <button key={phase}
