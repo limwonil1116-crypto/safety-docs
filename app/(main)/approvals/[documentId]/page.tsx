@@ -615,7 +615,7 @@ const DEFAULT_GAS_ROWS = [
   { time: "중", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
 ];
 
-function GasRowInput({ rowIndex, initialRow, onRowChange }: { rowIndex: number; initialRow: any; onRowChange: (idx: number, field: string, value: string) => void }) {
+function GasRowInput({ rowIndex, initialRow, onRowChange, onSave }: { rowIndex: number; initialRow: any; onRowChange: (idx: number, field: string, value: string) => void; onSave?: (rowIndex: number) => void }) {
     const [values, setValues] = useState<Record<string,string>>({
       hour: initialRow.hour || "", minute: initialRow.minute || "",
       o2: initialRow.o2 || "", co2: initialRow.co2 || "",
@@ -723,11 +723,19 @@ function GasRowInput({ rowIndex, initialRow, onRowChange }: { rowIndex: number; 
             </div>
           ))}
         </div>
+      {onSave && (
+        <button
+          onClick={() => onSave(rowIndex)}
+          className="w-full py-2 mt-1 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700 active:bg-purple-800">
+          임시저장 및 실시간보고
+        </button>
+      )}
       </div>
     );
   }
-  function GasMeasureInput({ rows, onChange }: { rows: any[]; onChange: (rows: any[]) => void }) {
+  function GasMeasureInput({ rows, onChange, onSave }: { rows: any[]; onChange: (rows: any[]) => void; onSave?: (rowIndex: number) => void }) {
     const rowsRef = useRef<any[]>(rows.map(r => ({...r})));
+    const onSaveRow = onSave ? (idx: number) => onSave(idx) : undefined;
     const handleFieldChange = useCallback((idx: number, field: string, value: string) => {
       rowsRef.current = rowsRef.current.map((r, i) => i === idx ? { ...r, [field]: value } : r);
       onChange([...rowsRef.current]);
@@ -739,7 +747,7 @@ function GasRowInput({ rowIndex, initialRow, onRowChange }: { rowIndex: number; 
           <span className="text-blue-600"> O₂(18~23.5%) CO₂(1.5%미만) H₂S(10ppm미만) CO(30ppm미만) EX(10%미만)</span>
         </p>
         {rowsRef.current.map((row, idx) => (
-          <GasRowInput key={idx} rowIndex={idx} initialRow={row} onRowChange={handleFieldChange} />
+          <GasRowInput key={idx} rowIndex={idx} initialRow={row} onRowChange={handleFieldChange} onSave={onSaveRow} />
         ))}
       </div>
     );
@@ -996,30 +1004,6 @@ export default function ApprovalDetailPage() {
                   DEFAULT_GAS_ROWS.map((r, idx) => idx === 0 ? { ...r, measurer: (fd.measurerName as string) || "" } : r)}
                 onChange={(rows) => { gasMeasureRef.current = rows; }}
               />
-              <div className="space-y-2">
-                <p className="text-xs text-gray-500">중간 측정 단계를 선택하세요:</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {["작업 전", "작업 중(1차)", "작업 중(2차)"].map((phase) => (
-                    <button key={phase}
-                      onClick={async () => {
-                        const rows = gasMeasureRef.current;
-                        if (!rows || rows.length === 0) { alert("측정값을 먼저 입력하세요."); return; }
-                        const existing = (fd.gasMeasureRows as any[]) || [];
-                        const tagged = rows.map((r: any) => ({ ...r, phase }));
-                        const merged = [...existing.filter((r: any) => r.phase !== phase), ...tagged];
-                        await fetch(`/api/documents/${documentId}`, {
-                          method: "PATCH",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ formDataJson: { ...(fd as any), gasMeasureRows: merged }, gasMeasureRowsOnly: true }),
-                        });
-                        alert(`[${phase}] 임시저장 및 실시간 보고 완료!`);
-                      }}
-                      className="py-2 rounded-xl text-xs font-medium bg-purple-600 text-white hover:bg-purple-700 active:bg-purple-800">
-                      {phase}<br/><span className="text-[10px] opacity-80">임시저장 및 실시간보고</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
           )}
           {confinedOrder === 4 && (
