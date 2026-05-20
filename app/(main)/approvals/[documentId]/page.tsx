@@ -1365,10 +1365,4 @@ export default function ApprovalDetailPage() {
       )}
     </div>
   );
-      {onSave && phase && (
-        <button onClick={onSave}
-          className="w-full py-2 mt-2 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700">
-          [{phase}] 임시저장 및 실시간보고
-        </button>
-      )}
 }
