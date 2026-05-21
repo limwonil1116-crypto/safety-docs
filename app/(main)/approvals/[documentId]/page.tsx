@@ -766,7 +766,7 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
           <span className="text-blue-600"> O₂(18~23.5%) CO₂(1.5%미만) H₂S(10ppm미만) CO(30ppm미만) EX(10%미만)</span>
         </p>
         {rowsRef.current.map((row, idx) => (
-          <GasRowInput key={idx} rowIndex={idx} initialRow={row} onRowChange={handleFieldChange}
+          <GasRowInput key={`${idx}-${row.o2}-${row.measurer}`} rowIndex={idx} initialRow={row} onRowChange={handleFieldChange}
             phase={["작업 전", "작업 중(1차)", "작업 중(2차)"][idx]}
             onSave={documentId && fd ? async () => {
               const allRows = rowsRef.current;
@@ -972,7 +972,7 @@ export default function ApprovalDetailPage() {
       const isConfinedSpace = doc?.documentType === "CONFINED_SPACE";
       const confinedOrder = doc?.currentApprovalOrder ?? 0;
       if (isConfinedSpace && confinedOrder === 2 && specialMeasuresInput) extraBody.specialMeasures = specialMeasuresInput;
-      if (isConfinedSpace && confinedOrder === 3) extraBody.gasMeasureRows = gasMeasureRef.current.length > 0 ? gasMeasureRef.current : (gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : DEFAULT_GAS_ROWS);
+      if (isConfinedSpace && confinedOrder === 3) extraBody.gasMeasureRows = gasMeasureRef.current.length > 0 ? gasMeasureRef.current : (gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput.map((r: any) => ({ ...r, measurer: r.measurer || (fd.measurerName as string) || "" })) : DEFAULT_GAS_ROWS);
       const res = await fetch(`/api/documents/${documentId}/approve`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: pendingAction, comment: pendingOpinion || null, reviewResult: pendingResult || null, signatureData, inspectionItems: inspectionItemsRef.current.length > 0 ? inspectionItemsRef.current : undefined, ...extraBody }),
