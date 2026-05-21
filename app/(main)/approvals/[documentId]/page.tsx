@@ -769,7 +769,7 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
                 method: "PATCH", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ formDataJson: { ...fd, gasMeasureRows: merged }, gasMeasureRowsOnly: true }),
               });
-              if (res.ok) alert(`[${phase}] 실시간보고 완료!`);
+              if (res.ok) { window.location.reload(); }
               else alert("저장 실패.");
             } : undefined} />
         ))}
@@ -1149,7 +1149,7 @@ export default function ApprovalDetailPage() {
         <div className="flex items-center gap-2 mb-1">
           <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{typeShort}</span>
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle.bg} ${statusStyle.text}`}>{statusStyle.label}</span>
-          {isMyTurn && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium animate-pulse">??筌△뫀?</span>}
+          {isMyTurn && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium animate-pulse">지금 결재 차레입니다</span>}
         </div>
         <h2 className="text-base font-bold text-gray-900">{taskName}</h2>
         <p className="text-xs text-gray-500 mt-0.5">{typeLabel}</p>
