@@ -1036,7 +1036,13 @@ export default function ApprovalDetailPage() {
               <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">산소 및 유해가스 농도 측정결과를 입력해주세요.</p>
               <GasMeasureInput
                 rows={gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput :
-                  DEFAULT_GAS_ROWS.map((r, idx) => idx === 0 ? { ...r, measurer: (fd.measurerName as string) || "" } : r)}
+                rows={(() => {
+                  const mn = (fd.measurerName as string) || "";
+                  if (gasMeasureRowsInput.length > 0) {
+                    return gasMeasureRowsInput.map((r: any) => ({ ...r, measurer: r.measurer || mn }));
+                  }
+                  return DEFAULT_GAS_ROWS.map((r: any) => ({ ...r, measurer: mn }));
+                })()}
                 onChange={(rows) => { gasMeasureRef.current = rows; }}
               documentId={documentId}
                 fd={fd}
