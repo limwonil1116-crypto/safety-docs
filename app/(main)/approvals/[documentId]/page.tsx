@@ -1181,7 +1181,7 @@ export default function ApprovalDetailPage() {
                 <PdfButtons documentId={documentId} />
               </div>
             )}
-            {isMyTurn && activeTab !== "approval" && <ReviewInputSection />}
+            {isMyTurn && activeTab !== "결재현황" && <ReviewInputSection />}
             <CancelButton />
           </>
         )}
@@ -1197,7 +1197,7 @@ export default function ApprovalDetailPage() {
               </div>
             )}
             <PhotoViewer documentId={documentId} />
-            {isMyTurn && activeTab !== "approval" && <ReviewInputSection />}
+            {isMyTurn && activeTab !== "결재현황" && <ReviewInputSection />}
             <CancelButton />
           </>
         )}
