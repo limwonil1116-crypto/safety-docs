@@ -494,53 +494,63 @@ function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: 
       {isForm1 && riskTypesSummary.length > 0 && <div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-3">위험공종 체크사항</h3><div className="space-y-1.5">{riskTypesSummary.map((item, i) => (<div key={i} className="flex items-start gap-2"><div className="w-4 h-4 rounded bg-blue-600 flex items-center justify-center shrink-0 mt-0.5"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg></div><span className="text-sm text-gray-800">{item}</span></div>))}</div></div>}
       {isForm1 && checkedFactors.length > 0 && <div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-3">발생하는 위험요소</h3><div className="flex flex-wrap gap-2">{checkedFactors.map((f, i) => (<span key={i} className="text-xs px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">{f}</span>))}</div></div>}
       {isForm1 && Array.isArray(fd.riskRows) && fd.riskRows.length > 0 && <div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-3">위험요소 · 개선대책</h3><div className="space-y-2">{(fd.riskRows as any[]).map((row, i) => (<div key={i} className="bg-gray-50 rounded-xl p-3 text-xs space-y-1">{row.riskFactor && <div><span className="text-gray-500">위험요소:</span> <span className="text-gray-800">{row.riskFactor}</span></div>}{row.improvement && <div><span className="text-gray-500">개선대책:</span> <span className="text-gray-800">{row.improvement}</span></div>}{row.disasterType && <div><span className="text-gray-500">재해형태:</span> <span className="text-gray-800">{row.disasterType}</span></div>}</div>))}</div></div>}
-              {isForm2 && Array.isArray(fd.gasMeasureRows) && ([...fd.gasMeasureRows as any[]].sort((a,b)=>{ const order=["작업 전","작업 중(1차)","작업 중(2차)"]; return (order.indexOf(a.phase)||0)-(order.indexOf(b.phase)||0); }) as any[]).some((r: any) => r.o2 || r.co2 || r.h2s || r.co || r.ex) && (
-                <div className="bg-white rounded-2xl p-4 shadow-sm">
-                  <h3 className="text-sm font-bold text-gray-900 mb-3">가스농도 측정결과</h3>
-                  <p className="text-[10px] text-gray-400 mb-2">적정수치: O₂(18~23.5%) CO₂(1.5%미만) H₂S(10ppm미만) CO(30ppm미만) EX(10%미만)</p>
-                  <div className="space-y-3">
-                    {(fd.gasMeasureRows as any[]).map((row: any, i: number) => (
-                      <div key={i} className="border border-gray-100 rounded-xl p-3 bg-gray-50">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{row.time}</span>
-                          {(row.hour !== undefined || row.minute !== undefined) && (
-                            <span className="text-xs text-gray-600">{row.hour || "0"}시 {row.minute || "0"}분</span>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 mb-2">
-                          {[
-                            {label:"O₂(%)", value:row.o2, limit:18, limitType:"min"},
-                            {label:"CO₂(%)", value:row.co2, limit:1.5, limitType:"max"},
-                            {label:"H₂S(ppm)", value:row.h2s, limit:10, limitType:"max"},
-                            {label:"CO(ppm)", value:row.co, limit:30, limitType:"max"},
-                            {label:"EX(%)", value:row.ex, limit:10, limitType:"max"},
-                          ].filter(item => item.value).map((item, j) => {
-                            const num = parseFloat(item.value);
-                            const isDanger = !isNaN(num) && (
-                              (item.limitType === "min" && num < item.limit) ||
-                              (item.limitType === "max" && num > item.limit)
-                            );
-                            return (
-                              <div key={j} className={`rounded-lg p-2 text-center ${isDanger ? "bg-red-50 border border-red-200" : "bg-white border border-gray-100"}`}>
-                                <p className="text-[10px] text-gray-500">{item.label}</p>
-                                <p className={`text-sm font-bold ${isDanger ? "text-red-600" : "text-gray-900"}`}>{item.value}</p>
-                                {isDanger && <p className="text-[9px] text-red-500">⚠ 기준초과</p>}
-                              </div>
-                            );
-                          })}
-                        </div>
-                        {(row.measurer || row.entryCount || row.exitCount) && (
-                          <div className="flex gap-3 text-[10px] text-gray-500">
-                            {row.measurer && <span>측정자: {row.measurer}</span>}
-                            {row.entryCount && <span>입장: {row.entryCount}명</span>}
-                            {row.exitCount && <span>퇴장: {row.exitCount}명</span>}
+      {isForm2 && Array.isArray(fd.gasMeasureRows) && (fd.gasMeasureRows as any[]).length > 0 && (() => {
+        const PHASE_ORDER = ["작업 전", "작업 중(1차)", "작업 중(2차)"];
+        const rows = PHASE_ORDER.map(phase => (fd.gasMeasureRows as any[]).find((r: any) => r.phase === phase)).filter(Boolean);
+        if (rows.length === 0) return null;
+        const checkGas = (field: string, val: string) => {
+          const n = parseFloat(val);
+          if (!val || isNaN(n)) return "empty";
+          if (field === "o2") return n >= 18 && n <= 23.5 ? "ok" : "danger";
+          if (field === "co2") return n <= 1.5 ? "ok" : "danger";
+          if (field === "h2s") return n <= 10 ? "ok" : "danger";
+          if (field === "co") return n <= 30 ? "ok" : "danger";
+          if (field === "ex") return n <= 10 ? "ok" : "danger";
+          return "ok";
+        };
+        return (
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <h3 className="text-sm font-bold text-gray-900 mb-3">산소 및 유해가스 농도 측정결과</h3>
+            <p className="text-[10px] text-gray-400 mb-3">기준값: O₂(18~23.5%) CO₂(≤1.5%) H₂S(≤10ppm) CO(≤30ppm) EX(≤10%)</p>
+            <div className="space-y-3">
+              {rows.map((row: any, i: number) => {
+                const gasFields = [
+                  {label:"O₂(%)", field:"o2", value:row.o2},
+                  {label:"CO₂(%)", field:"co2", value:row.co2},
+                  {label:"H₂S(ppm)", field:"h2s", value:row.h2s},
+                  {label:"CO(ppm)", field:"co", value:row.co},
+                  {label:"EX(%)", field:"ex", value:row.ex},
+                ].filter(g => g.value);
+                const allOk = gasFields.every(g => checkGas(g.field, g.value) !== "danger");
+                const hasDanger = gasFields.some(g => checkGas(g.field, g.value) === "danger");
+                return (
+                  <div key={i} className={`rounded-xl p-3 border ${hasDanger ? "border-red-200 bg-red-50" : "border-gray-100 bg-gray-50"}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{row.phase || `${i+1}제`}</span>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${hasDanger ? "bg-red-100 text-red-700" : allOk && gasFields.length > 0 ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                        {hasDanger ? "⚠ 위험" : allOk && gasFields.length > 0 ? "✓ 양호" : "측정전"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {gasFields.map((g, j) => {
+                        const st = checkGas(g.field, g.value);
+                        return (
+                          <div key={j} className={`rounded-lg p-1.5 text-center ${st === "danger" ? "bg-red-100" : "bg-white border border-gray-100"}`}>
+                            <div className="text-[9px] text-gray-500">{g.label}</div>
+                            <div className={`text-xs font-bold ${st === "danger" ? "text-red-600" : "text-gray-900"}`}>{g.value}</div>
+                            <div className={`text-[9px] ${st === "danger" ? "text-red-500" : "text-green-600"}`}>{st === "danger" ? "위험" : "양호"}</div>
                           </div>
-                        )}
-                      </div>
-                    ))}
+                        );
+                      })}
+                    </div>
+                    {row.measurer && <p className="text-[10px] text-gray-500 mt-1">측정자: {row.measurer} {row.hour !== undefined ? `${row.hour}시 ${row.minute || 0}분` : ""}</p>}
                   </div>
-                </div>
-              )}
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
 {(isForm2 || isForm4) && Array.isArray(fd.safetyChecks) && (
                 <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -1160,7 +1170,7 @@ export default function ApprovalDetailPage() {
         {/* 내용 탭: 모든 입력내용 + 첨부파일 + PDF (승인완료시) */}
         {activeTab === "내용" && (
           <>
-            <DocumentContent doc={doc} fd={fd} approvalLines={approvalLines} />
+            <DocumentContent doc={doc} fd={fd} approvalLines={approvalLines} activeTab={activeTab} />
             <AttachmentViewer documentId={documentId} canAdd={false} />
             {isApproved && (
               <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -1171,7 +1181,7 @@ export default function ApprovalDetailPage() {
                 <PdfButtons documentId={documentId} />
               </div>
             )}
-            {isMyTurn && <ReviewInputSection />}
+            {isMyTurn && activeTab !== "approval" && <ReviewInputSection />}
             <CancelButton />
           </>
         )}
@@ -1187,7 +1197,7 @@ export default function ApprovalDetailPage() {
               </div>
             )}
             <PhotoViewer documentId={documentId} />
-            {isMyTurn && <ReviewInputSection />}
+            {isMyTurn && activeTab !== "approval" && <ReviewInputSection />}
             <CancelButton />
           </>
         )}
