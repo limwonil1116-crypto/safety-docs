@@ -634,6 +634,17 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
       entryCount: initialRow.entryCount || "", exitCount: initialRow.exitCount || "",
     });
     const valRef = useRef<Record<string,string>>(values);
+    useEffect(() => {
+      const newValues = {
+        hour: initialRow.hour || "", minute: initialRow.minute || "",
+        o2: initialRow.o2 || "", co2: initialRow.co2 || "",
+        h2s: initialRow.h2s || "", co: initialRow.co || "",
+        ex: initialRow.ex || "", measurer: initialRow.measurer || "",
+        entryCount: initialRow.entryCount || "", exitCount: initialRow.exitCount || "",
+      };
+      setValues(newValues);
+      valRef.current = newValues;
+    }, [initialRow.o2, initialRow.co2, initialRow.h2s, initialRow.co, initialRow.ex, initialRow.measurer]);
 
     const GAS_LIMITS = [
       {f:"o2",  label:"산소 O₂",               unit:"%",   ph:"18~23.5", min:18, max:23.5},
