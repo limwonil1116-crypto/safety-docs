@@ -429,7 +429,7 @@ function PdfButtons({ documentId }: { documentId: string }) {
     </div>
   );
 }
-function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: Record<string, unknown>; approvalLines: ApprovalLine[]; activeTab?: string }) {
+function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: Record<string, unknown>; approvalLines: ApprovalLine[]; activeTab?: string | undefined }) {
   const workPeriod = fd.workStartDate && fd.workEndDate ? `${fd.workStartDate} ~ ${fd.workEndDate}` : (fd.workDate as string) || "";
   const highPlaceItems: string[] = Array.isArray(fd.riskHighPlaceItems) ? fd.riskHighPlaceItems as string[] : [];
   const waterWorkItems: string[] = Array.isArray(fd.riskWaterWorkItems) ? fd.riskWaterWorkItems as string[] : [];
@@ -1181,7 +1181,7 @@ export default function ApprovalDetailPage() {
                 <PdfButtons documentId={documentId} />
               </div>
             )}
-            {isMyTurn && activeTab !== "결재현황" && <ReviewInputSection />}
+            {isMyTurn && (activeTab as string) !== "결재현황" && <ReviewInputSection />}
             <CancelButton />
           </>
         )}
@@ -1197,7 +1197,7 @@ export default function ApprovalDetailPage() {
               </div>
             )}
             <PhotoViewer documentId={documentId} />
-            {isMyTurn && activeTab !== "결재현황" && <ReviewInputSection />}
+            {isMyTurn && (activeTab as string) !== "결재현황" && <ReviewInputSection />}
             <CancelButton />
           </>
         )}
