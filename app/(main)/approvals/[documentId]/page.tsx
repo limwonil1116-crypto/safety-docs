@@ -780,7 +780,7 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
                 method: "PATCH", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ formDataJson: { ...fd, gasMeasureRows: merged }, gasMeasureRowsOnly: true }),
               });
-              if (res.ok) { window.location.reload(); }
+              if (res.ok) { setCollapsed(true); alert(`[${phase}] 저장 완료!`); }
               else alert("저장 실패.");
             } : undefined} />
         ))}
