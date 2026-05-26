@@ -633,27 +633,26 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
       ex: initialRow.ex || "", measurer: initialRow.measurer || "",
       entryCount: initialRow.entryCount || "", exitCount: initialRow.exitCount || "",
     });
+    const [saved, setSaved] = useState(!!(initialRow.o2 || initialRow.co));
     const valRef = useRef<Record<string,string>>(values);
     useEffect(() => {
-      const newValues = {
+      const v = {
         hour: initialRow.hour || "", minute: initialRow.minute || "",
         o2: initialRow.o2 || "", co2: initialRow.co2 || "",
         h2s: initialRow.h2s || "", co: initialRow.co || "",
         ex: initialRow.ex || "", measurer: initialRow.measurer || "",
         entryCount: initialRow.entryCount || "", exitCount: initialRow.exitCount || "",
       };
-      setValues(newValues);
-      valRef.current = newValues;
-    }, [initialRow.o2, initialRow.co2, initialRow.h2s, initialRow.co, initialRow.ex, initialRow.measurer]);
-
+      setValues(v); valRef.current = v;
+      setSaved(!!(initialRow.o2 || initialRow.co));
+    }, [initialRow.o2, initialRow.co, initialRow.measurer]);
     const GAS_LIMITS = [
-      {f:"o2",  label:"산소 O₂",               unit:"%",   ph:"18~23.5", min:18, max:23.5},
-      {f:"co2", label:"이산화탄소 CO₂", unit:"%",   ph:"1.5미만", max:1.5},
-      {f:"h2s", label:"황화수소 H₂S",       unit:"ppm", ph:"10미만",  max:10},
-      {f:"co",  label:"일산화탄소 CO",       unit:"ppm", ph:"30미만",  max:30},
-      {f:"ex",  label:"폭발하한 EX",             unit:"%",   ph:"10미만",  max:10},
+      {f:"o2",  label:"\uc0b0\uc18c O\u2082",               unit:"%",   ph:"18~23.5", min:18, max:23.5},
+      {f:"co2", label:"\uc774\uc0b0\ud654\ud0c4\uc18c CO\u2082", unit:"%",   ph:"1.5\uc774\ud558", max:1.5},
+      {f:"h2s", label:"\ud669\ud654\uc218\uc18c H\u2082S",       unit:"ppm", ph:"10\uc774\ud558",  max:10},
+      {f:"co",  label:"\uc77c\uc0b0\ud654\ud0c4\uc18c CO",       unit:"ppm", ph:"30\uc774\ud558",  max:30},
+      {f:"ex",  label:"\uac00\uc5f0\uc131 EX",             unit:"%",   ph:"10\uc774\ud558",  max:10},
     ] as const;
-
     const getStatus = (f: string, val: string) => {
       const num = parseFloat(val);
       if (!val || isNaN(num)) return "empty";
@@ -663,19 +662,34 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
       if ("max" in limit && num > limit.max) return "danger";
       return "ok";
     };
-
     const handleChange = (f: string, v: string) => {
       valRef.current = { ...valRef.current, [f]: v };
       setValues({ ...valRef.current });
       onRowChange(rowIndex, f, v);
     };
-
     const numStep = (f: string, delta: number) => {
       const cur = parseInt(valRef.current[f] || "0", 10) || 0;
-      const next = Math.max(0, cur + delta);
-      handleChange(f, String(next));
+      handleChange(f, String(Math.max(0, cur + delta)));
     };
-
+    const allOk = GAS_LIMITS.every(g => getStatus(g.f, values[g.f]) !== "danger");
+    const hasDanger = GAS_LIMITS.some(g => getStatus(g.f, values[g.f]) === "danger");
+    if (saved) {
+      return (
+        <div className="bg-green-50 rounded-xl p-3 border border-green-200 flex items-center justify-between">
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-xs font-bold text-blue-600">{phase}</span>
+            <span className="text-xs text-gray-600">\uce21\uc815\uc790: {values.measurer}</span>
+            {values.o2 && <span className="text-xs text-gray-700">O\u2082: {values.o2}%</span>}
+            {values.co && <span className="text-xs text-gray-700">CO: {values.co}ppm</span>}
+            {values.h2s && <span className="text-xs text-gray-700">H\u2082S: {values.h2s}ppm</span>}
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${hasDanger ? "bg-red-100 text-red-700" : "bg-green-100 text-green-700"}`}>
+              {hasDanger ? "\u26a0 \uc704\ud5d8" : "\u2713 \uc591\ud638"}
+            </span>
+          </div>
+          <button onClick={() => setSaved(false)} className="text-xs text-blue-500 px-2 py-1 rounded border border-blue-200 hover:bg-blue-50 shrink-0">\uc218\uc815\ud558\uae30</button>
+        </div>
+      );
+    }
     return (
       <div className="bg-gray-50 rounded-xl p-3 space-y-3 border border-gray-100">
         <div className="flex items-center gap-3">
@@ -683,16 +697,16 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
           <div className="flex gap-4">
             {(["hour","minute"] as const).map(f => (
               <div key={f} className="flex flex-col items-center gap-0.5">
-                <button type="button" onMouseDown={e=>{e.preventDefault(); numStep(f,1);}} className="w-8 h-7 flex items-center justify-center rounded-t-lg border border-gray-200 bg-white hover:bg-gray-100 text-gray-500 text-xs select-none">▲</button>
+                <button type="button" onMouseDown={e=>{e.preventDefault(); numStep(f,1);}} className="w-8 h-7 flex items-center justify-center rounded-t-lg border border-gray-200 bg-white hover:bg-gray-100 text-gray-500 text-xs select-none">\u25b2</button>
                 <input type="number" min="0" value={values[f]} onChange={e => handleChange(f, e.target.value)} className="w-12 h-8 text-center text-sm text-gray-900 border-x border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                <button type="button" onMouseDown={e=>{e.preventDefault(); numStep(f,-1);}} className="w-8 h-7 flex items-center justify-center rounded-b-lg border border-gray-200 bg-white hover:bg-gray-100 text-gray-500 text-xs select-none">▼</button>
-                <span className="text-xs text-gray-500">{f==="hour"?"시":"분"}</span>
+                <button type="button" onMouseDown={e=>{e.preventDefault(); numStep(f,-1);}} className="w-8 h-7 flex items-center justify-center rounded-b-lg border border-gray-200 bg-white hover:bg-gray-100 text-gray-500 text-xs select-none">\u25bc</button>
+                <span className="text-xs text-gray-500">{f==="hour"?"\uc2dc":"\ubd84"}</span>
               </div>
             ))}
           </div>
         </div>
         <div>
-          <p className="text-xs font-medium text-gray-600 mb-2">측정 농도</p>
+          <p className="text-xs font-medium text-gray-600 mb-2">\uce21\uc815 \ub18d\ub3c4</p>
           <div className="grid grid-cols-2 gap-2">
             {GAS_LIMITS.map(({f,label,unit,ph}) => {
               const status = getStatus(f, values[f]);
@@ -701,126 +715,33 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
                 <div key={f} className="flex flex-col gap-0.5">
                   <label className="text-[10px] text-gray-500">{label} ({unit})</label>
                   <div className="relative">
-                    <input
-                      type="text"
-                      value={values[f]}
-                      placeholder={ph}
-                      onChange={e => handleChange(f, e.target.value)}
-                      className={`w-full px-2 py-1.5 text-sm text-gray-900 border rounded-lg focus:outline-none focus:ring-1 bg-white placeholder:text-gray-300 ${
-                        isDanger
-                          ? "border-red-400 focus:ring-red-400 bg-red-50"
-                          : status === "ok"
-                          ? "border-green-400 focus:ring-green-400 bg-green-50"
-                          : "border-gray-200 focus:ring-blue-400"
-                      }`}
-                    />
-                    {isDanger && (
-                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 text-[10px] font-bold">⚠</span>
-                    )}
-                    {status === "ok" && (
-                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-green-500 text-[10px]">✓</span>
-                    )}
+                    <input type="text" value={values[f]} placeholder={ph} onChange={e => handleChange(f, e.target.value)}
+                      className={`w-full px-2 py-1.5 text-sm text-gray-900 border rounded-lg focus:outline-none focus:ring-1 bg-white placeholder:text-gray-300 ${isDanger ? "border-red-400 focus:ring-red-400 bg-red-50" : status === "ok" ? "border-green-400 focus:ring-green-400 bg-green-50" : "border-gray-200 focus:ring-blue-400"}`} />
                   </div>
-                  {isDanger && (
-                    <p className="text-[9px] text-red-500 font-medium">❌ 기준초과! 작업중지 필요</p>
-                  )}
-                  {status === "ok" && (
-                    <p className="text-[9px] text-green-600">✅ 정상범위</p>
-                  )}
+                  {isDanger && <p className="text-[9px] text-red-500 font-medium">\uae30\uc900 \ucd08\uacfc! \uc791\uc5c5\uc911\uc9c0 \ud544\uc694</p>}
+                  {status === "ok" && <p className="text-[9px] text-green-600">\uc815\uc0c1\ubc94\uc704</p>}
                 </div>
               );
             })}
           </div>
         </div>
         <div className="grid grid-cols-3 gap-2">
-          {([
-            {f:"measurer",   label:"측정자",  type:"text"},
-            {f:"entryCount", label:"입장(명)", type:"number"},
-            {f:"exitCount",  label:"퇴장(명)", type:"number"},
-          ] as const).map(({f,label,type}) => (
+          {([{f:"measurer", label:"\uce21\uc815\uc790", type:"text"},{f:"entryCount", label:"\uc785\uc7a5(\uba85)", type:"number"},{f:"exitCount", label:"\ud1f4\uc7a5(\uba85)", type:"number"}] as const).map(({f,label,type}) => (
             <div key={f}>
               <label className="text-xs text-gray-500 mb-1 block">{label}</label>
               <input type={type} min={type==="number"?"0":undefined} value={values[f]} onChange={e => handleChange(f, e.target.value)} className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
             </div>
           ))}
         </div>
-      {onSave && phase && (
-        <button onClick={async () => { onSave?.(); }}
-          className="w-full py-2 mt-2 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700">
-          [{phase}] 임시저장 및 실시간보고
-        </button>
-      )}
+        {onSave && phase && (
+          <button onClick={async () => { await onSave?.(); setSaved(true); }}
+            className="w-full py-2 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700">
+            [{phase}] \uc784\uc2dc\uc800\uc7a5 \ubc0f \uc2e4\uc2dc\uac04\ubcf4\uace0
+          </button>
+        )}
       </div>
     );
   }
-  function GasMeasureInput({ rows, onChange, documentId, fd }: { rows: any[]; onChange: (rows: any[]) => void; documentId?: string; fd?: any }) {
-    const rowsRef = useRef<any[]>(rows.map(r => ({...r})));
-    const handleFieldChange = useCallback((idx: number, field: string, value: string) => {
-      rowsRef.current = rowsRef.current.map((r, i) => i === idx ? { ...r, [field]: value } : r);
-      onChange([...rowsRef.current]);
-    }, [onChange]);
-    return (
-      <div className="space-y-3">
-        <p className="text-xs bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-          <span className="font-medium text-blue-700">적정수치:</span>
-          <span className="text-blue-600"> O₂(18~23.5%) CO₂(1.5%미만) H₂S(10ppm미만) CO(30ppm미만) EX(10%미만)</span>
-        </p>
-        {rowsRef.current.map((row, idx) => (
-          <GasRowInput key={`${idx}-${row.o2}-${row.measurer}`} rowIndex={idx} initialRow={row} onRowChange={handleFieldChange}
-            phase={["작업 전", "작업 중(1차)", "작업 중(2차)"][idx]}
-            onSave={documentId && fd ? async () => {
-              const allRows = rowsRef.current;
-              const phase = ["작업 전", "작업 중(1차)", "작업 중(2차)"][idx];
-              const row = allRows[idx];
-              if (!row) return;
-              const existing = Array.isArray(fd.gasMeasureRows) ? fd.gasMeasureRows : [];
-              const tagged = { ...row, phase };
-              const merged = [...existing.filter((r: any) => r.phase !== phase), tagged];
-              const res = await fetch(`/api/documents/${documentId}`, {
-                method: "PATCH", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ formDataJson: { ...fd, gasMeasureRows: merged }, gasMeasureRowsOnly: true }),
-              });
-              if (res.ok) { alert(`[${phase}] 저장 완료!`); return true; }
-              else alert("저장 실패.");
-            } : undefined} />
-        ))}
-      </div>
-    );
-  }
-function AiSpecialMeasuresButton({ doc, onGenerated, label = "AI 특별조치 초안 생성" }: {
-  doc: DocumentDetail;
-  onGenerated: (v: string) => void;
-  label?: string;
-}) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const handleGenerate = async () => {
-    setLoading(true); setError("");
-    try {
-      const res = await fetch("/api/ai/special-measures", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        // 검토의견용은 항상 specialMeasures 텍스트 반환하도록 타입 고정
-        body: JSON.stringify({ documentType: "REVIEW_OPINION", formData: doc.formDataJson, originalType: doc.documentType }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "AI 생성 오류");
-      const result = data.specialMeasures || data.riskFactors || data.text || "";
-      if (!result) throw new Error("AI 응답이 비어있습니다.");
-      onGenerated(result);
-    } catch (e: unknown) { setError(e instanceof Error ? e.message : "오류가 발생했습니다."); }
-    finally { setLoading(false); }
-  };
-  return (
-    <div>
-      <button onClick={handleGenerate} disabled={loading}
-        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-50"
-        style={{ background: loading ? "#6b7280" : "linear-gradient(135deg, #7c3aed, #2563eb)" }}>
-        {loading ? "AI 초안 생성 중..." : `✨ ${label}`}
-      </button>
-      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-    </div>
-  );
-}
 
 function SpecialMeasuresInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const ref = useRef<HTMLTextAreaElement>(null);
