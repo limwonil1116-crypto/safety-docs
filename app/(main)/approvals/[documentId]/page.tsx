@@ -745,7 +745,7 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
           ))}
         </div>
       {onSave && phase && (
-        <button onClick={async () => { const ok = await onSave?.(); if (ok) setCollapsed(true); }}
+        <button onClick={async () => { onSave?.(); }}
           className="w-full py-2 mt-2 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700">
           [{phase}] 임시저장 및 실시간보고
         </button>
