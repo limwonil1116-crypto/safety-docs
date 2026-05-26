@@ -625,7 +625,7 @@ const DEFAULT_GAS_ROWS = [
   { time: "중", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
 ];
 
-function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { rowIndex: number; initialRow: any; onRowChange: (idx: number, field: string, value: string) => void; onSave?: () => void; phase?: string }) {
+function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { rowIndex: number; initialRow: any; onRowChange: (idx: number, field: string, value: string) => void; onSave?: () => Promise<boolean | void>; phase?: string }) {
     const [values, setValues] = useState<Record<string,string>>({
       hour: initialRow.hour || "", minute: initialRow.minute || "",
       o2: initialRow.o2 || "", co2: initialRow.co2 || "",
@@ -745,7 +745,7 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
           ))}
         </div>
       {onSave && phase && (
-        <button onClick={onSave}
+        <button onClick={async () => { const ok = await onSave?.(); if (ok) setCollapsed(true); }}
           className="w-full py-2 mt-2 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700">
           [{phase}] 임시저장 및 실시간보고
         </button>
@@ -780,7 +780,7 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
                 method: "PATCH", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ formDataJson: { ...fd, gasMeasureRows: merged }, gasMeasureRowsOnly: true }),
               });
-              if (res.ok) { setCollapsed(true); alert(`[${phase}] 저장 완료!`); }
+              if (res.ok) { alert(`[${phase}] 저장 완료!`); return true; }
               else alert("저장 실패.");
             } : undefined} />
         ))}
