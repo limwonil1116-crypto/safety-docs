@@ -803,6 +803,7 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
                 alert(`[${phase}] 저장 완료!`);
                 if (onSaved) onSaved(phase, row);
                 return true;
+              }
               else alert("저장 실패.");
             } : undefined} />
         ))}
