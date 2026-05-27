@@ -1100,7 +1100,7 @@ export default function ApprovalDetailPage() {
                     return [...existing, { ...savedRow, phase }];
                   });
                 }}
-              />
+              />}
             </div>
           )}
           {confinedOrder === 4 && (
