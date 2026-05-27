@@ -797,7 +797,7 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
       });
       if (res.ok) {
         savedRowsRef.current[phase] = tagged;
-        alert(`[${phase}] 저장 완료!`);
+        alert(`[${phase}] 저장 완료!`); window.location.reload();
         if (onSaved) onSaved(phase, tagged);
         return true;
       } else {
