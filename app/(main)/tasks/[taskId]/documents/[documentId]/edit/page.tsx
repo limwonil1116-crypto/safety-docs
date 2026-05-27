@@ -619,7 +619,6 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
   const [gpsLoading, setGpsLoading] = useState(false);
   // ✅ 클로저 문제 해결: setAddress를 ref로 저장
   const setAddressRef = useRef(setAddress);
-  const addressRef = useRef(address);
   const setLatRef = useRef(setLat);
   const setLngRef = useRef(setLng);
   useEffect(() => { setAddressRef.current = setAddress; setLatRef.current = setLat; setLngRef.current = setLng; });
@@ -659,7 +658,7 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
               const addr = result[0].road_address
                 ? result[0].road_address.address_name
                 : result[0].address.address_name;
-              setAddressRef.current(addr); addressRef.current = addr;
+              setAddressRef.current(addr);
             }
           });
         }
@@ -679,7 +678,7 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
             ? result[0].road_address.address_name
             : result[0].address.address_name;
           // ✅ ref로 최신 setter 호출 → 상단 input 주소 업데이트
-          setAddressRef.current(addr); addressRef.current = addr;
+          setAddressRef.current(addr);
         }
       });
     });
@@ -726,13 +725,13 @@ function LocationPickerModal({ initialAddress, initialLat, initialLng, onConfirm
               {!mapLoaded && <div className="w-full h-full flex items-center justify-center bg-gray-50"><p className="text-sm text-gray-400">지도 로딩 중...</p></div>}
             </div>
           </div>
-          {lat && lng && address  && (
+          {lat && lng && address && !address.match(/^[0-9]/) && (
             <div className="bg-gray-50 rounded-xl px-3 py-2 text-xs text-gray-900 font-medium flex items-center gap-2 border border-gray-200">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
               {address}
             </div>
           )}
-          <button onClick={() => { if (lat && lng) onConfirm(addressRef.current || address, lat, lng); }} disabled={!lat || !lng}
+          <button onClick={() => { if (lat && lng) onConfirm(address, lat, lng); }} disabled={!lat || !lng}
             className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-40" style={{ background: "#2563eb" }}>
             ✓ 위치로 설정
           </button>
@@ -804,7 +803,7 @@ function UserPickerModal({ title, onSelect, onClose }: {
 function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, onSubmitted }: {
   documentId: string; documentType: string; measurerUserId?: string; onClose: () => void; onSubmitted: () => void;
 }) {
-  const [step, setStep] = useState<"approver" | "sign">(documentType === "CONFINED_SPACE" ? "sign" : "approver");
+  const [step, setStep] = useState<"approver" | "sign">("approver");
   const [users, setUsers] = useState<UserItem[]>([]);
   const [keyword, setKeyword] = useState("");
   const [reviewer, setReviewer] = useState<UserItem | null>(null);
@@ -844,16 +843,16 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
   const handleSubmit = async () => {
     const canvas = canvasRef.current; if (!canvas) return;
     const signatureData = canvas.toDataURL("image/png");
-    if (!reviewer && !isConfinedModal) { setError(info.approverLabel + "를 선택해주세요."); return; }
+    if (!reviewer) { setError(info.approverLabel + "를 선택해주세요."); return; }
     setSubmitting(true); setError("");
     try {
       const isConfined = documentType === "CONFINED_SPACE";
       const submitBody: Record<string, unknown> = { signatureData };
       if (isConfined) {
-        if (reviewer) submitBody.monitorUserId = reviewer.id;
+        submitBody.monitorUserId = reviewer.id;
         if (measurerUserId) submitBody.measurerUserId = measurerUserId;
       } else {
-        if (reviewer) submitBody.reviewerUserId = reviewer.id;
+        submitBody.reviewerUserId = reviewer.id;
       }
       const res = await fetch(`/api/documents/${documentId}/approval-lines`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -899,7 +898,7 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
               ))}
             </div>
             {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
-            <button onClick={() => { if (!reviewer && !isConfinedModal) { setError(info.approverLabel + "를 선택해주세요."); return; } setError(""); setStep("sign"); }}
+            <button onClick={() => { if (!reviewer) { setError(info.approverLabel + "를 선택해주세요."); return; } setError(""); setStep("sign"); }}
               disabled={!reviewer} className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50" style={{ background: "#2563eb" }}>
               다음 - 서명하기
             </button>
@@ -1743,7 +1742,7 @@ export default function DocumentEditPage() {
         </button>
         <button onClick={async () => { await handleSave(true); setShowApproval(true); }}
           className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#2563eb" }}>
-          {documentType === "CONFINED_SPACE" ? "서명하기" : "결재자 지정 및 제출"}
+          결재자 지정 및 제출
         </button>
       </div>
 
