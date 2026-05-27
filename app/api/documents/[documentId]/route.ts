@@ -115,7 +115,9 @@ export async function POST(
     const [updated] = await db
       .update(documents)
       .set({
-        formDataJson: formDataJson ?? existing.formDataJson,
+        formDataJson: gasMeasureRowsOnly
+          ? { ...(existing.formDataJson as object), ...(formDataJson as object) }
+          : (formDataJson ?? existing.formDataJson),
         status: "SUBMITTED",
         lastUpdatedBy: session.user.id,
         submittedAt: new Date(),
