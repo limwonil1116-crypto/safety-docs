@@ -890,10 +890,19 @@ export default function ApprovalDetailPage() {
   const [confinedNextAction, setConfinedNextAction] = useState<"PLAN_APPROVER"|"FINAL_CONFIRMER"|null>(null);
   const [specialMeasuresInput, setSpecialMeasuresInput] = useState("");
   const inspectionItemsRef = useRef<any[]>([]);
-  const [gasMeasureRowsInput, setGasMeasureRowsInput] = useState<any[]>(
-    Array.isArray((fd as any)?.gasMeasureRows) ? (fd as any).gasMeasureRows : []
-  );
+  const [gasMeasureRowsInput, setGasMeasureRowsInput] = useState<any[]>([]);
   const gasMeasureRef = useRef<any[]>([]);
+  // gasMeasureRows: doc 로드 후 초기화
+  useEffect(() => {
+    if (!doc) return;
+    const rows = (doc.formDataJson as any)?.gasMeasureRows;
+    const mn = (doc.formDataJson as any)?.measurerName || "";
+    if (Array.isArray(rows) && rows.length > 0) {
+      setGasMeasureRowsInput(rows.map((r: any) => ({ ...r, measurer: r.measurer || mn })));
+    } else if (mn) {
+      setGasMeasureRowsInput([]);
+    }
+  }, [doc?.id]);
   const [pendingAction, setPendingAction] = useState<"APPROVE"|"REJECT"|null>(null);
   const [pendingOpinion, setPendingOpinion] = useState("");
   const [pendingResult, setPendingResult] = useState("");
