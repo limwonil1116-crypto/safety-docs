@@ -633,6 +633,14 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
     useEffect(() => {
       if (initialRow.o2 || initialRow.co || initialRow.h2s || initialRow.co2 || initialRow.ex) {
         setSaved(true);
+        setValues({
+          hour: initialRow.hour || "", minute: initialRow.minute || "",
+          o2: initialRow.o2 || "", co2: initialRow.co2 || "",
+          h2s: initialRow.h2s || "", co: initialRow.co || "",
+          ex: initialRow.ex || "", measurer: initialRow.measurer || "",
+          entryCount: initialRow.entryCount || "", exitCount: initialRow.exitCount || "",
+        });
+
       }
     }, [initialRow.o2, initialRow.co, initialRow.h2s]);
     const [values, setValues] = useState<Record<string,string>>({
