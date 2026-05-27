@@ -904,6 +904,7 @@ export default function ApprovalDetailPage() {
   const [specialMeasuresInput, setSpecialMeasuresInput] = useState("");
   const inspectionItemsRef = useRef<any[]>([]);
   const [gasMeasureRowsInput, setGasMeasureRowsInput] = useState<any[]>([]);
+  const [gasRowsLoaded, setGasRowsLoaded] = useState(false);
   const gasMeasureRef = useRef<any[]>([]);
   // gasMeasureRows: doc 로드 후 초기화
   useEffect(() => {
@@ -912,8 +913,10 @@ export default function ApprovalDetailPage() {
     const mn = (doc.formDataJson as any)?.measurerName || "";
     if (Array.isArray(rows) && rows.length > 0) {
       setGasMeasureRowsInput(rows.map((r: any) => ({ ...r, measurer: r.measurer || mn })));
+      setGasRowsLoaded(true);
     } else if (mn) {
       setGasMeasureRowsInput([]);
+      setGasRowsLoaded(true);
     }
   }, [doc?.id]);
   const [pendingAction, setPendingAction] = useState<"APPROVE"|"REJECT"|null>(null);
@@ -1081,7 +1084,7 @@ export default function ApprovalDetailPage() {
           {confinedOrder === 3 && (
             <div className="space-y-3">
               <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">산소 및 유해가스 농도 측정결과를 입력해주세요.</p>
-              <GasMeasureInput key={gasMeasureRowsInput.map((r:any)=>r.phase).join(",")}
+              {gasRowsLoaded && <GasMeasureInput key={gasMeasureRowsInput.map((r:any)=>r.phase).join(",")}
                 rows={(() => {
                   const mn = (fd.measurerName as string) || "";
                   if (gasMeasureRowsInput.length > 0) {
