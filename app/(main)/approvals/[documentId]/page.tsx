@@ -772,40 +772,48 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
       </div>
     );
   }
-  function GasMeasureInput({ rows, onChange, documentId, fd, onSaved }: { rows: any[]; onChange: (rows: any[]) => void; documentId?: string; fd?: any; onSaved?: (phase: string, row: any) => void }) {
+  function GasMeasureInput({ rows, onChange, documentId, onSaved }: { rows: any[]; onChange: (rows: any[]) => void; documentId?: string; onSaved?: (phase: string, row: any) => void }) {
     const rowsRef = useRef<any[]>(rows.map(r => ({...r})));
+    const savedRowsRef = useRef<Record<string, any>>({});
+    const PHASES = ["작업 전", "작업 중(1차)", "작업 중(2차)"];
     const handleFieldChange = useCallback((idx: number, field: string, value: string) => {
       rowsRef.current = rowsRef.current.map((r, i) => i === idx ? { ...r, [field]: value } : r);
       onChange([...rowsRef.current]);
     }, [onChange]);
+    const handleSave = async (idx: number) => {
+      const phase = PHASES[idx];
+      const row = rowsRef.current[idx];
+      if (!row || !documentId) return;
+      // 기존 저장된 값 가져오기
+      const existingRes = await fetch(`/api/documents/${documentId}`);
+      const existingData = await existingRes.json();
+      const existing = Array.isArray(existingData.document?.formDataJson?.gasMeasureRows)
+        ? existingData.document.formDataJson.gasMeasureRows : [];
+      const tagged = { ...row, phase };
+      const merged = [...existing.filter((r: any) => r.phase !== phase), tagged];
+      const res = await fetch(`/api/documents/${documentId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formDataJson: { ...existingData.document?.formDataJson, gasMeasureRows: merged }, gasMeasureRowsOnly: true }),
+      });
+      if (res.ok) {
+        savedRowsRef.current[phase] = tagged;
+        alert(`[${phase}] 저장 완료!`);
+        if (onSaved) onSaved(phase, tagged);
+        return true;
+      } else {
+        alert("저장 실패.");
+      }
+    };
     return (
       <div className="space-y-3">
         <p className="text-xs bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-          <span className="font-medium text-blue-700">적정수치:</span>
-          <span className="text-blue-600"> O₂(18~23.5%) CO₂(1.5%미만) H₂S(10ppm미만) CO(30ppm미만) EX(10%미만)</span>
+          <span className="font-medium text-blue-700">기준값:</span>
+          <span className="text-blue-600"> O₂(18~23.5%) CO₂(1.5%이하) H₂S(10ppm이하) CO(30ppm이하) EX(10%이하)</span>
         </p>
         {rowsRef.current.map((row, idx) => (
           <GasRowInput key={`${idx}-${row.o2}-${row.measurer}`} rowIndex={idx} initialRow={row} onRowChange={handleFieldChange}
-            phase={["작업 전", "작업 중(1차)", "작업 중(2차)"][idx]}
-            onSave={documentId && fd ? async () => {
-              const allRows = rowsRef.current;
-              const phase = ["작업 전", "작업 중(1차)", "작업 중(2차)"][idx];
-              const row = allRows[idx];
-              if (!row) return;
-              const existing = Array.isArray(fd.gasMeasureRows) ? fd.gasMeasureRows : [];
-              const tagged = { ...row, phase };
-              const merged = [...existing.filter((r: any) => r.phase !== phase), tagged];
-              const res = await fetch(`/api/documents/${documentId}`, {
-                method: "PATCH", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ formDataJson: { ...fd, gasMeasureRows: merged }, gasMeasureRowsOnly: true }),
-              });
-              if (res.ok) {
-                alert(`[${phase}] 저장 완료!`);
-                if (onSaved) onSaved(phase, row);
-                return true;
-              }
-              else alert("저장 실패.");
-            } : undefined} />
+            phase={PHASES[idx]}
+            onSave={documentId ? () => handleSave(idx) : undefined} />
         ))}
       </div>
     );
