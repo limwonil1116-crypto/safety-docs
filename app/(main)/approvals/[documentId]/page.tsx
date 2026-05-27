@@ -626,6 +626,7 @@ const DEFAULT_GAS_ROWS = [
 ];
 
 function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { rowIndex: number; initialRow: any; onRowChange: (idx: number, field: string, value: string) => void; onSave?: () => Promise<boolean | void>; phase?: string }) {
+    const [saved, setSaved] = useState(!!(initialRow.o2 || initialRow.co || initialRow.h2s));
     const [values, setValues] = useState<Record<string,string>>({
       hour: initialRow.hour || "", minute: initialRow.minute || "",
       o2: initialRow.o2 || "", co2: initialRow.co2 || "",
@@ -676,6 +677,21 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
       handleChange(f, String(next));
     };
 
+    if (saved) {
+      return (
+        <div className="bg-green-50 rounded-xl p-3 border border-green-200 flex items-center justify-between">
+          <div className="flex flex-wrap gap-1.5 items-center">
+            <span className="text-xs font-bold text-blue-600">{phase}</span>
+            <span className="text-xs text-gray-600">측정자: {values.measurer}</span>
+            {values.o2 && <span className="text-xs text-gray-700">O₂:{values.o2}%</span>}
+            {values.co && <span className="text-xs text-gray-700">CO:{values.co}ppm</span>}
+            {values.h2s && <span className="text-xs text-gray-700">H₂S:{values.h2s}ppm</span>}
+            <span className="text-[10px] font-semibold text-green-700">✓ 저장완료</span>
+          </div>
+          <button onClick={() => setSaved(false)} className="text-xs text-blue-500 px-2 py-1 rounded border border-blue-200 shrink-0">수정하기</button>
+        </div>
+      );
+    }
     return (
       <div className="bg-gray-50 rounded-xl p-3 space-y-3 border border-gray-100">
         <div className="flex items-center gap-3">
@@ -745,7 +761,7 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
           ))}
         </div>
       {onSave && phase && (
-        <button onClick={async () => { onSave?.(); }}
+        <button onClick={async () => { onSave?.(); setSaved(true); }}
           className="w-full py-2 mt-2 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700">
           [{phase}] 임시저장 및 실시간보고
         </button>
