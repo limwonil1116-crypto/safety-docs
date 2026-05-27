@@ -803,7 +803,7 @@ function UserPickerModal({ title, onSelect, onClose }: {
 function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, onSubmitted }: {
   documentId: string; documentType: string; measurerUserId?: string; onClose: () => void; onSubmitted: () => void;
 }) {
-  const [step, setStep] = useState<"approver" | "sign">(documentType === "CONFINED_SPACE" ? "sign" : "approver");
+  const [step, setStep] = useState<"approver" | "sign">("approver");
   const [users, setUsers] = useState<UserItem[]>([]);
   const [keyword, setKeyword] = useState("");
   const [reviewer, setReviewer] = useState<UserItem | null>(null);
@@ -843,16 +843,16 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
   const handleSubmit = async () => {
     const canvas = canvasRef.current; if (!canvas) return;
     const signatureData = canvas.toDataURL("image/png");
-    if (!reviewer && !isConfinedModal) { setError(info.approverLabel + "를 선택해주세요."); return; }
+    if (!reviewer) { setError(info.approverLabel + "를 선택해주세요."); return; }
     setSubmitting(true); setError("");
     try {
       const isConfined = documentType === "CONFINED_SPACE";
       const submitBody: Record<string, unknown> = { signatureData };
       if (isConfined) {
-        if (reviewer) submitBody.monitorUserId = reviewer.id;
+        submitBody.monitorUserId = reviewer.id;
         if (measurerUserId) submitBody.measurerUserId = measurerUserId;
       } else {
-        if (reviewer) submitBody.reviewerUserId = reviewer.id;
+        submitBody.reviewerUserId = reviewer.id;
       }
       const res = await fetch(`/api/documents/${documentId}/approval-lines`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -898,7 +898,7 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
               ))}
             </div>
             {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
-            <button onClick={() => { if (!reviewer && !isConfinedModal) { setError(info.approverLabel + "를 선택해주세요."); return; } setError(""); setStep("sign"); }}
+            <button onClick={() => { if (!reviewer) { setError(info.approverLabel + "를 선택해주세요."); return; } setError(""); setStep("sign"); }}
               disabled={!reviewer} className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50" style={{ background: "#2563eb" }}>
               다음 - 서명하기
             </button>
@@ -1742,7 +1742,7 @@ export default function DocumentEditPage() {
         </button>
         <button onClick={async () => { await handleSave(true); setShowApproval(true); }}
           className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#2563eb" }}>
-          {documentType === "CONFINED_SPACE" ? "서명하기" : "결재자 지정 및 제출"}
+          결재자 지정 및 제출
         </button>
       </div>
 
