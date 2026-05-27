@@ -799,7 +799,15 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
                 method: "PATCH", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ formDataJson: { ...fd, gasMeasureRows: merged }, gasMeasureRowsOnly: true }),
               });
-              if (res.ok) { alert(`[${phase}] 저장 완료!`); return true; }
+              if (res.ok) {
+                setGasMeasureRowsInput((prev: any[]) => {
+                  const base = prev.length > 0 ? [...prev] : rowsRef.current.map((r: any) => ({...r}));
+                  if (base[rowIndex]) base[rowIndex] = { ...base[rowIndex], phase };
+                  return base;
+                });
+                alert(`[${phase}] 저장 완료!`);
+                return true;
+              }
               else alert("저장 실패.");
             } : undefined} />
         ))}
