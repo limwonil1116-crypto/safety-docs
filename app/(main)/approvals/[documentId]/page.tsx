@@ -1086,7 +1086,6 @@ export default function ApprovalDetailPage() {
                 })()}
                 onChange={(rows) => { gasMeasureRef.current = rows; }}
               documentId={documentId}
-                fd={fd}
                 onSaved={(phase, savedRow) => {
                   setGasMeasureRowsInput(prev => {
                     const existing = prev.filter((r: any) => r.phase !== phase);
