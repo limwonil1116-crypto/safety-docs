@@ -890,7 +890,9 @@ export default function ApprovalDetailPage() {
   const [confinedNextAction, setConfinedNextAction] = useState<"PLAN_APPROVER"|"FINAL_CONFIRMER"|null>(null);
   const [specialMeasuresInput, setSpecialMeasuresInput] = useState("");
   const inspectionItemsRef = useRef<any[]>([]);
-  const [gasMeasureRowsInput, setGasMeasureRowsInput] = useState<any[]>([]);
+  const [gasMeasureRowsInput, setGasMeasureRowsInput] = useState<any[]>(
+    Array.isArray((fd as any)?.gasMeasureRows) ? (fd as any).gasMeasureRows : []
+  );
   const gasMeasureRef = useRef<any[]>([]);
   const [pendingAction, setPendingAction] = useState<"APPROVE"|"REJECT"|null>(null);
   const [pendingOpinion, setPendingOpinion] = useState("");
