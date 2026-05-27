@@ -630,6 +630,11 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
       // phase가 이미 저장된 값인지 확인 (o2, co, h2s 중 하나라도 있으면 저장된 것)
       return !!(initialRow.o2 || initialRow.co || initialRow.h2s || initialRow.co2 || initialRow.ex);
     });
+    useEffect(() => {
+      if (initialRow.o2 || initialRow.co || initialRow.h2s || initialRow.co2 || initialRow.ex) {
+        setSaved(true);
+      }
+    }, [initialRow.o2, initialRow.co, initialRow.h2s]);
     const [values, setValues] = useState<Record<string,string>>({
       hour: initialRow.hour || "", minute: initialRow.minute || "",
       o2: initialRow.o2 || "", co2: initialRow.co2 || "",
@@ -797,7 +802,7 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
       });
       if (res.ok) {
         savedRowsRef.current[phase] = tagged;
-        alert(`[${phase}] 저장 완료!`); window.location.reload();
+        alert(`[${phase}] 저장 완료!`);
         if (onSaved) onSaved(phase, tagged);
         return true;
       } else {
