@@ -626,7 +626,10 @@ const DEFAULT_GAS_ROWS = [
 ];
 
 function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { rowIndex: number; initialRow: any; onRowChange: (idx: number, field: string, value: string) => void; onSave?: () => Promise<boolean | void>; phase?: string }) {
-    const [saved, setSaved] = useState(!!(initialRow.o2 || initialRow.co || initialRow.h2s));
+    const [saved, setSaved] = useState(() => {
+      // phase가 이미 저장된 값인지 확인 (o2, co, h2s 중 하나라도 있으면 저장된 것)
+      return !!(initialRow.o2 || initialRow.co || initialRow.h2s || initialRow.co2 || initialRow.ex);
+    });
     const [values, setValues] = useState<Record<string,string>>({
       hour: initialRow.hour || "", minute: initialRow.minute || "",
       o2: initialRow.o2 || "", co2: initialRow.co2 || "",
