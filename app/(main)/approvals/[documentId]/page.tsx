@@ -772,7 +772,7 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
       </div>
     );
   }
-  function GasMeasureInput({ rows, onChange, documentId, fd }: { rows: any[]; onChange: (rows: any[]) => void; documentId?: string; fd?: any }) {
+  function GasMeasureInput({ rows, onChange, documentId, fd, onSaved }: { rows: any[]; onChange: (rows: any[]) => void; documentId?: string; fd?: any; onSaved?: (phase: string, row: any) => void }) {
     const rowsRef = useRef<any[]>(rows.map(r => ({...r})));
     const handleFieldChange = useCallback((idx: number, field: string, value: string) => {
       rowsRef.current = rowsRef.current.map((r, i) => i === idx ? { ...r, [field]: value } : r);
@@ -800,14 +800,9 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
                 body: JSON.stringify({ formDataJson: { ...fd, gasMeasureRows: merged }, gasMeasureRowsOnly: true }),
               });
               if (res.ok) {
-                setGasMeasureRowsInput((prev: any[]) => {
-                  const base = prev.length > 0 ? [...prev] : rowsRef.current.map((r: any) => ({...r}));
-                  if (base[rowIndex]) base[rowIndex] = { ...base[rowIndex], phase };
-                  return base;
-                });
                 alert(`[${phase}] 저장 완료!`);
+                if (onSaved) onSaved(phase, row);
                 return true;
-              }
               else alert("저장 실패.");
             } : undefined} />
         ))}
