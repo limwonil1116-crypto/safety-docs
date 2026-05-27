@@ -804,7 +804,7 @@ function UserPickerModal({ title, onSelect, onClose }: {
 function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, onSubmitted }: {
   documentId: string; documentType: string; measurerUserId?: string; onClose: () => void; onSubmitted: () => void;
 }) {
-  const [step, setStep] = useState<"approver" | "sign">("approver");
+  const [step, setStep] = useState<"approver" | "sign">(documentType === "CONFINED_SPACE" ? "sign" : "approver");
   const [users, setUsers] = useState<UserItem[]>([]);
   const [keyword, setKeyword] = useState("");
   const [reviewer, setReviewer] = useState<UserItem | null>(null);
