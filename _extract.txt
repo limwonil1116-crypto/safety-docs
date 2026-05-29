@@ -1,0 +1,473 @@
+# total lines: 1457
+
+
+===== GasRowInput (lines 610-730) =====
+  610|                   <div className="flex border-b border-gray-100 bg-gray-50"><span className="text-xs font-medium text-gray-600 px-3 py-2 w-24 border-r border-gray-200">{roleLabel}</span><span className="text-xs text-gray-500 px-3 py-2">{line.approverName}</span></div>
+  611|                   <div className="flex items-center"><span className="text-xs text-gray-400 px-3 py-2 w-24 border-r border-gray-200 shrink-0">(서명)</span><div className="px-3 py-2"><img src={line.signatureData!} alt={`${roleLabel} 서명`} className="h-12 object-contain" /></div></div>
+  612|                 </div>
+  613|               );
+  614|             })}
+  615|           </div>
+  616|         </div>
+  617|       )}
+  618|     </div>
+  619|   );
+  620| }
+  621| 
+  622| const DEFAULT_GAS_ROWS = [
+  623|   { time: "전", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
+  624|   { time: "중", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
+  625|   { time: "중", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
+  626| ];
+  627| 
+  628| function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { rowIndex: number; initialRow: any; onRowChange: (idx: number, field: string, value: string) => void; onSave?: () => Promise<boolean | void>; phase?: string }) {
+  629|     const [saved, setSaved] = useState(() => {
+  630|       // phase가 이미 저장된 값인지 확인 (o2, co, h2s 중 하나라도 있으면 저장된 것)
+  631|       return !!(initialRow.o2 || initialRow.co || initialRow.h2s || initialRow.co2 || initialRow.ex);
+  632|     });
+  633|     useEffect(() => {
+  634|       if (initialRow.o2 || initialRow.co || initialRow.h2s || initialRow.co2 || initialRow.ex) {
+  635|         setSaved(true);
+  636|         setValues({
+  637|           hour: initialRow.hour || "", minute: initialRow.minute || "",
+  638|           o2: initialRow.o2 || "", co2: initialRow.co2 || "",
+  639|           h2s: initialRow.h2s || "", co: initialRow.co || "",
+  640|           ex: initialRow.ex || "", measurer: initialRow.measurer || "",
+  641|           entryCount: initialRow.entryCount || "", exitCount: initialRow.exitCount || "",
+  642|         });
+  643| 
+  644|       }
+  645|     }, [initialRow.o2, initialRow.co, initialRow.h2s]);
+  646|     const [values, setValues] = useState<Record<string,string>>({
+  647|       hour: initialRow.hour || "", minute: initialRow.minute || "",
+  648|       o2: initialRow.o2 || "", co2: initialRow.co2 || "",
+  649|       h2s: initialRow.h2s || "", co: initialRow.co || "",
+  650|       ex: initialRow.ex || "", measurer: initialRow.measurer || "",
+  651|       entryCount: initialRow.entryCount || "", exitCount: initialRow.exitCount || "",
+  652|     });
+  653|     const valRef = useRef<Record<string,string>>(values);
+  654|     useEffect(() => {
+  655|       const newValues = {
+  656|         hour: initialRow.hour || "", minute: initialRow.minute || "",
+  657|         o2: initialRow.o2 || "", co2: initialRow.co2 || "",
+  658|         h2s: initialRow.h2s || "", co: initialRow.co || "",
+  659|         ex: initialRow.ex || "", measurer: initialRow.measurer || "",
+  660|         entryCount: initialRow.entryCount || "", exitCount: initialRow.exitCount || "",
+  661|       };
+  662|       setValues(newValues);
+  663|       valRef.current = newValues;
+  664|     }, [initialRow.o2, initialRow.co2, initialRow.h2s, initialRow.co, initialRow.ex, initialRow.measurer]);
+  665| 
+  666|     const GAS_LIMITS = [
+  667|       {f:"o2",  label:"산소 O₂",               unit:"%",   ph:"18~23.5", min:18, max:23.5},
+  668|       {f:"co2", label:"이산화탄소 CO₂", unit:"%",   ph:"1.5미만", max:1.5},
+  669|       {f:"h2s", label:"황화수소 H₂S",       unit:"ppm", ph:"10미만",  max:10},
+  670|       {f:"co",  label:"일산화탄소 CO",       unit:"ppm", ph:"30미만",  max:30},
+  671|       {f:"ex",  label:"폭발하한 EX",             unit:"%",   ph:"10미만",  max:10},
+  672|     ] as const;
+  673| 
+  674|     const getStatus = (f: string, val: string) => {
+  675|       const num = parseFloat(val);
+  676|       if (!val || isNaN(num)) return "empty";
+  677|       const limit = GAS_LIMITS.find(g => g.f === f);
+  678|       if (!limit) return "ok";
+  679|       if ("min" in limit && num < limit.min) return "danger";
+  680|       if ("max" in limit && num > limit.max) return "danger";
+  681|       return "ok";
+  682|     };
+  683| 
+  684|     const handleChange = (f: string, v: string) => {
+  685|       valRef.current = { ...valRef.current, [f]: v };
+  686|       setValues({ ...valRef.current });
+  687|       onRowChange(rowIndex, f, v);
+  688|     };
+  689| 
+  690|     const numStep = (f: string, delta: number) => {
+  691|       const cur = parseInt(valRef.current[f] || "0", 10) || 0;
+  692|       const next = Math.max(0, cur + delta);
+  693|       handleChange(f, String(next));
+  694|     };
+  695| 
+  696|     if (saved) {
+  697|       return (
+  698|         <div className="bg-green-50 rounded-xl p-3 border border-green-200 flex items-center justify-between">
+  699|           <div className="flex flex-wrap gap-1.5 items-center">
+  700|             <span className="text-xs font-bold text-blue-600">{phase}</span>
+  701|             <span className="text-xs text-gray-600">측정자: {values.measurer}</span>
+  702|             {values.o2 && <span className="text-xs text-gray-700">O₂:{values.o2}%</span>}
+  703|             {values.co && <span className="text-xs text-gray-700">CO:{values.co}ppm</span>}
+  704|             {values.h2s && <span className="text-xs text-gray-700">H₂S:{values.h2s}ppm</span>}
+  705|             <span className="text-[10px] font-semibold text-green-700">✓ 저장완료</span>
+  706|           </div>
+  707|           <button onClick={() => setSaved(false)} className="text-xs text-blue-500 px-2 py-1 rounded border border-blue-200 shrink-0">수정하기</button>
+  708|         </div>
+  709|       );
+  710|     }
+  711|     return (
+  712|       <div className="bg-gray-50 rounded-xl p-3 space-y-3 border border-gray-100">
+  713|         <div className="flex items-center gap-3">
+  714|           <span className="text-xs font-semibold text-gray-700 w-6 shrink-0">{initialRow.time}</span>
+  715|           <div className="flex gap-4">
+  716|             {(["hour","minute"] as const).map(f => (
+  717|               <div key={f} className="flex flex-col items-center gap-0.5">
+  718|                 <button type="button" onMouseDown={e=>{e.preventDefault(); numStep(f,1);}} className="w-8 h-7 flex items-center justify-center rounded-t-lg border border-gray-200 bg-white hover:bg-gray-100 text-gray-500 text-xs select-none">▲</button>
+  719|                 <input type="number" min="0" value={values[f]} onChange={e => handleChange(f, e.target.value)} className="w-12 h-8 text-center text-sm text-gray-900 border-x border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 [-moz-appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+  720|                 <button type="button" onMouseDown={e=>{e.preventDefault(); numStep(f,-1);}} className="w-8 h-7 flex items-center justify-center rounded-b-lg border border-gray-200 bg-white hover:bg-gray-100 text-gray-500 text-xs select-none">▼</button>
+  721|                 <span className="text-xs text-gray-500">{f==="hour"?"시":"분"}</span>
+  722|               </div>
+  723|             ))}
+  724|           </div>
+  725|         </div>
+  726|         <div>
+  727|           <p className="text-xs font-medium text-gray-600 mb-2">측정 농도</p>
+  728|           <div className="grid grid-cols-2 gap-2">
+  729|             {GAS_LIMITS.map(({f,label,unit,ph}) => {
+  730|               const status = getStatus(f, values[f]);
+
+
+===== GasMeasureInput + handleSave + PHASES (lines 775-910) =====
+  775|               <input type={type} min={type==="number"?"0":undefined} value={values[f]} onChange={e => handleChange(f, e.target.value)} className="w-full px-2 py-2 text-xs text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 bg-white" />
+  776|             </div>
+  777|           ))}
+  778|         </div>
+  779|       {onSave && phase && (
+  780|         <button onClick={async () => { onSave?.(); setSaved(true); }}
+  781|           className="w-full py-2 mt-2 rounded-xl text-xs font-semibold bg-purple-600 text-white hover:bg-purple-700">
+  782|           [{phase}] 임시저장 및 실시간보고
+  783|         </button>
+  784|       )}
+  785|       </div>
+  786|     );
+  787|   }
+  788|   function GasMeasureInput({ rows, onChange, documentId, onSaved }: { rows: any[]; onChange: (rows: any[]) => void; documentId?: string; onSaved?: (phase: string, row: any) => void }) {
+  789|     const rowsRef = useRef<any[]>(rows.map(r => ({...r})));
+  790|     const savedRowsRef = useRef<Record<string, any>>({});
+  791|     const PHASES = ["작업 전", "작업 중(1차)", "작업 중(2차)"];
+  792|     const handleFieldChange = useCallback((idx: number, field: string, value: string) => {
+  793|       rowsRef.current = rowsRef.current.map((r, i) => i === idx ? { ...r, [field]: value } : r);
+  794|       onChange([...rowsRef.current]);
+  795|     }, [onChange]);
+  796|     const handleSave = async (idx: number) => {
+  797|       const phase = PHASES[idx];
+  798|       const row = rowsRef.current[idx];
+  799|       if (!row || !documentId) return;
+  800|       // 기존 저장된 값 가져오기
+  801|       const existingRes = await fetch(`/api/documents/${documentId}`);
+  802|       const existingData = await existingRes.json();
+  803|       const existing = Array.isArray(existingData.document?.formDataJson?.gasMeasureRows)
+  804|         ? existingData.document.formDataJson.gasMeasureRows : [];
+  805|       const tagged = { ...row, phase };
+  806|       const merged = [...existing.filter((r: any) => r.phase !== phase), tagged];
+  807|       const res = await fetch(`/api/documents/${documentId}`, {
+  808|         method: "PATCH", headers: { "Content-Type": "application/json" },
+  809|         body: JSON.stringify({ formDataJson: { ...existingData.document?.formDataJson, gasMeasureRows: merged }, gasMeasureRowsOnly: true }),
+  810|       });
+  811|       if (res.ok) {
+  812|         savedRowsRef.current[phase] = tagged;
+  813|         alert(`[${phase}] 저장 완료!`); window.location.reload();
+  814|         if (onSaved) onSaved(phase, tagged);
+  815|         return true;
+  816|       } else {
+  817|         alert("저장 실패.");
+  818|       }
+  819|     };
+  820|     return (
+  821|       <div className="space-y-3">
+  822|         <p className="text-xs bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+  823|           <span className="font-medium text-blue-700">기준값:</span>
+  824|           <span className="text-blue-600"> O₂(18~23.5%) CO₂(1.5%이하) H₂S(10ppm이하) CO(30ppm이하) EX(10%이하)</span>
+  825|         </p>
+  826|         {rowsRef.current.map((row, idx) => (
+  827|           <GasRowInput key={`${idx}-${row.o2}-${row.measurer}`} rowIndex={idx} initialRow={row} onRowChange={handleFieldChange}
+  828|             phase={PHASES[idx]}
+  829|             onSave={documentId ? () => handleSave(idx) : undefined} />
+  830|         ))}
+  831|       </div>
+  832|     );
+  833|   }
+  834| function AiSpecialMeasuresButton({ doc, onGenerated, label = "AI 특별조치 초안 생성" }: {
+  835|   doc: DocumentDetail;
+  836|   onGenerated: (v: string) => void;
+  837|   label?: string;
+  838| }) {
+  839|   const [loading, setLoading] = useState(false);
+  840|   const [error, setError] = useState("");
+  841|   const handleGenerate = async () => {
+  842|     setLoading(true); setError("");
+  843|     try {
+  844|       const res = await fetch("/api/ai/special-measures", {
+  845|         method: "POST", headers: { "Content-Type": "application/json" },
+  846|         // 검토의견용은 항상 specialMeasures 텍스트 반환하도록 타입 고정
+  847|         body: JSON.stringify({ documentType: "REVIEW_OPINION", formData: doc.formDataJson, originalType: doc.documentType }),
+  848|       });
+  849|       const data = await res.json();
+  850|       if (!res.ok) throw new Error(data.error || "AI 생성 오류");
+  851|       const result = data.specialMeasures || data.riskFactors || data.text || "";
+  852|       if (!result) throw new Error("AI 응답이 비어있습니다.");
+  853|       onGenerated(result);
+  854|     } catch (e: unknown) { setError(e instanceof Error ? e.message : "오류가 발생했습니다."); }
+  855|     finally { setLoading(false); }
+  856|   };
+  857|   return (
+  858|     <div>
+  859|       <button onClick={handleGenerate} disabled={loading}
+  860|         className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-50"
+  861|         style={{ background: loading ? "#6b7280" : "linear-gradient(135deg, #7c3aed, #2563eb)" }}>
+  862|         {loading ? "AI 초안 생성 중..." : `✨ ${label}`}
+  863|       </button>
+  864|       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+  865|     </div>
+  866|   );
+  867| }
+  868| 
+  869| function SpecialMeasuresInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  870|   const ref = useRef<HTMLTextAreaElement>(null);
+  871|   useEffect(() => { if (ref.current) ref.current.value = value; }, []);
+  872|   return (
+  873|     <textarea ref={ref} defaultValue={value}
+  874|       onChange={e => onChange(e.target.value)}
+  875|       onBlur={e => onChange(e.target.value)}
+  876|       placeholder="특별조치 필요사항을 입력해주세요" rows={4}
+  877|       className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+  878|   );
+  879| }
+  880| 
+  881| export default function ApprovalDetailPage() {
+  882| 
+  883|   const params = useParams();
+  884|   const router = useRouter();
+  885|   const documentId = params.documentId as string;
+  886|   const [doc, setDoc] = useState<DocumentDetail | null>(null);
+  887|   const [approvalLines, setApprovalLines] = useState<ApprovalLine[]>([]);
+  888|   const [taskName, setTaskName] = useState("");
+  889|   const [writerName, setWriterName] = useState("");
+  890|   const [loading, setLoading] = useState(true);
+  891|   const [error, setError] = useState("");
+  892|   const [isMyTurn, setIsMyTurn] = useState(false);
+  893|   const [myUserId, setMyUserId] = useState("");
+  894|   const [myRole, setMyRole] = useState("");
+  895|   const [activeTab, setActiveTab] = useState("내용");
+  896|   const [reviewOpinion, setReviewOpinion] = useState("");
+  897|   const [reviewResult, setReviewResult] = useState("");
+  898|   const reviewOpinionRef = useRef<HTMLTextAreaElement>(null);
+  899|   const reviewResultRef = useRef<HTMLTextAreaElement>(null);
+  900|   const [dataKey, setDataKey] = useState(0);
+  901|   const [step1ApproverName, setStep1ApproverName] = useState("");
+  902|   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  903|   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+  904|   const [processing, setProcessing] = useState(false);
+  905|   const [cancelling, setCancelling] = useState(false);
+  906|   const [showSign, setShowSign] = useState(false);
+  907|   const [showFinalApprover, setShowFinalApprover] = useState(false);
+  908|   const [showConfinedNextModal, setShowConfinedNextModal] = useState(false);
+  909|   const [showPowerNextModal, setShowPowerNextModal] = useState(false);
+  910|   const [powerNextAction, setPowerNextAction] = useState("");
+
+
+===== load useEffect / states / conditional render (lines 895-1100) =====
+  895|   const [activeTab, setActiveTab] = useState("내용");
+  896|   const [reviewOpinion, setReviewOpinion] = useState("");
+  897|   const [reviewResult, setReviewResult] = useState("");
+  898|   const reviewOpinionRef = useRef<HTMLTextAreaElement>(null);
+  899|   const reviewResultRef = useRef<HTMLTextAreaElement>(null);
+  900|   const [dataKey, setDataKey] = useState(0);
+  901|   const [step1ApproverName, setStep1ApproverName] = useState("");
+  902|   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  903|   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+  904|   const [processing, setProcessing] = useState(false);
+  905|   const [cancelling, setCancelling] = useState(false);
+  906|   const [showSign, setShowSign] = useState(false);
+  907|   const [showFinalApprover, setShowFinalApprover] = useState(false);
+  908|   const [showConfinedNextModal, setShowConfinedNextModal] = useState(false);
+  909|   const [showPowerNextModal, setShowPowerNextModal] = useState(false);
+  910|   const [powerNextAction, setPowerNextAction] = useState("");
+  911|   const [confinedNextAction, setConfinedNextAction] = useState<"PLAN_APPROVER"|"FINAL_CONFIRMER"|null>(null);
+  912|   const [specialMeasuresInput, setSpecialMeasuresInput] = useState("");
+  913|   const inspectionItemsRef = useRef<any[]>([]);
+  914|   const [gasMeasureRowsInput, setGasMeasureRowsInput] = useState<any[]>([]);
+  915|   const [gasRowsLoaded, setGasRowsLoaded] = useState(false);
+  916|   const gasMeasureRef = useRef<any[]>([]);
+  917|   // gasMeasureRows: doc 로드 후 초기화
+  918|   useEffect(() => {
+  919|     if (!doc) return;
+  920|     const rows = (doc.formDataJson as any)?.gasMeasureRows;
+  921|     const mn = (doc.formDataJson as any)?.measurerName || "";
+  922|     if (Array.isArray(rows) && rows.length > 0) {
+  923|       setGasMeasureRowsInput(rows.map((r: any) => ({ ...r, measurer: r.measurer || mn })));
+  924|       setGasRowsLoaded(true);
+  925|     } else if (mn) {
+  926|       setGasMeasureRowsInput([]);
+  927|       setGasRowsLoaded(true);
+  928|     }
+  929|   }, [doc?.id]);
+  930|   const [pendingAction, setPendingAction] = useState<"APPROVE"|"REJECT"|null>(null);
+  931|   const [pendingOpinion, setPendingOpinion] = useState("");
+  932|   const [pendingResult, setPendingResult] = useState("");
+  933|   const canvasRef = useRef<HTMLCanvasElement>(null);
+  934|   const isDrawing = useRef(false);
+  935|   const signModalRef = useRef<HTMLDivElement>(null);
+  936| 
+  937|   const fetchData = useCallback(async () => {
+  938|     setLoading(true); setError("");
+  939|     try {
+  940|       const [docRes, linesRes] = await Promise.all([
+  941|         fetch(`/api/documents/${documentId}`),
+  942|         fetch(`/api/documents/${documentId}/approval-lines`),
+  943|       ]);
+  944|       const docData = await docRes.json();
+  945|       const linesData = await linesRes.json();
+  946|       if (!docRes.ok) throw new Error(docData.error || "데이터 오류");
+  947|       const docObj = docData.document;
+  948|       setDoc(docObj);
+  949|       const lines = linesData.approvalLines ?? [];
+  950|       setApprovalLines(lines);
+  951|       const line1 = lines.find((l: ApprovalLine) => l.approvalOrder === 1);
+  952|       if (line1?.approverName) setStep1ApproverName(line1.approverName);
+  953|       const fd = docObj.formDataJson ?? {};
+  954|       const line1Data = lines.find((l: ApprovalLine) => l.approvalOrder === 1);
+  955|       const initialOpinion = (line1Data?.comment || fd.reviewOpinion || "") as string;
+  956|       const initialResult = (fd.reviewResult || "") as string;
+  957|       setReviewOpinion(initialOpinion);
+  958|       setReviewResult(initialResult);
+  959|       setDataKey(prev => prev + 1);
+  960|       const taskRes = await fetch(`/api/tasks/${docObj.taskId}`);
+  961|       const taskData = await taskRes.json();
+  962|       if (taskRes.ok) setTaskName(taskData.task?.name ?? "");
+  963|       const meRes = await fetch("/api/users/me");
+  964|       if (meRes.ok) {
+  965|         const meData = await meRes.json();
+  966|         const myId = meData.user?.id;
+  967|         setMyUserId(myId); setMyRole(meData.user?.role ?? ""); setWriterName(meData.user?.name ?? "");
+  968|         setIsMyTurn(docObj.currentApproverUserId === myId);
+  969|       }
+  970|     } catch (e: unknown) { setError(e instanceof Error ? e.message : "오류가 발생했습니다."); }
+  971|     finally { setLoading(false); }
+  972|   }, [documentId]);
+  973| 
+  974|   useEffect(() => { fetchData(); }, [fetchData]);
+  975| 
+  976|   useEffect(() => {
+  977|     if (showSign) {
+  978|       const scrollY = window.scrollY;
+  979|       document.body.style.position = "fixed"; document.body.style.top = `-${scrollY}px`;
+  980|       document.body.style.width = "100%"; document.body.style.overflow = "hidden";
+  981|       return () => {
+  982|         document.body.style.position = ""; document.body.style.top = "";
+  983|         document.body.style.width = ""; document.body.style.overflow = "";
+  984|         window.scrollTo(0, scrollY);
+  985|       };
+  986|     }
+  987|   }, [showSign]);
+  988| 
+  989|   const handleCancelApproval = async () => {
+  990|     if (!confirm("결재를 취소하고 작성중 상태로 되돌리시겠습니까?")) return;
+  991|     setCancelling(true);
+  992|     try {
+  993|       const res = await fetch(`/api/documents/${documentId}`, { method: "DELETE" });
+  994|       const data = await res.json();
+  995|       if (!res.ok) throw new Error(data.error || "오류 발생");
+  996|       alert("결재가 취소됩니다. 문서탭에서 다시 작성할 수 있습니다.");
+  997|       router.back();
+  998|     } catch (e: unknown) { alert(e instanceof Error ? e.message : "취소에 실패했습니다."); }
+  999|     finally { setCancelling(false); }
+ 1000|   };
+ 1001| 
+ 1002|   const getPos = (e: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) => {
+ 1003|     const rect = canvas.getBoundingClientRect();
+ 1004|     if ("touches" in e) return { x: (e.touches[0].clientX - rect.left) * (canvas.width / rect.width), y: (e.touches[0].clientY - rect.top) * (canvas.height / rect.height) };
+ 1005|     return { x: (e.clientX - rect.left) * (canvas.width / rect.width), y: (e.clientY - rect.top) * (canvas.height / rect.height) };
+ 1006|   };
+ 1007|   const startDraw = (e: React.MouseEvent | React.TouchEvent) => { const canvas = canvasRef.current; if (!canvas) return; e.preventDefault(); isDrawing.current = true; const ctx = canvas.getContext("2d"); if (!ctx) return; const pos = getPos(e, canvas); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); };
+ 1008|   const draw = (e: React.MouseEvent | React.TouchEvent) => { if (!isDrawing.current) return; const canvas = canvasRef.current; if (!canvas) return; e.preventDefault(); const ctx = canvas.getContext("2d"); if (!ctx) return; const pos = getPos(e, canvas); ctx.lineTo(pos.x, pos.y); ctx.stroke(); };
+ 1009|   const endDraw = (e: React.MouseEvent | React.TouchEvent) => { e.preventDefault(); isDrawing.current = false; };
+ 1010|   const clearCanvas = () => { const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext("2d"); if (!ctx) return; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); };
+ 1011|   const initCanvas = () => { setTimeout(() => { const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext("2d"); if (!ctx) return; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.strokeStyle = "#1e3a5f"; ctx.lineWidth = 2.5; ctx.lineCap = "round"; }, 100); };
+ 1012| 
+ 1013|   const handleAction = async (action: "APPROVE" | "REJECT") => {
+ 1014|     const opinionVal = (reviewOpinionRef.current?.value ?? reviewOpinion).trim();
+ 1015|     const resultVal = (reviewResultRef.current?.value ?? reviewResult).trim();
+ 1016|     if (action === "REJECT" && !opinionVal) { alert("반려 사유를 검토의견란에 입력해주세요."); return; }
+ 1017|     setPendingOpinion(opinionVal); setPendingResult(resultVal);
+ 1018|     setReviewOpinion(opinionVal); setReviewResult(resultVal);
+ 1019|     setPendingAction(action); setShowRejectConfirm(false); setShowApproveConfirm(false);
+ 1020|     setShowSign(true); initCanvas();
+ 1021|   };
+ 1022| 
+ 1023|   const handleSubmitWithSign = async () => {
+ 1024|     if (!pendingAction) return;
+ 1025|     setProcessing(true);
+ 1026|     try {
+ 1027|       const canvas = canvasRef.current;
+ 1028|       const signatureData = canvas ? canvas.toDataURL("image/png") : null;
+ 1029|       const extraBody: Record<string, unknown> = {};
+ 1030|       const isConfinedSpace = doc?.documentType === "CONFINED_SPACE";
+ 1031|       const confinedOrder = doc?.currentApprovalOrder ?? 0;
+ 1032|       if (isConfinedSpace && confinedOrder === 2 && specialMeasuresInput) extraBody.specialMeasures = specialMeasuresInput;
+ 1033|       if (isConfinedSpace && confinedOrder === 3) extraBody.gasMeasureRows = gasMeasureRef.current.length > 0 ? gasMeasureRef.current : (gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput.map((r: any) => ({ ...r, measurer: r.measurer || (fd.measurerName as string) || "" })) : DEFAULT_GAS_ROWS);
+ 1034|       const res = await fetch(`/api/documents/${documentId}/approve`, {
+ 1035|         method: "POST", headers: { "Content-Type": "application/json" },
+ 1036|         body: JSON.stringify({ action: pendingAction, comment: pendingOpinion || null, reviewResult: pendingResult || null, signatureData, inspectionItems: inspectionItemsRef.current.length > 0 ? inspectionItemsRef.current : undefined, ...extraBody }),
+ 1037|       });
+ 1038|       const data = await res.json();
+ 1039|       if (!res.ok) throw new Error(data.error || "오류 발생");
+ 1040|       setShowSign(false);
+ 1041|       if (data.action === "NEED_FINAL_APPROVER") { setShowFinalApprover(true); }
+ 1042|       else if (data.action === "NEED_PLAN_APPROVER") { setConfinedNextAction("PLAN_APPROVER"); setShowConfinedNextModal(true); }
+ 1043|       else if (data.action === "NEED_MEASUREMENT") { alert("(계획확인) 서명이 완료됩니다."); router.push("/approvals"); }
+ 1044|       else if (data.action === "NEED_FINAL_CONFIRMER") { setConfinedNextAction("FINAL_CONFIRMER"); setShowConfinedNextModal(true); }
+ 1045|       else if (data.action === "NEED_FINAL_CONFIRMER_POWER") { setShowPowerNextModal(true); }
+ 1046|       else if (data.action === "NEED_INSPECTION_WRITER") { alert("점검확인작성자를 지정해주세요."); router.push("/approvals"); }
+ 1047|       else if (data.action === "APPROVED") { alert("최종 승인이 완료됩니다."); router.push("/approvals"); }
+ 1048|       else { alert("처리됩니다."); router.push("/approvals"); }
+ 1049|     } catch (e: unknown) { alert(e instanceof Error ? e.message : "오류가 발생했습니다."); }
+ 1050|     finally { setProcessing(false); }
+ 1051|   };
+ 1052| 
+ 1053|   if (loading) return <div className="p-4 space-y-4">{[1,2,3].map(i => (<div key={i} className="bg-white rounded-2xl p-4 animate-pulse"><div className="h-4 bg-gray-200 rounded w-1/3 mb-3"/><div className="h-10 bg-gray-100 rounded w-full"/></div>))}</div>;
+ 1054|   if (error || !doc) return <div className="p-4 text-center py-12 text-red-500 text-sm">{error || "문서를 찾을 수 없습니다."}<button onClick={fetchData} className="block mx-auto mt-3 text-blue-500 underline text-xs">다시 시도</button></div>;
+ 1055| 
+ 1056|   const fd = (doc.formDataJson ?? {}) as Record<string, unknown>;
+ 1057|   const statusKey = getStatusKey(doc);
+ 1058|   const typeShort = DOCUMENT_TYPE_SHORT[doc.documentType] ?? doc.documentType;
+ 1059|   const typeLabel = DOCUMENT_TYPE_LABELS[doc.documentType] ?? doc.documentType;
+ 1060|   const statusStyle = STATUS_STYLE[statusKey] ?? STATUS_STYLE.SUBMITTED;
+ 1061|   const isOwner = myUserId && doc.createdBy && String(doc.createdBy).toLowerCase() === String(myUserId).toLowerCase();
+ 1062|   const isStaff = ["REVIEWER", "FINAL_APPROVER", "ADMIN"].includes(myRole);
+ 1063|   const canCancel = doc.status !== "DRAFT" && (isOwner || isStaff);
+ 1064|   const isApproved = doc.status === "APPROVED";
+ 1065|   const isConfinedSpace = doc.documentType === "CONFINED_SPACE";
+ 1066|   const confinedOrder = doc.currentApprovalOrder ?? 0;
+ 1067|   const step1ApproverNameVal = step1ApproverName;
+ 1068|   const reviewGuideText = doc.currentApprovalOrder === 2 ? `💡 ${step1ApproverNameVal || "1단계 검토자"}(검토자)가 작성한 내용을 확인하여 최종 결재해주세요.` : null;
+ 1069| 
+ 1070|   const ReviewInputSection = () => {
+ 1071|     // 밀폐공간 단계별 UI
+ 1072|     const isConfinedSpace = doc?.documentType === "CONFINED_SPACE";
+ 1073|     const confinedOrder = doc?.currentApprovalOrder ?? 0;
+ 1074|     if (isConfinedSpace) {
+ 1075|       const stepDesc = CONFINED_STEP_DESC[confinedOrder] ?? "";
+ 1076|       return (
+ 1077|         <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
+ 1078|           <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
+ 1079|             <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
+ 1080|             {stepDesc}
+ 1081|           </h3>
+ 1082|           {confinedOrder === 1 && (
+ 1083|             <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">감시인으로서 작업 계획을 확인하고 서명해주세요.</p>
+ 1084|           )}
+ 1085|           {confinedOrder === 2 && (
+ 1086|             <div className="space-y-2">
+ 1087|               <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">특별조치 필요사항을 입력 후 서명해주세요.</p>
+ 1088|               <AiSpecialMeasuresButton doc={doc} onGenerated={setSpecialMeasuresInput} />
+ 1089|               <SpecialMeasuresInput value={specialMeasuresInput} onChange={setSpecialMeasuresInput} />
+ 1090|             </div>
+ 1091|           )}
+ 1092|           {confinedOrder === 3 && (
+ 1093|             <div className="space-y-3">
+ 1094|               <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">산소 및 유해가스 농도 측정결과를 입력해주세요.</p>
+ 1095|               {gasRowsLoaded && <GasMeasureInput key={gasMeasureRowsInput.map((r:any)=>r.phase).join(",")}
+ 1096|                 rows={(() => {
+ 1097|                   const mn = (fd.measurerName as string) || "";
+ 1098|                   if (gasMeasureRowsInput.length > 0) {
+ 1099|                     return gasMeasureRowsInput.map((r: any) => ({ ...r, measurer: r.measurer || mn }));
+ 1100|                   }

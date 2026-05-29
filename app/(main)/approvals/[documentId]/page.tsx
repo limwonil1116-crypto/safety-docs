@@ -786,7 +786,11 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
     );
   }
   function GasMeasureInput({ rows, onChange, documentId, onSaved }: { rows: any[]; onChange: (rows: any[]) => void; documentId?: string; onSaved?: (phase: string, row: any) => void }) {
-    const rowsRef = useRef<any[]>(rows.map(r => ({...r})));
+    const buildPhaseRows = (src: any[]) => ["\uc791\uc5c5 \uc804", "\uc791\uc5c5 \uc911(1\ucc28)", "\uc791\uc5c5 \uc911(2\ucc28)"].map((ph, idx) => {
+      const found = Array.isArray(src) ? src.find((r: any) => r && r.phase === ph) : undefined;
+      return found ? { ...found, phase: ph } : { ...DEFAULT_GAS_ROWS[idx], phase: ph };
+    });
+    const rowsRef = useRef<any[]>(buildPhaseRows(rows));
     const savedRowsRef = useRef<Record<string, any>>({});
     const PHASES = ["작업 전", "작업 중(1차)", "작업 중(2차)"];
     const handleFieldChange = useCallback((idx: number, field: string, value: string) => {
@@ -824,7 +828,7 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
           <span className="text-blue-600"> O₂(18~23.5%) CO₂(1.5%이하) H₂S(10ppm이하) CO(30ppm이하) EX(10%이하)</span>
         </p>
         {rowsRef.current.map((row, idx) => (
-          <GasRowInput key={`${idx}-${row.o2}-${row.measurer}`} rowIndex={idx} initialRow={row} onRowChange={handleFieldChange}
+          <GasRowInput key={`${idx}-${row.phase}`} rowIndex={idx} initialRow={row} onRowChange={handleFieldChange}
             phase={PHASES[idx]}
             onSave={documentId ? () => handleSave(idx) : undefined} />
         ))}
