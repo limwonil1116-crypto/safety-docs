@@ -1,0 +1,145 @@
+# total lines: 1056
+
+
+===== section 4 gas measurement (lines 580-720) =====
+  580|             const applicable = item.applicable || "해당없음";
+  581|             const result = item.result || (applicable === "해당" ? "조치완료" : "해당없음");
+  582|             return (
+  583|               <View key={idx} style={idx === checks.length - 1 ? S.trLast : S.tr}>
+  584|                 <Text style={[S.td, { flex: 4, minHeight: 14, fontWeight: isBold ? "bold" : "normal", backgroundColor: isBold ? "#eef4fb" : C.white }]}>
+  585|                   {isBold ? `●${displayLabel}` : `○${displayLabel}`}
+  586|                 </Text>
+  587|                 <Text style={[S.tdc, { flex: 1, minHeight: 14, fontSize: 8, backgroundColor: applicable === "해당" ? "#dce6f0" : C.white }]}>
+  588|                   {applicable}
+  589|                 </Text>
+  590|                 <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 14, fontSize: 8, backgroundColor: applicable === "해당" ? "#ebf3e8" : C.white }]}>
+  591|                   {result}
+  592|                 </Text>
+  593|               </View>
+  594|             );
+  595|           })}
+  596|         </View>
+  597| 
+  598|         <Text style={S.secHeader}>4. 산소 및 유해가스 농도 측정결과</Text>
+  599|         <View style={S.table}>
+  600|           <View style={{ flexDirection: "row", borderBottom: "0.5px solid " + C.border, backgroundColor: C.labelBg }}>
+  601|             <Text style={[S.th, { width: 52, textAlign: "center" }]}>측정시간</Text>
+  602|             <Text style={[S.th, { flex: 3 }]}>측정물질명 및 농도</Text>
+  603|             <Text style={[S.th, { flex: 1.2 }]}>측정자</Text>
+  604|             <Text style={[S.th, { flex: 0.5, textAlign: "center" }]}>입장(명)</Text>
+  605|             <Text style={[S.th, { flex: 0.5, borderRight: 0, textAlign: "center" }]}>퇴장(명)</Text>
+  606|           </View>
+  607|           {gasMeasureRows.map((row, idx) => (
+  608|             <View key={idx} style={{ flexDirection: "row", borderBottom: idx === gasMeasureRows.length - 1 ? 0 : "0.5px solid " + C.border, minHeight: 26 }}>
+  609|               <View style={{ width: 52, borderRight: "0.5px solid " + C.border, padding: "3 3", alignItems: "center", justifyContent: "center" }}>
+  610|                 <Text style={{ fontSize: 9, fontWeight: "bold" }}>{row.time}</Text>
+  611|                 <Text style={{ fontSize: 8 }}>{row.hour || "  "}시 {row.minute || "  "}분</Text>
+  612|               </View>
+  613|               <Text style={[S.td, { flex: 3, minHeight: 26, fontSize: 8 }]}>{formatGasSubstances(row)}</Text>
+  614|               <Text style={[S.td, { flex: 1.2, minHeight: 26, fontSize: 8 }]}>{row.measurer || ""}</Text>
+  615|               <Text style={{ flex: 0.5, fontSize: 8, textAlign: "center", padding: "3 2", borderRight: "0.5px solid " + C.border }}>{row.entryCount || ""}</Text>
+  616|               <Text style={{ flex: 0.5, fontSize: 8, textAlign: "center", padding: "3 2" }}>{row.exitCount || ""}</Text>
+  617|             </View>
+  618|           ))}
+  619|         </View>
+  620| 
+  621|         <Text style={S.secHeader}>5. 특별조치 필요사항</Text>
+  622|         <View style={[S.table, { marginBottom: 5 }]}>
+  623|           <Text style={[S.td, { borderRight: 0, minHeight: 20 }]}>{fd.specialMeasures || ""}</Text>
+  624|         </View>
+  625| 
+  626|         <ApproverSection entries={[
+  627|           { roleLabel: "(계획확인) 허가자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a1?.approverName, signatureData: a1?.signatureData },
+  628|           { roleLabel: "(이행확인) 확인자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a2?.approverName, signatureData: a2?.signatureData },
+  629|         ]} />
+  630|         <Footer documentId={documentId} createdAt={createdAt} />
+  631|       </Page>
+  632|     </Document>
+  633|   );
+  634| }
+  635| 
+  636| // ===== 붙임3: 휴일작업신청서 =====
+  637| export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+  638|   formData: Record<string, any>;
+  639|   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+  640|   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
+  641|   workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
+  642| }) {
+  643|   const participants: Array<{ role: string; name: string; phone: string }> = fd.participants ?? [];
+  644|   const a1 = approvalLines.find(l => l.approvalOrder === 1);
+  645|   const a2 = approvalLines.find(l => l.approvalOrder === 2);
+  646|   const periodText = buildPeriod(fd);
+  647|   const workLocationText = getWorkLocation(fd, workAddress);
+  648| 
+  649|   return (
+  650|     <Document>
+  651|       <Page size="A4" style={S.page}>
+  652|         <View style={S.titleBox}><Text style={S.titleMain}>안전관리 휴일작업 신청서</Text></View>
+  653|         <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
+  654|           <Text style={{ fontSize: 10.5 }}>{`작업일시: ${periodText}`}</Text>
+  655|           <Text style={{ fontSize: 10 }}>{`신고일시: ${fd.requestDate || ""}`}</Text>
+  656|         </View>
+  657|         <Text style={[S.secHeader, { marginTop: 4 }]}>1. 용역 개요</Text>
+  658|         <View style={S.table}>
+  659|           <View style={S.tr}><Text style={[S.il, { width: 58 }]}>용역명</Text><Text style={[S.iv, { borderRight: 0 }]}>{taskName || fd.serviceName || ""}</Text></View>
+  660|           <View style={S.trLast}>
+  661|             <Text style={[S.il, { width: 58 }]}>수급인</Text>
+  662|             <Text style={[S.iv, { flex: 1, borderRight: "0.5px solid " + C.border }]}>{fd.contractorCompany || ""}</Text>
+  663|             <Text style={[S.il, { width: 55 }]}>용역기간</Text>
+  664|             <Text style={[S.iv, { flex: 1, borderRight: 0 }]}>{`${fd.contractPeriodStart || fd.workStartDate || ""} ~ ${fd.contractPeriodEnd || fd.workEndDate || ""}`}</Text>
+  665|           </View>
+  666|         </View>
+  667|         <Text style={S.secHeader}>2. 휴일작업 개요</Text>
+  668|         <View style={S.table}>
+  669|           {[
+  670|             [{ w: 75, label: "작업대상 시설물", val: fd.facilityName }, { w: 55, label: "시설 관리자", val: `${fd.facilityManager || ""} (${fd.facilityManagerGrade || ""})` }],
+  671|             [{ w: 75, label: "위치", val: workLocationText }, { w: 55, label: "작업위치", val: fd.workPosition }],
+  672|             [{ w: 75, label: "작업공종", val: fd.workContents }, { w: 55, label: "위험요소", val: fd.riskFactors }],
+  673|           ].map((cols, ri) => (
+  674|             <View key={ri} style={S.tr}>
+  675|               {cols.map((c, ci) => (
+  676|                 <React.Fragment key={ci}>
+  677|                   <Text style={[S.il, { width: c.w }]}>{c.label}</Text>
+  678|                   <Text style={[S.iv, ci < cols.length - 1 ? { borderRight: "0.5px solid " + C.border } : { borderRight: 0 }]}>{c.val || ""}</Text>
+  679|                 </React.Fragment>
+  680|               ))}
+  681|             </View>
+  682|           ))}
+  683|           <View style={S.trLast}><Text style={[S.il, { width: 75 }]}>개선대책</Text><Text style={[S.iv, { borderRight: 0 }]}>{fd.improvementMeasures || ""}</Text></View>
+  684|         </View>
+  685|         <Text style={S.secHeader}>휴일작업 참여자(감독사 포함)</Text>
+  686|         <View style={S.table}>
+  687|           <View style={S.tr}>
+  688|             <Text style={[S.th, { flex: 2 }]}>직위구분</Text>
+  689|             <Text style={[S.th, { flex: 2 }]}>성명</Text>
+  690|             <Text style={[S.th, { flex: 2, borderRight: 0 }]}>연락처</Text>
+  691|           </View>
+  692|           {participants.map((p, idx) => (
+  693|             <View key={idx} style={idx === participants.length - 1 ? S.trLast : S.tr}>
+  694|               <Text style={[S.td, { flex: 2, minHeight: 24 }]}>{p.role || ""}</Text>
+  695|               <Text style={[S.td, { flex: 2, minHeight: 24 }]}>{p.name || ""}</Text>
+  696|               <Text style={[S.td, { flex: 2, borderRight: 0, minHeight: 24 }]}>{p.phone || ""}</Text>
+  697|             </View>
+  698|           ))}
+  699|         </View>
+  700|         <Text style={S.secHeader}>3. 용역감독 검토내용</Text>
+  701|         <View style={S.table}>
+  702|           <View style={S.tr}>
+  703|             <Text style={[S.th, { flex: 1 }]}>검토의견</Text>
+  704|             <Text style={[S.th, { flex: 1, borderRight: 0 }]}>조치결과</Text>
+  705|           </View>
+  706|           <View style={S.trLast}>
+  707|             <Text style={[S.td, { flex: 1, minHeight: 50 }]}>{fd.reviewOpinion || ""}</Text>
+  708|             <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 50 }]}>{fd.reviewResult || ""}</Text>
+  709|           </View>
+  710|         </View>
+  711|         <Text style={{ fontSize: 10, textAlign: "center", marginVertical: 4 }}>위와 같이 휴일작업을 신청하오니 검토하여 승인하여 주시기 바랍니다.</Text>
+  712|         <View style={{ border: "0.8px solid " + C.border, marginBottom: 3 }}>
+  713|           {/* 신청자 행 */}
+  714|           <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 36 }}>
+  715|             <Text style={{ fontSize: 9, width: 55, color: C.black }}>신청자</Text>
+  716|             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${fd.applicantOrg || ""}  (안전보건관리책임자) ${fd.applicantName || ""}`}</Text>
+  717|             <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
+  718|             {applicantSignature
+  719|               ? <Image src={applicantSignature} style={{ width: 50, height: 28, objectFit: "contain" }} />
+  720|               : <View style={{ width: 50, height: 28 }} />}

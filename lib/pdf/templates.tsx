@@ -604,8 +604,8 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
             <Text style={[S.th, { flex: 0.5, textAlign: "center" }]}>입장(명)</Text>
             <Text style={[S.th, { flex: 0.5, borderRight: 0, textAlign: "center" }]}>퇴장(명)</Text>
           </View>
-          {gasMeasureRows.map((row, idx) => (
-            <View key={idx} style={{ flexDirection: "row", borderBottom: idx === gasMeasureRows.length - 1 ? 0 : "0.5px solid " + C.border, minHeight: 26 }}>
+          {(() => { const _vr = gasMeasureRows.filter((r: any) => r && (r.o2 || r.co2 || r.h2s || r.co || r.ex)); const _rows = _vr.length > 0 ? _vr : gasMeasureRows; return _rows.map((row: any, idx: number) => (
+            <View key={idx} style={{ flexDirection: "row", borderBottom: idx === _rows.length - 1 ? 0 : "0.5px solid " + C.border, minHeight: 26 }}>
               <View style={{ width: 52, borderRight: "0.5px solid " + C.border, padding: "3 3", alignItems: "center", justifyContent: "center" }}>
                 <Text style={{ fontSize: 9, fontWeight: "bold" }}>{row.time}</Text>
                 <Text style={{ fontSize: 8 }}>{row.hour || "  "}시 {row.minute || "  "}분</Text>
@@ -615,7 +615,7 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
               <Text style={{ flex: 0.5, fontSize: 8, textAlign: "center", padding: "3 2", borderRight: "0.5px solid " + C.border }}>{row.entryCount || ""}</Text>
               <Text style={{ flex: 0.5, fontSize: 8, textAlign: "center", padding: "3 2" }}>{row.exitCount || ""}</Text>
             </View>
-          ))}
+          )); })()}
         </View>
 
         <Text style={S.secHeader}>5. 특별조치 필요사항</Text>
