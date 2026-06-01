@@ -1,0 +1,248 @@
+# total lines: 1056
+
+
+===== HolidayWorkPDF full (lines 637-880) =====
+  637| export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+  638|   formData: Record<string, any>;
+  639|   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+  640|   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
+  641|   workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
+  642| }) {
+  643|   const participants: Array<{ role: string; name: string; phone: string }> = fd.participants ?? [];
+  644|   const a1 = approvalLines.find(l => l.approvalOrder === 1);
+  645|   const a2 = approvalLines.find(l => l.approvalOrder === 2);
+  646|   const periodText = buildPeriod(fd);
+  647|   const workLocationText = getWorkLocation(fd, workAddress);
+  648| 
+  649|   return (
+  650|     <Document>
+  651|       <Page size="A4" style={S.page}>
+  652|         <View style={S.titleBox}><Text style={S.titleMain}>안전관리 휴일작업 신청서</Text></View>
+  653|         <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
+  654|           <Text style={{ fontSize: 10.5 }}>{`작업일시: ${periodText}`}</Text>
+  655|           <Text style={{ fontSize: 10 }}>{`신고일시: ${fd.requestDate || ""}`}</Text>
+  656|         </View>
+  657|         <Text style={[S.secHeader, { marginTop: 4 }]}>1. 용역 개요</Text>
+  658|         <View style={S.table}>
+  659|           <View style={S.tr}><Text style={[S.il, { width: 58 }]}>용역명</Text><Text style={[S.iv, { borderRight: 0 }]}>{taskName || fd.serviceName || ""}</Text></View>
+  660|           <View style={S.trLast}>
+  661|             <Text style={[S.il, { width: 58 }]}>수급인</Text>
+  662|             <Text style={[S.iv, { flex: 1, borderRight: "0.5px solid " + C.border }]}>{fd.contractorCompany || ""}</Text>
+  663|             <Text style={[S.il, { width: 55 }]}>용역기간</Text>
+  664|             <Text style={[S.iv, { flex: 1, borderRight: 0 }]}>{`${fd.contractPeriodStart || fd.workStartDate || ""} ~ ${fd.contractPeriodEnd || fd.workEndDate || ""}`}</Text>
+  665|           </View>
+  666|         </View>
+  667|         <Text style={S.secHeader}>2. 휴일작업 개요</Text>
+  668|         <View style={S.table}>
+  669|           {[
+  670|             [{ w: 75, label: "작업대상 시설물", val: fd.facilityName }, { w: 55, label: "시설 관리자", val: `${fd.facilityManager || ""} (${fd.facilityManagerGrade || ""})` }],
+  671|             [{ w: 75, label: "위치", val: workLocationText }, { w: 55, label: "작업위치", val: fd.workPosition }],
+  672|             [{ w: 75, label: "작업공종", val: fd.workContents }, { w: 55, label: "위험요소", val: fd.riskFactors }],
+  673|           ].map((cols, ri) => (
+  674|             <View key={ri} style={S.tr}>
+  675|               {cols.map((c, ci) => (
+  676|                 <React.Fragment key={ci}>
+  677|                   <Text style={[S.il, { width: c.w }]}>{c.label}</Text>
+  678|                   <Text style={[S.iv, ci < cols.length - 1 ? { borderRight: "0.5px solid " + C.border } : { borderRight: 0 }]}>{c.val || ""}</Text>
+  679|                 </React.Fragment>
+  680|               ))}
+  681|             </View>
+  682|           ))}
+  683|           <View style={S.trLast}><Text style={[S.il, { width: 75 }]}>개선대책</Text><Text style={[S.iv, { borderRight: 0 }]}>{fd.improvementMeasures || ""}</Text></View>
+  684|         </View>
+  685|         <Text style={S.secHeader}>휴일작업 참여자(감독사 포함)</Text>
+  686|         <View style={S.table}>
+  687|           <View style={S.tr}>
+  688|             <Text style={[S.th, { flex: 2 }]}>직위구분</Text>
+  689|             <Text style={[S.th, { flex: 2 }]}>성명</Text>
+  690|             <Text style={[S.th, { flex: 2, borderRight: 0 }]}>연락처</Text>
+  691|           </View>
+  692|           {participants.map((p, idx) => (
+  693|             <View key={idx} style={idx === participants.length - 1 ? S.trLast : S.tr}>
+  694|               <Text style={[S.td, { flex: 2, minHeight: 24 }]}>{p.role || ""}</Text>
+  695|               <Text style={[S.td, { flex: 2, minHeight: 24 }]}>{p.name || ""}</Text>
+  696|               <Text style={[S.td, { flex: 2, borderRight: 0, minHeight: 24 }]}>{p.phone || ""}</Text>
+  697|             </View>
+  698|           ))}
+  699|         </View>
+  700|         <Text style={S.secHeader}>3. 용역감독 검토내용</Text>
+  701|         <View style={S.table}>
+  702|           <View style={S.tr}>
+  703|             <Text style={[S.th, { flex: 1 }]}>검토의견</Text>
+  704|             <Text style={[S.th, { flex: 1, borderRight: 0 }]}>조치결과</Text>
+  705|           </View>
+  706|           <View style={S.trLast}>
+  707|             <Text style={[S.td, { flex: 1, minHeight: 50 }]}>{fd.reviewOpinion || ""}</Text>
+  708|             <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 50 }]}>{fd.reviewResult || ""}</Text>
+  709|           </View>
+  710|         </View>
+  711|         <Text style={{ fontSize: 10, textAlign: "center", marginVertical: 4 }}>위와 같이 휴일작업을 신청하오니 검토하여 승인하여 주시기 바랍니다.</Text>
+  712|         <View style={{ border: "0.8px solid " + C.border, marginBottom: 3 }}>
+  713|           {/* 신청자 행 */}
+  714|           <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 36 }}>
+  715|             <Text style={{ fontSize: 9, width: 55, color: C.black }}>신청자</Text>
+  716|             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${fd.applicantOrg || ""}  (안전보건관리책임자) ${fd.applicantName || ""}`}</Text>
+  717|             <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
+  718|             {applicantSignature
+  719|               ? <Image src={applicantSignature} style={{ width: 50, height: 28, objectFit: "contain" }} />
+  720|               : <View style={{ width: 50, height: 28 }} />}
+  721|           </View>
+  722|           {/* 검토자 행 */}
+  723|           <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 28, borderTop: "0.5px solid " + C.border }}>
+  724|             <Text style={{ fontSize: 9, width: 55, color: C.black }}>검토자</Text>
+  725|             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${a1?.approverOrg || ""}  (용역감독원) ${a1?.approverName || ""}`}</Text>
+  726|             <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
+  727|             {a1?.signatureData
+  728|               ? <Image src={a1.signatureData} style={{ width: 50, height: 28, objectFit: "contain" }} />
+  729|               : <View style={{ width: 50, height: 28 }} />}
+  730|           </View>
+  731|           {/* 승인자 행 */}
+  732|           <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 28, borderTop: "0.5px solid " + C.border }}>
+  733|             <Text style={{ fontSize: 9, width: 55, color: C.black }}>승인자</Text>
+  734|             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${a2?.approverOrg || ""}  (관리감독자) ${a2?.approverName || ""}`}</Text>
+  735|             <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
+  736|             {a2?.signatureData
+  737|               ? <Image src={a2.signatureData} style={{ width: 50, height: 28, objectFit: "contain" }} />
+  738|               : <View style={{ width: 50, height: 28 }} />}
+  739|           </View>
+  740|         </View>
+  741|         <Text style={{ fontSize: 13, fontWeight: "bold", textAlign: "center", marginTop: 6 }}>한국농어촌공사 안전기술본부 귀하</Text>
+  742|         <Footer documentId={documentId} createdAt={createdAt} />
+  743|       </Page>
+  744|     </Document>
+  745|   );
+  746| }
+  747| 
+  748| // ===== 붙임4: 정전작업허가서 =====
+  749| export function PowerOutagePDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+  750|   formData: Record<string, any>;
+  751|   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+  752|   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
+  753|   workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
+  754| }) {
+  755|   const checks: Array<{ label: string; applicable: string; result: string }> = fd.safetyChecks ?? [];
+  756|   const inspItems: Array<{ equipment: string; cutoffConfirmer: string; electrician: string; siteRepair: string }> = fd.inspectionItems ?? [];
+  757|   const a1 = approvalLines.find(l => l.approvalOrder === 1);
+  758|   const a2 = approvalLines.find(l => l.approvalOrder === 2);
+  759|   const inspRows = inspItems.length > 0 ? inspItems : [
+  760|     { equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" },
+  761|     { equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" },
+  762|   ];
+  763|   const periodText = buildPeriod(fd);
+  764|   const workLocationText = getWorkLocation(fd, workAddress);
+  765| 
+  766|   return (
+  767|     <Document>
+  768|       <Page size="A4" style={S.page}>
+  769|         <View style={[S.titleBox, { marginBottom: 5 }]}>
+  770|           <Text style={{ fontSize: 20, fontWeight: "bold", textAlign: "center" }}>
+  771|             {"정전작업 허가서"}
+  772|             <Text style={{ fontSize: 13, fontWeight: "normal" }}>{"(용역업체용)"}</Text>
+  773|           </Text>
+  774|         </View>
+  775|         <View style={S.table}>
+  776|           <ApplicantRow applicantCompany={fd.applicantCompany} applicantTitle={fd.applicantTitle} applicantName={fd.applicantName} signatureData={applicantSignature} labelWidth={102} />
+  777|           {[
+  778|             { label: "용  역  명",    val: taskName || fd.serviceName || "" },
+  779|             { label: "작업수행기간", val: periodText },
+  780|             { label: "작업장소",     val: workLocationText },
+  781|             { label: "작업내용",     val: fd.workContent || "" },
+  782|             { label: "입장자 명단", val: fd.entryList || "" },
+  783|           ].map((row, i, arr) => (
+  784|             <View key={i} style={i === arr.length - 1 ? S.trLast : S.tr}>
+  785|               <Text style={[S.il, { width: 102 }]}>{row.label}</Text>
+  786|               <Text style={[S.iv, { borderRight: 0, minHeight: 20 }]}>{row.val}</Text>
+  787|             </View>
+  788|           ))}
+  789|         </View>
+  790|         <Text style={{ fontSize: 10, textAlign: "center", marginBottom: 4 }}>위 작업을 다음의 조건하에서만 허가함.</Text>
+  791|         <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "3 6", marginBottom: 1 }}>
+  792|           <View style={{ flexDirection: "row", alignItems: "center" }}>
+  793|             <Text style={{ fontSize: 10, fontWeight: "bold" }}>1. 밀폐공간작업 허가 필요여부 :   </Text>
+  794|             <CB checked={fd.needConfinedSpace === "필요"} /><Text style={{ fontSize: 10, marginRight: 14 }}> 필요   </Text>
+  795|             <CB checked={fd.needConfinedSpace === "불필요"} /><Text style={{ fontSize: 10 }}> 불필요</Text>
+  796|           </View>
+  797|         </View>
+  798|         <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "3 6", marginBottom: 3 }}>
+  799|           <View style={{ flexDirection: "row", alignItems: "center" }}>
+  800|             <Text style={{ fontSize: 10, fontWeight: "bold" }}>2. 화기작업 허가 필요여부 :   </Text>
+  801|             <CB checked={fd.needFireWork === "필요"} /><Text style={{ fontSize: 10, marginRight: 14 }}> 필요   </Text>
+  802|             <CB checked={fd.needFireWork === "불필요"} /><Text style={{ fontSize: 10 }}> 불필요</Text>
+  803|           </View>
+  804|         </View>
+  805|         <Text style={S.secHeader}>3. 안전조치 이행사항</Text>
+  806|         <View style={S.table}>
+  807|           <View style={S.tr}>
+  808|             <Text style={[S.th, { flex: 4 }]}>확인항목</Text>
+  809|             <Text style={[S.th, { flex: 1 }]}>해당여부</Text>
+  810|             <Text style={[S.th, { flex: 2, borderRight: 0 }]}>확인결과</Text>
+  811|           </View>
+  812|           {checks.map((item, idx) => (
+  813|             <View key={idx} style={idx === checks.length - 1 ? S.trLast : S.tr}>
+  814|               <Text style={[S.td, { flex: 4, minHeight: 14, backgroundColor: idx % 2 === 1 ? C.rowEven : C.white }]}>{`▶ ${item.label}`}</Text>
+  815|               <Text style={[S.tdc, { flex: 1, minHeight: 14, backgroundColor: item.applicable === "해당" ? "#dce6f0" : C.white }]}>{item.applicable || ""}</Text>
+  816|               <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 14, backgroundColor: item.result ? "#ebf3e8" : C.white }]}>{item.result || ""}</Text>
+  817|             </View>
+  818|           ))}
+  819|         </View>
+  820|         <Text style={S.secHeader}>4. 기기 확인 결과</Text>
+  821|         <View style={S.table}>
+  822|           <View style={S.tr}>
+  823|             <Text style={[S.th, { flex: 1 }]}>점검기기</Text>
+  824|             <Text style={[S.th, { flex: 1 }]}>차단확인자</Text>
+  825|             <Text style={[S.th, { flex: 1 }]}>전기담당자</Text>
+  826|             <Text style={[S.th, { flex: 1, borderRight: 0 }]}>현장정비</Text>
+  827|           </View>
+  828|           {inspRows.map((item, idx) => (
+  829|             <View key={idx} style={idx === inspRows.length - 1 ? S.trLast : S.tr}>
+  830|               <Text style={[S.td, { flex: 1, minHeight: 22 }]}>{item.equipment || ""}</Text>
+  831|               <Text style={[S.td, { flex: 1, minHeight: 22 }]}>{item.cutoffConfirmer || ""}</Text>
+  832|               <Text style={[S.td, { flex: 1, minHeight: 22 }]}>{item.electrician || ""}</Text>
+  833|               <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 22 }]}>{item.siteRepair || ""}</Text>
+  834|             </View>
+  835|           ))}
+  836|         </View>
+  837|         <Text style={S.secHeader}>5. 특별조치 필요사항</Text>
+  838|         <View style={[S.table, { marginBottom: 5 }]}>
+  839|           <Text style={[S.td, { borderRight: 0, minHeight: 20 }]}>{fd.specialMeasures || ""}</Text>
+  840|         </View>
+  841|         <ApproverSection entries={[
+  842|           { roleLabel: "(계획확인) 허가자", name: a1?.approverName, signatureData: a1?.signatureData },
+  843|           { roleLabel: "(이행확인) 확인자", name: a2?.approverName, signatureData: a2?.signatureData },
+  844|         ]} />
+  845|         <Footer documentId={documentId} createdAt={createdAt} />
+  846|       </Page>
+  847|     </Document>
+  848|   );
+  849| }
+  850| 
+  851| // ===== TBM Tool Box Meeting 회의록 PDF =====
+  852| export function TbmReportPDF({ report }: { report: Record<string, any> }) {
+  853|   const T = StyleSheet.create({
+  854|     page: { fontFamily: "NanumGothic", fontSize: 8.5, paddingTop: 8, paddingBottom: 20, paddingHorizontal: 10, color: "#000" },
+  855|     topNote: { fontSize: 7, color: "#555", marginBottom: 4 },
+  856|     titleBox: { borderBottom: "1.5px solid #000", paddingVertical: 7, marginBottom: 4 },
+  857|     titleMain: { fontSize: 16, fontWeight: "bold", textAlign: "center" },
+  858|     table: { border: "0.8px solid #000", marginBottom: 3 },
+  859|     tr: { flexDirection: "row", borderBottom: "0.5px solid #000", minHeight: 20 },
+  860|     trLast: { flexDirection: "row", minHeight: 20 },
+  861|     th: { backgroundColor: "#d9e1f2", fontWeight: "bold", padding: "3 5", fontSize: 8.5, borderRight: "0.5px solid #000", justifyContent: "center" },
+  862|     td: { padding: "3 5", fontSize: 8.5, borderRight: "0.5px solid #000", flexShrink: 1 },
+  863|     tdLast: { padding: "3 5", fontSize: 8.5, flexShrink: 1 },
+  864|     secHeader: { backgroundColor: "#bdd7ee", padding: "2 5", fontSize: 8.5, fontWeight: "bold", borderBottom: "0.5px solid #000", borderTop: "0.5px solid #000" },
+  865|     footer: { position: "absolute", bottom: 6, left: 10, right: 10, borderTop: "0.5px solid #aaa", paddingTop: 2, flexDirection: "row", justifyContent: "space-between" },
+  866|     footerText: { fontSize: 6.5, color: "#666" },
+  867|     checkBox: { width: 9, height: 9, border: "0.8px solid #333", marginRight: 2, alignItems: "center", justifyContent: "center" },
+  868|   });
+  869| 
+  870|   // photoUrl 파싱: JSON 배열 또는 단일 URL
+  871|   const parsePhotos = (photoUrl: string): Array<{url: string; caption: string}> => {
+  872|     if (!photoUrl) return [];
+  873|     try {
+  874|       const parsed = JSON.parse(photoUrl);
+  875|       if (Array.isArray(parsed)) return parsed;
+  876|       return [{ url: photoUrl, caption: "" }];
+  877|     } catch {
+  878|       return [{ url: photoUrl, caption: "" }];
+  879|     }
+  880|   };

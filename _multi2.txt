@@ -1,0 +1,203 @@
+
+
+===== PDF photo/attachment pages component (chunks)  (E:\safety-docs\lib\pdf\templates.tsx)  lines 150-270 / total 1056 =====
+  150|           ? <Image src={signatureData} style={{ width: 75, height: 22, objectFit: "contain" }} />
+  151|           : <View style={{ width: 75, height: 20, border: "0.5px dashed #ccc" }} />}
+  152|       </View>
+  153|     </View>
+  154|   );
+  155| }
+  156| 
+  157| function ApproverSection({ entries }: { entries: Array<{ roleLabel: string; deptLabel?: string; name?: string; signatureData?: string }> }) {
+  158|   return (
+  159|     <View style={{ border: "0.8px solid " + C.border, marginTop: 6 }}>
+  160|       {entries.map((e, i) => (
+  161|         <ApproverRow key={i} roleLabel={e.roleLabel} deptLabel={e.deptLabel} name={e.name} signatureData={e.signatureData} borderBottom={i < entries.length - 1} />
+  162|       ))}
+  163|     </View>
+  164|   );
+  165| }
+  166| 
+  167| // ✅ 2번: 첨부파일 페이지들 (위험성평가표, 개선대책 사진/문서)
+  168| // renderToBuffer는 Document 컴포넌트를 직접 받으므로 Document로 감싸서 반환
+  169| export function AttachmentPagesPDF({ riskAssessFiles, safetyCheckPhotos, safetyCheckDocs, documentId, createdAt }: {
+  170|   riskAssessFiles: AttachmentInfo[];
+  171|   safetyCheckPhotos: AttachmentInfo[];
+  172|   safetyCheckDocs: AttachmentInfo[];
+  173|   documentId: string;
+  174|   createdAt: string;
+  175| }) {
+  176|   return (
+  177|     <Document>
+  178|       {/* 위험성평가표 페이지 (각 파일을 1페이지씩) */}
+  179|       {riskAssessFiles.map((file, idx) => {
+  180|         const isImage = file.mimeType?.startsWith("image/");
+  181|         return (
+  182|           <Page key={`risk-${idx}`} size="A4" style={{ fontFamily: "NanumGothic", padding: 12, paddingBottom: 24 }}>
+  183|             <View style={{ backgroundColor: C.sectionBg, padding: "6 8", marginBottom: 8, border: "0.8px solid " + C.border }}>
+  184|               <Text style={{ fontSize: 12, fontWeight: "bold", color: C.navy }}>
+  185|                 {`붙임 1. 위험성평가표${riskAssessFiles.length > 1 ? ` (${idx + 1}/${riskAssessFiles.length})` : ""}`}
+  186|               </Text>
+  187|               <Text style={{ fontSize: 9, color: "#555", marginTop: 2 }}>{file.fileName}</Text>
+  188|             </View>
+  189|             {isImage ? (
+  190|               <Image src={file.fileUrl} style={{ width: "100%", objectFit: "contain", maxHeight: 700 }} />
+  191|             ) : (
+  192|               <View style={{ flex: 1, alignItems: "center", justifyContent: "center", border: "1px solid #ddd" }}>
+  193|                 <Text style={{ fontSize: 11, color: "#666", marginBottom: 8 }}>{file.fileName}</Text>
+  194|                 <Text style={{ fontSize: 9, color: "#999" }}>PDF/Excel 파일 - 별도 확인 필요</Text>
+  195|               </View>
+  196|             )}
+  197|             <Footer documentId={documentId} createdAt={createdAt} />
+  198|           </Page>
+  199|         );
+  200|       })}
+  201| 
+  202|       {/* 개선대책 확인자료 (사진) - 한 페이지에 최대 6장 그리드 */}
+  203|       {(() => {
+  204|         if (safetyCheckPhotos.length === 0) return null;
+  205|         const photosPerPage = 6;
+  206|         const chunks: AttachmentInfo[][] = [];
+  207|         for (let i = 0; i < safetyCheckPhotos.length; i += photosPerPage) {
+  208|           chunks.push(safetyCheckPhotos.slice(i, i + photosPerPage));
+  209|         }
+  210|         return chunks.map((chunk, pageIdx) => (
+  211|           <Page key={`photo-${pageIdx}`} size="A4" style={{ fontFamily: "NanumGothic", padding: 12, paddingBottom: 24 }}>
+  212|             <View style={{ backgroundColor: C.sectionBg, padding: "6 8", marginBottom: 8, border: "0.8px solid " + C.border }}>
+  213|               <Text style={{ fontSize: 12, fontWeight: "bold", color: C.navy }}>
+  214|                 {`붙임 2. 개선대책 확인자료 (사진)${chunks.length > 1 ? ` (${pageIdx + 1}/${chunks.length})` : ""}`}
+  215|               </Text>
+  216|               <Text style={{ fontSize: 9, color: "#555", marginTop: 2 }}>{`${chunk.length}장`}</Text>
+  217|             </View>
+  218|             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+  219|               {chunk.map((photo, i) => (
+  220|                 <View key={i} style={{ width: "31%", marginBottom: 6 }}>
+  221|                   <Image src={photo.fileUrl} style={{ width: "100%", height: 140, objectFit: "cover", border: "0.5px solid #ccc" }} />
+  222|                   <Text style={{ fontSize: 7.5, color: "#666", marginTop: 2, textAlign: "center" }}>{photo.fileName}</Text>
+  223|                 </View>
+  224|               ))}
+  225|             </View>
+  226|             <Footer documentId={documentId} createdAt={createdAt} />
+  227|           </Page>
+  228|         ));
+  229|       })()}
+  230| 
+  231|       {/* 개선대책 문서 파일 */}
+  232|       {safetyCheckDocs.map((file, idx) => {
+  233|         const isImage = file.mimeType?.startsWith("image/");
+  234|         return (
+  235|           <Page key={`doc-${idx}`} size="A4" style={{ fontFamily: "NanumGothic", padding: 12, paddingBottom: 24 }}>
+  236|             <View style={{ backgroundColor: C.sectionBg, padding: "6 8", marginBottom: 8, border: "0.8px solid " + C.border }}>
+  237|               <Text style={{ fontSize: 12, fontWeight: "bold", color: C.navy }}>개선대책 확인자료 (문서)</Text>
+  238|               <Text style={{ fontSize: 9, color: "#555", marginTop: 2 }}>{file.fileName}</Text>
+  239|             </View>
+  240|             {isImage ? (
+  241|               <Image src={file.fileUrl} style={{ width: "100%", objectFit: "contain", maxHeight: 700 }} />
+  242|             ) : (
+  243|               <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+  244|                 <Text style={{ fontSize: 11, color: "#666" }}>{file.fileName}</Text>
+  245|               </View>
+  246|             )}
+  247|             <Footer documentId={documentId} createdAt={createdAt} />
+  248|           </Page>
+  249|         );
+  250|       })}
+  251|     </Document>
+  252|   );
+  253| }
+  254| 
+  255| 
+  256| // ===== 첨부1: 안전작업허가서 =====
+  257| export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+  258|   formData: Record<string, any>;
+  259|   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+  260|   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
+  261|   workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
+  262| }) {
+  263|   const a1 = approvalLines.find(l => l.approvalOrder === 1);
+  264|   const a2 = approvalLines.find(l => l.approvalOrder === 2);
+  265|   const riskRows: Array<{ riskFactor: string; improvement: string; disasterType: string }> =
+  266|     fd.riskRows ?? [{ riskFactor: "", improvement: "", disasterType: "" }];
+  267|   const periodText = buildPeriod(fd);
+  268|   const workLocationText = getWorkLocation(fd, workAddress);
+  269| 
+  270|   const P = StyleSheet.create({
+
+
+===== edit: photo editor modal (desc input target)  (E:\safety-docs\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx)  lines 400-475 / total 1774 =====
+  400|         </div>
+  401|       )}
+  402| 
+  403|       {/* 사진 편집기 (회전/확대축소) */}
+  404|       {editImg && (
+  405|         <div className="fixed inset-0 bg-black/95 z-[300] flex flex-col">
+  406|           <div className="flex items-center justify-between px-4 py-3 bg-black">
+  407|             <button onClick={() => setEditImg(null)} className="text-white text-sm px-4 py-2 rounded-xl border border-white/30">취소</button>
+  408|             <p className="text-white text-sm font-semibold">사진 편집</p>
+  409|             <button onClick={handleEditSave} disabled={uploading}
+  410|               className="text-white text-sm px-4 py-2 rounded-xl bg-blue-600 disabled:opacity-50">
+  411|               {uploading ? "저장 중..." : "저장"}
+  412|             </button>
+  413|           </div>
+  414|           <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
+  415|             <img src={editImg.src} alt="편집"
+  416|               style={{ transform: `rotate(${rotation}deg) scale(${scale})`, maxWidth: "100%", maxHeight: "100%", objectFit: "contain", transition: "transform 0.2s" }} />
+  417|           </div>
+  418|           <div className="bg-black px-4 py-5 space-y-4">
+  419|             <div className="flex items-center gap-3">
+  420|               <span className="text-white/70 text-xs w-8">회전</span>
+  421|               <button onClick={() => setRotation(r => r - 90)} className="w-11 h-11 rounded-full bg-white/20 text-white text-xl flex items-center justify-center">↺</button>
+  422|               <div className="flex-1 text-center text-white text-sm">{rotation}°</div>
+  423|               <button onClick={() => setRotation(r => r + 90)} className="w-11 h-11 rounded-full bg-white/20 text-white text-xl flex items-center justify-center">↻</button>
+  424|             </div>
+  425|             <div className="flex items-center gap-3">
+  426|               <span className="text-white/70 text-xs w-8">크기</span>
+  427|               <button onClick={() => setScale(s => Math.max(0.3, parseFloat((s-0.1).toFixed(1))))} className="w-11 h-11 rounded-full bg-white/20 text-white text-xl font-bold flex items-center justify-center">−</button>
+  428|               <input type="range" min="30" max="200" value={Math.round(scale*100)}
+  429|                 onChange={e => setScale(parseInt(e.target.value)/100)}
+  430|                 className="flex-1 accent-blue-500" />
+  431|               <button onClick={() => setScale(s => Math.min(2, parseFloat((s+0.1).toFixed(1))))} className="w-11 h-11 rounded-full bg-white/20 text-white text-xl font-bold flex items-center justify-center">+</button>
+  432|             </div>
+  433|             <div className="flex items-center justify-between text-white/60 text-xs px-1">
+  434|               <span>{Math.round(scale*100)}%</span>
+  435|               <button onClick={() => { setRotation(0); setScale(1); }} className="text-white/60 underline">원본으로</button>
+  436|             </div>
+  437|           </div>
+  438|         </div>
+  439|       )}
+  440| 
+  441|       {previewUrl && (
+  442|         <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center" onClick={() => setPreviewUrl(null)}>
+  443|           <img src={previewUrl} alt="미리보기" className="max-w-full max-h-full object-contain" />
+  444|           <button className="absolute top-4 right-4 text-white" onClick={() => setPreviewUrl(null)}>
+  445|             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  446|           </button>
+  447|         </div>
+  448|       )}
+  449|     </div>
+  450|   );
+  451| }
+  452| 
+  453| function SectionHeader({ num, title }: { num: number; title: string }) {
+  454|   return (
+  455|     <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+  456|       <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs text-white" style={{ background: "#2563eb" }}>{num}</span>
+  457|       {title}
+  458|     </h3>
+  459|   );
+  460| }
+  461| function FormInput({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  462|   return (
+  463|     <div>
+  464|       <label className="block text-xs font-medium text-gray-600 mb-1.5">
+  465|         {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+  466|       </label>
+  467|       {children}
+  468|     </div>
+  469|   );
+  470| }
+  471| function LocationField({ workLatitude, onOpenLocation }: {
+  472|   workLatitude: number | null; workAddress: string; onOpenLocation: () => void; onClearLocation: () => void;
+  473| }) {
+  474|   return (
+  475|     <div>

@@ -202,7 +202,7 @@ export function AttachmentPagesPDF({ riskAssessFiles, safetyCheckPhotos, safetyC
       {/* 개선대책 확인자료 (사진) - 한 페이지에 최대 6장 그리드 */}
       {(() => {
         if (safetyCheckPhotos.length === 0) return null;
-        const photosPerPage = 6;
+        const photosPerPage = 2;
         const chunks: AttachmentInfo[][] = [];
         for (let i = 0; i < safetyCheckPhotos.length; i += photosPerPage) {
           chunks.push(safetyCheckPhotos.slice(i, i + photosPerPage));
@@ -215,11 +215,11 @@ export function AttachmentPagesPDF({ riskAssessFiles, safetyCheckPhotos, safetyC
               </Text>
               <Text style={{ fontSize: 9, color: "#555", marginTop: 2 }}>{`${chunk.length}장`}</Text>
             </View>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+            <View style={{ gap: 10 }}>
               {chunk.map((photo, i) => (
-                <View key={i} style={{ width: "31%", marginBottom: 6 }}>
-                  <Image src={photo.fileUrl} style={{ width: "100%", height: 140, objectFit: "cover", border: "0.5px solid #ccc" }} />
-                  <Text style={{ fontSize: 7.5, color: "#666", marginTop: 2, textAlign: "center" }}>{photo.fileName}</Text>
+                <View key={i} wrap={false} style={{ width: "100%", marginBottom: 8 }}>
+                  <Image src={photo.fileUrl} style={{ width: "100%", height: 350, objectFit: "contain", border: "0.5px solid #ccc" }} />
+                  <Text style={{ fontSize: 9, color: "#444", marginTop: 3, textAlign: "center" }}>{(((photo as any).description ? String((photo as any).description).replace(/^\uc870\uce58[\uc804\ud6c4]:\s*/, "").trim() : "") || photo.fileName)}</Text>
                 </View>
               ))}
             </View>

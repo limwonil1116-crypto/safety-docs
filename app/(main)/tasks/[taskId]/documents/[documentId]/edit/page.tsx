@@ -417,6 +417,10 @@ function PhotoAttachSection({ documentId, canAdd = true }: { documentId: string;
           </div>
           <div className="bg-black px-4 py-5 space-y-4">
             <div className="flex items-center gap-3">
+              <span className="text-white/70 text-xs w-8">{"\uc124\uba85"}</span>
+              <input type="text" value={editImg.desc || ""} onChange={ev => setEditImg(prev => prev ? { ...prev, desc: ev.target.value } : prev)} placeholder={"\uc0ac\uc9c4 \uc124\uba85 \uc785\ub825 (\uc120\ud0dd)"} className="flex-1 px-3 py-2 rounded-xl bg-white/10 text-white text-sm placeholder-white/40 border border-white/20 focus:outline-none focus:border-blue-400" />
+            </div>
+            <div className="flex items-center gap-3">
               <span className="text-white/70 text-xs w-8">회전</span>
               <button onClick={() => setRotation(r => r - 90)} className="w-11 h-11 rounded-full bg-white/20 text-white text-xl flex items-center justify-center">↺</button>
               <div className="flex-1 text-center text-white text-sm">{rotation}°</div>
