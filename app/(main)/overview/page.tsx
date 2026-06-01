@@ -552,7 +552,7 @@ export default function DashboardPage() {
     }
     const script = document.createElement("script");
     script.id = "kakao-map-script";
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false`;
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false&libraries=services`;
     script.onload = () => window.kakao.maps.load(() => setMapLoaded(true));
     document.head.appendChild(script);
   }, []);
