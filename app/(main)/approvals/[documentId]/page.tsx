@@ -786,10 +786,14 @@ function GasRowInput({ rowIndex, initialRow, onRowChange, onSave, phase }: { row
     );
   }
   function GasMeasureInput({ rows, onChange, documentId, onSaved }: { rows: any[]; onChange: (rows: any[]) => void; documentId?: string; onSaved?: (phase: string, row: any) => void }) {
-    const buildPhaseRows = (src: any[]) => ["\uc791\uc5c5 \uc804", "\uc791\uc5c5 \uc911(1\ucc28)", "\uc791\uc5c5 \uc911(2\ucc28)"].map((ph, idx) => {
-      const found = Array.isArray(src) ? src.find((r: any) => r && r.phase === ph) : undefined;
-      return found ? { ...found, phase: ph } : { ...DEFAULT_GAS_ROWS[idx], phase: ph };
-    });
+    const buildPhaseRows = (src: any[]) => {
+      const dm = (Array.isArray(src) ? (src.find((r: any) => r && r.measurer)?.measurer) : "") || "";
+      return ["\uc791\uc5c5 \uc804", "\uc791\uc5c5 \uc911(1\ucc28)", "\uc791\uc5c5 \uc911(2\ucc28)"].map((ph, idx) => {
+        const found = Array.isArray(src) ? src.find((r: any) => r && r.phase === ph) : undefined;
+        const base = found ? { ...found } : { ...DEFAULT_GAS_ROWS[idx] };
+        return { ...base, phase: ph, measurer: base.measurer || dm };
+      });
+    };
     const rowsRef = useRef<any[]>(buildPhaseRows(rows));
     const savedRowsRef = useRef<Record<string, any>>({});
     const PHASES = ["작업 전", "작업 중(1차)", "작업 중(2차)"];
@@ -927,7 +931,7 @@ export default function ApprovalDetailPage() {
       setGasMeasureRowsInput(rows.map((r: any) => ({ ...r, measurer: r.measurer || mn })));
       setGasRowsLoaded(true);
     } else if (mn) {
-      setGasMeasureRowsInput([]);
+      setGasMeasureRowsInput(["\uc791\uc5c5 \uc804", "\uc791\uc5c5 \uc911(1\ucc28)", "\uc791\uc5c5 \uc911(2\ucc28)"].map((ph, i) => ({ ...DEFAULT_GAS_ROWS[i], phase: ph, measurer: mn })));
       setGasRowsLoaded(true);
     }
   }, [doc?.id]);
