@@ -1370,7 +1370,7 @@ export default function ApprovalDetailPage() {
                 ? confinedOrder === 1 ? "감시인 서명 후 (계획확인)허가자를 지정합니다"
                   : confinedOrder === 2 ? "(계획확인) 허가자 서명을 완료합니다"
                   : "(이행확인) 최종 서명을 완료합니다"
-                : doc.currentApprovalOrder === 1 ? "서명 완료 후, 이행확인확인자를 지정합니다" : "최종 승인하시겠습니까?"}
+                : doc.currentApprovalOrder === 1 ? `\uc11c\uba85 \uc644\ub8cc \ud6c4, ${FINAL_ROLE_LABELS[doc.documentType] || "\uc774\ud589\ud655\uc778\ud655\uc778\uc790"}\ub97c \uc9c0\uc815\ud569\ub2c8\ub2e4` : "최종 승인하시겠습니까?"}
             </h3>
             <p className="text-sm text-gray-500 mb-4">
               {isConfinedSpace
