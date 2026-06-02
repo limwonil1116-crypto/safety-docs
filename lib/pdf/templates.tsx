@@ -649,7 +649,7 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
   return (
     <Document>
       <Page size="A4" style={S.page}>
-        <View style={S.titleBox}><Text style={S.titleMain}>안전관리 휴일작업 신청서</Text></View>
+        <View style={S.titleBox}><Text style={S.titleMain}>{"\uc6a9\uc5ed\ud604\uc7a5 \ud734\uc77c\uc791\uc5c5 \uc2e0\uccad\uc11c"}</Text></View>
         <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
           <Text style={{ fontSize: 10.5 }}>{`작업일시: ${periodText}`}</Text>
           <Text style={{ fontSize: 10 }}>{`신고일시: ${fd.requestDate || ""}`}</Text>
