@@ -654,7 +654,7 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
           <Text style={{ fontSize: 10.5 }}>{`작업일시: ${periodText}`}</Text>
           <Text style={{ fontSize: 10 }}>{`신고일시: ${fd.requestDate || ""}`}</Text>
         </View>
-        <Text style={[S.secHeader, { marginTop: 4 }]}>1. 용역 개요</Text>
+        <Text style={[S.secHeader, { marginTop: 2 }]}>1. 용역 개요</Text>
         <View style={S.table}>
           <View style={S.tr}><Text style={[S.il, { width: 58 }]}>용역명</Text><Text style={[S.iv, { borderRight: 0 }]}>{taskName || fd.serviceName || ""}</Text></View>
           <View style={S.trLast}>
@@ -691,9 +691,9 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
           </View>
           {participants.map((p, idx) => (
             <View key={idx} style={idx === participants.length - 1 ? S.trLast : S.tr}>
-              <Text style={[S.td, { flex: 2, minHeight: 24 }]}>{p.role || ""}</Text>
-              <Text style={[S.td, { flex: 2, minHeight: 24 }]}>{p.name || ""}</Text>
-              <Text style={[S.td, { flex: 2, borderRight: 0, minHeight: 24 }]}>{p.phone || ""}</Text>
+              <Text style={[S.td, { flex: 2, minHeight: 16 }]}>{p.role || ""}</Text>
+              <Text style={[S.td, { flex: 2, minHeight: 16 }]}>{p.name || ""}</Text>
+              <Text style={[S.td, { flex: 2, borderRight: 0, minHeight: 16 }]}>{p.phone || ""}</Text>
             </View>
           ))}
         </View>
@@ -704,14 +704,14 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
             <Text style={[S.th, { flex: 1, borderRight: 0 }]}>조치결과</Text>
           </View>
           <View style={S.trLast}>
-            <Text style={[S.td, { flex: 1, minHeight: 50 }]}>{fd.reviewOpinion || ""}</Text>
-            <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 50 }]}>{fd.reviewResult || ""}</Text>
+            <Text style={[S.td, { flex: 1, minHeight: 30 }]}>{fd.reviewOpinion || ""}</Text>
+            <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 30 }]}>{fd.reviewResult || ""}</Text>
           </View>
         </View>
         <Text style={{ fontSize: 10, textAlign: "center", marginVertical: 4 }}>위와 같이 휴일작업을 신청하오니 검토하여 승인하여 주시기 바랍니다.</Text>
         <View style={{ border: "0.8px solid " + C.border, marginBottom: 3 }}>
           {/* 신청자 행 */}
-          <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 36 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", padding: "3 6", minHeight: 26 }}>
             <Text style={{ fontSize: 9, width: 55, color: C.black }}>신청자</Text>
             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${fd.applicantOrg || ""}  (안전보건관리책임자) ${fd.applicantName || ""}`}</Text>
             <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
@@ -720,7 +720,7 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
               : <View style={{ width: 50, height: 28 }} />}
           </View>
           {/* 검토자 행 */}
-          <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 28, borderTop: "0.5px solid " + C.border }}>
+          <View style={{ flexDirection: "row", alignItems: "center", padding: "3 6", minHeight: 22, borderTop: "0.5px solid " + C.border }}>
             <Text style={{ fontSize: 9, width: 55, color: C.black }}>검토자</Text>
             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${a1?.approverOrg || ""}  (용역감독원) ${a1?.approverName || ""}`}</Text>
             <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
@@ -729,7 +729,7 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
               : <View style={{ width: 50, height: 28 }} />}
           </View>
           {/* 승인자 행 */}
-          <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 28, borderTop: "0.5px solid " + C.border }}>
+          <View style={{ flexDirection: "row", alignItems: "center", padding: "3 6", minHeight: 22, borderTop: "0.5px solid " + C.border }}>
             <Text style={{ fontSize: 9, width: 55, color: C.black }}>승인자</Text>
             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${a2?.approverOrg || ""}  (관리감독자) ${a2?.approverName || ""}`}</Text>
             <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
@@ -738,7 +738,7 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
               : <View style={{ width: 50, height: 28 }} />}
           </View>
         </View>
-        <Text style={{ fontSize: 13, fontWeight: "bold", textAlign: "center", marginTop: 6 }}>한국농어촌공사 안전기술본부 귀하</Text>
+        <Text style={{ fontSize: 13, fontWeight: "bold", textAlign: "center", marginTop: 3 }}>한국농어촌공사 안전기술본부 귀하</Text>
         <Footer documentId={documentId} createdAt={createdAt} />
       </Page>
     </Document>

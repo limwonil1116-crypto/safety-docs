@@ -1,0 +1,154 @@
+# total lines: 1056
+
+
+===== styles/colors head (lines 1-150) =====
+    1| // lib/pdf/templates.tsx
+    2| import React from "react";
+    3| import { Document, Page, Text, View, Image, StyleSheet, Font } from "@react-pdf/renderer";
+    4| import path from "path";
+    5| 
+    6| const fontDir = path.join(process.cwd(), "public", "fonts");
+    7| Font.register({
+    8|   family: "NanumGothic",
+    9|   fonts: [
+   10|     { src: path.join(fontDir, "NanumGothic-Regular.ttf"), fontWeight: "normal" },
+   11|     { src: path.join(fontDir, "NanumGothic-Bold.ttf"), fontWeight: "bold" },
+   12|   ],
+   13| });
+   14| 
+   15| const C = {
+   16|   navy: "#1a3a5c", sectionBg: "#bdd7ee", greenBg: "#e2efda",
+   17|   thBg: "#9dc3e6", rowEven: "#deeaf1", border: "#7f9fbf",
+   18|   labelBg: "#f2f2f2", white: "#ffffff", black: "#000000",
+   19| };
+   20| 
+   21| // ✅ 1번: 여백 최소화 + 폰트/표 크기 확대
+   22| const S = StyleSheet.create({
+   23|   page: { fontFamily: "NanumGothic", fontSize: 8.5, paddingTop: 4, paddingBottom: 12, paddingHorizontal: 9, color: "#000" },
+   24|   titleBox: { border: "1.5px solid " + C.black, paddingVertical: 7, marginBottom: 2 },
+   25|   titleMain: { fontSize: 17, fontWeight: "bold", textAlign: "center", letterSpacing: 2 },
+   26|   secHeader: { backgroundColor: C.sectionBg, border: "0.8px solid " + C.border, padding: "3 6", fontSize: 9, fontWeight: "bold", marginBottom: 0 },
+   27|   table: { border: "0.8px solid " + C.border, marginBottom: 3 },
+   28|   tr: { flexDirection: "row", borderBottom: "0.5px solid " + C.border },
+   29|   trLast: { flexDirection: "row" },
+   30|   th: { backgroundColor: C.thBg, fontWeight: "bold", padding: "3 3", fontSize: 8.5, borderRight: "0.5px solid " + C.border, textAlign: "center" },
+   31|   td: { padding: "3 4", fontSize: 8.5, borderRight: "0.5px solid " + C.border },
+   32|   tdc: { padding: "3 4", fontSize: 8.5, borderRight: "0.5px solid " + C.border, textAlign: "center" },
+   33|   il: { fontWeight: "bold", padding: "3 4", fontSize: 8.5, borderRight: "0.5px solid " + C.border, backgroundColor: C.labelBg },
+   34|   iv: { flex: 1, padding: "3 4", fontSize: 8.5 },
+   35|   footer: { position: "absolute", bottom: 6, left: 12, right: 12, borderTop: "0.5px solid #aaa", paddingTop: 3, flexDirection: "row", justifyContent: "space-between" },
+   36|   footerText: { fontSize: 7.5, color: "#666" },
+   37| });
+   38| 
+   39| export interface AttachmentInfo {
+   40|   id: string;
+   41|   fileName: string;
+   42|   fileUrl: string;
+   43|   mimeType: string | null;
+   44|   attachmentType: string;
+   45|   description: string | null;
+   46| }
+   47| 
+   48| function CB({ checked, size = 9 }: { checked: boolean; size?: number }) {
+   49|   return (
+   50|     <View style={{ width: size, height: size, marginRight: 2, alignItems: "center", justifyContent: "center", border: "0.8px solid #444", backgroundColor: checked ? C.navy : C.white }}>
+   51|       {checked && <Text style={{ color: "white", fontSize: size - 2.5, lineHeight: 1 }}>✓</Text>}
+   52|     </View>
+   53|   );
+   54| }
+   55| 
+   56| function Footer({ documentId, createdAt }: { documentId: string; createdAt: string }) {
+   57|   return (
+   58|     <View style={S.footer}>
+   59|       <Text style={S.footerText}>{`문서번호: ${documentId.slice(0, 8)}`}</Text>
+   60|       <Text style={S.footerText}>{`작성일시: ${new Date(createdAt).toLocaleString("ko-KR")} | 한국농어촌공사 안전기술본부`}</Text>
+   61|     </View>
+   62|   );
+   63| }
+   64| 
+   65| function fmtDateTime(dateStr?: string, timeStr?: string): string {
+   66|   if (!dateStr) return "";
+   67|   try {
+   68|     const [y, m, d] = dateStr.split("-").map(Number);
+   69|     const datePart = `${m}월 ${d}일`;
+   70|     if (!timeStr) return datePart;
+   71|     const [h, min] = timeStr.split(":");
+   72|     const hNum = parseInt(h, 10);
+   73|     const ampm = hNum < 12 ? "오전" : "오후";
+   74|     const h12 = hNum === 0 ? 12 : hNum > 12 ? hNum - 12 : hNum;
+   75|     return `${datePart} ${ampm} ${h12}시 ${min || "00"}분`;
+   76|   } catch { return `${dateStr} ${timeStr || ""}`; }
+   77| }
+   78| 
+   79| function buildPeriod(fd: Record<string, any>): string {
+   80|   const s = fmtDateTime(fd.workStartDate || fd.workDate, fd.workStartTime);
+   81|   const e = fmtDateTime(fd.workEndDate || fd.workDate, fd.workEndTime);
+   82|   if (!s) return "";
+   83|   return s === e ? s : `${s} ~ ${e}`;
+   84| }
+   85| 
+   86| // ✅ 좌표값 감지 함수 (예: "36.70531, 126.83768" 형태)
+   87| function isCoordinate(val: string): boolean {
+   88|   return /^-?\d+\.\d+,?\s*-?\d+\.\d+$/.test(val.trim());
+   89| }
+   90| 
+   91| function getWorkLocation(fd: Record<string, any>, workAddress?: string | null): string {
+   92|   // 1순위: DB의 workAddress (카카오 역지오코딩 주소) - 좌표가 아닌 경우만
+   93|   if (workAddress && workAddress.trim() && !isCoordinate(workAddress)) return workAddress;
+   94|   // 2순위: formData.workLocation - 좌표가 아닌 경우만
+   95|   if (fd.workLocation && fd.workLocation.trim() && !isCoordinate(fd.workLocation)) return fd.workLocation;
+   96|   // 3순위: facilityLocation (붙임3)
+   97|   if (fd.facilityLocation && fd.facilityLocation.trim() && !isCoordinate(fd.facilityLocation)) return fd.facilityLocation;
+   98|   // 4순위: workAddress가 좌표더라도 없는 것보다는 나음 (표시는 하되 빈칸 방지)
+   99|   if (workAddress && workAddress.trim()) return workAddress;
+  100|   if (fd.workLocation && fd.workLocation.trim()) return fd.workLocation;
+  101|   if (fd.facilityLocation && fd.facilityLocation.trim()) return fd.facilityLocation;
+  102|   return "";
+  103| }
+  104| 
+  105| function ApplicantRow({ applicantCompany, applicantTitle, applicantName, signatureData, labelWidth = 55 }: {
+  106|   applicantCompany?: string; applicantTitle?: string; applicantName?: string;
+  107|   signatureData?: string; labelWidth?: number;
+  108| }) {
+  109|   return (
+  110|     <View style={[S.tr, { alignItems: "stretch", minHeight: 36 }]}>
+  111|       <Text style={[S.il, { width: labelWidth }]}>신  청  인</Text>
+  112|       <View style={{ flex: 1.5, borderRight: "0.5px solid " + C.border, padding: "4 4", justifyContent: "center" }}>
+  113|         <Text style={{ fontSize: 9 }}>{`(업체명) ${applicantCompany || ""}`}</Text>
+  114|       </View>
+  115|       <View style={{ flex: 1, borderRight: "0.5px solid " + C.border, padding: "4 4", justifyContent: "center" }}>
+  116|         <Text style={{ fontSize: 9 }}>{`(직책) ${applicantTitle || ""}`}</Text>
+  117|       </View>
+  118|       <View style={{ flex: 1, borderRight: "0.5px solid " + C.border, padding: "4 4", justifyContent: "center" }}>
+  119|         <Text style={{ fontSize: 9 }}>{`(성명) ${applicantName || ""}`}</Text>
+  120|       </View>
+  121|       <View style={{ width: 95, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "4 4", gap: 4 }}>
+  122|         <Text style={{ fontSize: 8, color: "#888" }}>(서명)</Text>
+  123|         {signatureData
+  124|           ? <Image src={signatureData} style={{ width: 60, height: 22, objectFit: "contain" }} />
+  125|           : <View style={{ width: 60, height: 20, border: "0.5px dashed #ccc" }} />}
+  126|       </View>
+  127|     </View>
+  128|   );
+  129| }
+  130| 
+  131| function ApproverRow({ roleLabel, deptLabel, name, signatureData, borderBottom = true }: {
+  132|   roleLabel: string; deptLabel?: string; name?: string; signatureData?: string; borderBottom?: boolean;
+  133| }) {
+  134|   return (
+  135|     <View style={{ flexDirection: "row", alignItems: "stretch", borderBottom: borderBottom ? "0.5px solid " + C.border : "none", minHeight: 36 }}>
+  136|       <View style={{ width: 78, padding: "4 5", backgroundColor: C.labelBg, borderRight: "0.5px solid " + C.border, justifyContent: "center" }}>
+  137|         <Text style={{ fontSize: 9, fontWeight: "bold", color: C.navy }}>{roleLabel}</Text>
+  138|       </View>
+  139|       <View style={{ flex: 2, borderRight: "0.5px solid " + C.border, padding: "4 5", justifyContent: "center" }}>
+  140|         <Text style={{ fontSize: 8.5, color: "#555" }}>
+  141|           {deptLabel || "(부서) 한국농어촌공사   (직책) 용역관리자"}
+  142|         </Text>
+  143|       </View>
+  144|       <View style={{ width: 85, padding: "4 5", borderRight: "0.5px solid " + C.border, justifyContent: "center" }}>
+  145|         <Text style={{ fontSize: 9.5 }}>{`(성명) ${name || ""}`}</Text>
+  146|       </View>
+  147|       <View style={{ width: 105, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "4 4", gap: 4 }}>
+  148|         <Text style={{ fontSize: 8, color: "#888" }}>(서명)</Text>
+  149|         {signatureData
+  150|           ? <Image src={signatureData} style={{ width: 75, height: 22, objectFit: "contain" }} />
