@@ -1,0 +1,223 @@
+
+===== DISPLAY (specialMeasures/inspection 표시) (lines 585-596) =====
+ 585|                     })}
+ 586|                   </div>
+ 587|                 </div>
+ 588|               )}
+ 589|       {isForm4 && Array.isArray(fd.inspectionItems) && (fd.inspectionItems as any[]).some(i => i.equipment) && <div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-3">기기 확인 결과</h3><div className="overflow-x-auto"><table className="w-full text-xs"><thead><tr className="bg-gray-50"><th className="text-left px-2 py-1.5 text-gray-600 font-medium">점검기기</th><th className="text-left px-2 py-1.5 text-gray-600 font-medium">차단확인자</th><th className="text-left px-2 py-1.5 text-gray-600 font-medium">전기담당자</th><th className="text-left px-2 py-1.5 text-gray-600 font-medium">현장정비</th></tr></thead><tbody>{(fd.inspectionItems as any[]).filter(i => i.equipment).map((item, i) => (<tr key={i} className="border-t border-gray-100"><td className="px-2 py-1.5 text-gray-800">{item.equipment}</td><td className="px-2 py-1.5 text-gray-800">{item.cutoffConfirmer}</td><td className="px-2 py-1.5 text-gray-800">{item.electrician}</td><td className="px-2 py-1.5 text-gray-800">{item.siteRepair}</td></tr>))}</tbody></table></div></div>}
+ 590|       {isForm3 && Array.isArray(fd.participants) && <div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-3">작업 참여자</h3><div className="space-y-1.5">{(fd.participants as any[]).map((p, i) => (<div key={i} className="flex gap-3 text-sm"><span className="text-gray-400 w-28 shrink-0">{p.role}</span><span className="text-gray-900">{p.name} {p.phone ? `(${p.phone})` : ""}</span></div>))}</div></div>}
+ 591|       {isForm3 && (fd.riskFactors || fd.improvementMeasures) && <div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-3">위험요소 및 개선대책</h3><div className="space-y-2">{fd.riskFactors && <Field label="위험요소" value={fd.riskFactors as string} />}{fd.improvementMeasures && <Field label="개선대책" value={fd.improvementMeasures as string} />}</div></div>}
+ 592|       {(isForm2 || isForm4) && fd.specialMeasures && doc.currentApprovalOrder !== 1 && doc.status !== "SUBMITTED" && <div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-2">특별조치 필요사항</h3><p className="text-sm text-gray-800">{fd.specialMeasures as string}</p></div>}
+ 593|       {(fd.reviewOpinion || fd.reviewResult) && <div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-3">검토의견</h3><div className="space-y-2">{fd.reviewOpinion && <div><p className="text-xs text-gray-500 mb-1">검토의견</p><p className="text-sm text-gray-800 bg-gray-50 rounded-xl px-3 py-2">{fd.reviewOpinion as string}</p></div>}{fd.reviewResult && <div><p className="text-xs text-gray-500 mb-1">조치결과</p><p className="text-sm text-gray-800 bg-gray-50 rounded-xl px-3 py-2">{fd.reviewResult as string}</p></div>}</div></div>}
+ 594|       {(fd.signatureData || approvalLines.some(l => l.signatureData && l.stepStatus === "APPROVED")) && (
+ 595|         <div className="bg-white rounded-2xl p-4 shadow-sm">
+ 596|           <h3 className="text-sm font-bold text-gray-900 mb-3">서명</h3>
+
+===== handleSubmitWithSign (저장 로직) (lines 1023-1056) =====
+1023|     const resultVal = (reviewResultRef.current?.value ?? reviewResult).trim();
+1024|     if (action === "REJECT" && !opinionVal) { alert("반려 사유를 검토의견란에 입력해주세요."); return; }
+1025|     setPendingOpinion(opinionVal); setPendingResult(resultVal);
+1026|     setReviewOpinion(opinionVal); setReviewResult(resultVal);
+1027|     setPendingAction(action); setShowRejectConfirm(false); setShowApproveConfirm(false);
+1028|     setShowSign(true); initCanvas();
+1029|   };
+1030| 
+1031|   const handleSubmitWithSign = async () => {
+1032|     if (!pendingAction) return;
+1033|     setProcessing(true);
+1034|     try {
+1035|       const canvas = canvasRef.current;
+1036|       const signatureData = canvas ? canvas.toDataURL("image/png") : null;
+1037|       const extraBody: Record<string, unknown> = {};
+1038|       const isConfinedSpace = doc?.documentType === "CONFINED_SPACE";
+1039|       const confinedOrder = doc?.currentApprovalOrder ?? 0;
+1040|       if (isConfinedSpace && confinedOrder === 2 && specialMeasuresInput) extraBody.specialMeasures = specialMeasuresInput;
+1041|       if (isConfinedSpace && confinedOrder === 3) extraBody.gasMeasureRows = gasMeasureRef.current.length > 0 ? gasMeasureRef.current : (gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput.map((r: any) => ({ ...r, measurer: r.measurer || (fd.measurerName as string) || "" })) : DEFAULT_GAS_ROWS);
+1042|       const res = await fetch(`/api/documents/${documentId}/approve`, {
+1043|         method: "POST", headers: { "Content-Type": "application/json" },
+1044|         body: JSON.stringify({ action: pendingAction, comment: pendingOpinion || null, reviewResult: pendingResult || null, signatureData, inspectionItems: inspectionItemsRef.current.length > 0 ? inspectionItemsRef.current : undefined, ...extraBody }),
+1045|       });
+1046|       const data = await res.json();
+1047|       if (!res.ok) throw new Error(data.error || "오류 발생");
+1048|       setShowSign(false);
+1049|       if (data.action === "NEED_FINAL_APPROVER") { setShowFinalApprover(true); }
+1050|       else if (data.action === "NEED_PLAN_APPROVER") { setConfinedNextAction("PLAN_APPROVER"); setShowConfinedNextModal(true); }
+1051|       else if (data.action === "NEED_MEASUREMENT") { alert("(계획확인) 서명이 완료됩니다."); router.push("/approvals"); }
+1052|       else if (data.action === "NEED_FINAL_CONFIRMER") { setConfinedNextAction("FINAL_CONFIRMER"); setShowConfinedNextModal(true); }
+1053|       else if (data.action === "NEED_FINAL_CONFIRMER_POWER") { setShowPowerNextModal(true); }
+1054|       else if (data.action === "NEED_INSPECTION_WRITER") { alert("점검확인작성자를 지정해주세요."); router.push("/approvals"); }
+1055|       else if (data.action === "APPROVED") { alert("최종 승인이 완료됩니다."); router.push("/approvals"); }
+1056|       else { alert("처리됩니다."); router.push("/approvals"); }
+
+===== SpecialMeasuresInput + inspection 입력칸(글자색) (lines 1090-1186) =====
+1090|           {confinedOrder === 1 && (
+1091|             <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">감시인으로서 작업 계획을 확인하고 서명해주세요.</p>
+1092|           )}
+1093|           {confinedOrder === 2 && (
+1094|             <div className="space-y-2">
+1095|               <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">특별조치 필요사항을 입력 후 서명해주세요.</p>
+1096|               <AiSpecialMeasuresButton doc={doc} onGenerated={setSpecialMeasuresInput} />
+1097|               <SpecialMeasuresInput value={specialMeasuresInput} onChange={setSpecialMeasuresInput} />
+1098|             </div>
+1099|           )}
+1100|           {confinedOrder === 3 && (
+1101|             <div className="space-y-3">
+1102|               <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">산소 및 유해가스 농도 측정결과를 입력해주세요.</p>
+1103|               {gasRowsLoaded && <GasMeasureInput key={gasMeasureRowsInput.map((r:any)=>r.phase).join(",")}
+1104|                 rows={(() => {
+1105|                   const mn = (fd.measurerName as string) || "";
+1106|                   if (gasMeasureRowsInput.length > 0) {
+1107|                     return gasMeasureRowsInput.map((r: any) => ({ ...r, measurer: r.measurer || mn }));
+1108|                   }
+1109|                   return DEFAULT_GAS_ROWS.map((r: any) => ({ ...r, measurer: mn }));
+1110|                 })()}
+1111|                 onChange={(rows) => { gasMeasureRef.current = rows; }}
+1112|               documentId={documentId}
+1113|                 onSaved={(phase, savedRow) => {
+1114|                   setGasMeasureRowsInput(prev => {
+1115|                     const existing = prev.filter((r: any) => r.phase !== phase);
+1116|                     return [...existing, { ...savedRow, phase }];
+1117|                   });
+1118|                 }}
+1119|               />}
+1120|             </div>
+1121|           )}
+1122|           {confinedOrder === 4 && (
+1123|             <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">측정결과를 최종 확인하고 서명해주세요.</p>
+1124|           )}
+1125|         </div>
+1126|       );
+1127|     }
+1128| 
+1129|     const isPowerOutage = doc?.documentType === "POWER_OUTAGE";
+1130|     const powerOrder = doc?.currentApprovalOrder ?? 0;
+1131|     if (isPowerOutage) {
+1132|       return (
+1133|         <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
+1134|           <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
+1135|             <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
+1136|             {powerOrder === 1 ? "계획확인허가자 - 특별조치 입력" : powerOrder === 2 ? "점검확인결과 작성자 - 점검결과 입력" : "이행확인확인자 - 최종 서명"}
+1137|           </h3>
+1138|           {powerOrder === 1 && (
+1139|             <div className="space-y-2">
+1140|               <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">특별조치 필요사항을 입력하고 서명하세요.</p>
+1141|               <AiSpecialMeasuresButton doc={doc} onGenerated={setSpecialMeasuresInput} />
+1142|               <SpecialMeasuresInput value={specialMeasuresInput} onChange={setSpecialMeasuresInput} />
+1143|             </div>
+1144|           )}
+1145|           {powerOrder === 2 && (
+1146|             <div className="space-y-3">
+1147|               <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">점검기기, 차단확인자, 전기담당자, 현장정비를 입력하고 서명하세요.</p>
+1148|               <div className="grid grid-cols-4 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg mb-2">
+1149|                 {["점검기기", "차단확인자", "전기담당자", "현장정비"].map(h => <div key={h} className="text-xs font-medium text-gray-600 text-center">{h}</div>)}
+1150|               </div>
+1151|               {((fd.inspectionItems as any[]) || [{ equipment:"", cutoffConfirmer:"", electrician:"", siteRepair:"" }]).map((item: any, idx: number) => (
+1152|                 <div key={idx} className="grid grid-cols-4 gap-1">
+1153|                   {(["equipment","cutoffConfirmer","electrician","siteRepair"] as const).map(f => (
+1154|                     <input key={f} type="text" defaultValue={item[f]||""}
+1155|                       onChange={e => { const cur = inspectionItemsRef.current.length ? inspectionItemsRef.current : ((fd.inspectionItems as any[])||[{}]); inspectionItemsRef.current = cur.map((r:any,i:number)=>i===idx?{...r,[f]:e.target.value}:r); }}
+1156|                       className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+1157|                   ))}
+1158|                 </div>
+1159|               ))}
+1160|             </div>
+1161|           )}
+1162|           {powerOrder === 3 && <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">정전작업이 완료되었음을 확인하고 서명하세요.</p>}
+1163|         </div>
+1164|       );
+1165|     }
+1166| 
+1167|     // 검토의견 입력 섹션
+1168|     return (
+1169|       <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
+1170|         <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+1171|           <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse inline-block"/>
+1172|           {doc.currentApprovalOrder === 1 ? (doc.documentType === "SAFETY_WORK_PERMIT" ? "(계획확인) 검토의견 입력" : "검토 의견 입력") : (doc.documentType === "SAFETY_WORK_PERMIT" ? "(이행확인) 검토의견 확인" : "검토의견 확인 및 설정")}
+1173|         </h3>
+1174|         {reviewGuideText && <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-3">{reviewGuideText}</p>}
+1175|         <div className="space-y-3">
+1176|           <div>
+1177|             {doc.currentApprovalOrder === 1 && (
+1178|               <AiSpecialMeasuresButton doc={doc} onGenerated={(v) => {
+1179|                 if (reviewOpinionRef.current) reviewOpinionRef.current.value = v;
+1180|                 setReviewOpinion(v);
+1181|               }} label="AI 검토의견 초안" />
+1182|             )}
+1183|             <label className="block text-xs font-medium text-gray-600 mb-1.5">
+1184|               검토의견 {doc.currentApprovalOrder === 1 && <span className="text-red-500 text-xs">(반려 시 필수)</span>}
+1185|             </label>
+1186|             <textarea
+
+===== 버튼 라벨 (lines 1336-1352) =====
+1336|                   setPendingResult(result);
+1337|                   setReviewOpinion(opinion);
+1338|                   setReviewResult(result);
+1339|                   setShowApproveConfirm(true);
+1340|                 }} className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#16a34a" }}>
+1341|                 {isConfinedSpace
+1342|                   ? confinedOrder === 1 ? "감시인 서명" : confinedOrder === 2 ? "(계획확인) 서명" : "(이행확인) 최종 서명"
+1343|                   : doc.currentApprovalOrder === 1 ? (doc.documentType === "SAFETY_WORK_PERMIT" ? "(계획확인) 검토완료" : "검토완료") : "최종 승인"}
+1344|               </button>
+1345|             </div>
+1346|           )}
+1347|         </div>
+1348|       )}
+1349| 
+1350|       {showRejectConfirm && (
+1351|         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }}>
+1352|           <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
+
+===== showPowerNextModal 렌더 (lines 1439-1500) =====
+1439|       {showPowerNextModal && doc && (
+1440|         <ConfinedNextModal
+1441|           documentId={documentId}
+1442|           action="FINAL_CONFIRMER"
+1443|           {...{nextOrderOverride: 3} as any}
+1444|           onClose={() => setShowPowerNextModal(false)}
+1445|           onAssigned={() => { setShowPowerNextModal(false); router.refresh(); window.location.reload(); }}
+1446|         />
+1447|       )}
+1448|       {showConfinedNextModal && confinedNextAction && doc && (
+1449|         <ConfinedNextModal
+1450|           documentId={documentId}
+1451|           action={confinedNextAction}
+1452|           onClose={() => setShowConfinedNextModal(false)}
+1453|           onAssigned={() => {
+1454|             setShowConfinedNextModal(false);
+1455|             const msg = confinedNextAction === "PLAN_APPROVER"
+1456|               ? "(계획확인) 허가자가 지정됩니다."
+1457|               : "(이행확인) 확인자가 지정됩니다.";
+1458|             alert(msg);
+1459|             router.push("/approvals");
+1460|           }}
+1461|         />
+1462|       )}
+1463|     </div>
+1464|   );
+1465| }
+
+===== DEFS scan (변수 정의 위치) =====
+ 454|   const isForm2 = doc.documentType === "CONFINED_SPACE";
+ 456|   const isForm4 = doc.documentType === "POWER_OUTAGE";
+ 877| function SpecialMeasuresInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+1038|       const isConfinedSpace = doc?.documentType === "CONFINED_SPACE";
+1039|       const confinedOrder = doc?.currentApprovalOrder ?? 0;
+1040|       if (isConfinedSpace && confinedOrder === 2 && specialMeasuresInput) extraBody.specialMeasures = specialMeasuresInput;
+1041|       if (isConfinedSpace && confinedOrder === 3) extraBody.gasMeasureRows = gasMeasureRef.current.length > 0 ? gasMeasureRef.current : (gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput.map((r: any) => ({ ...r, measurer: r.measurer || (fd.measurerName as string) || "" })) : DEFAULT_GAS_ROWS);
+1073|   const isConfinedSpace = doc.documentType === "CONFINED_SPACE";
+1074|   const confinedOrder = doc.currentApprovalOrder ?? 0;
+1080|     const isConfinedSpace = doc?.documentType === "CONFINED_SPACE";
+1081|     const confinedOrder = doc?.currentApprovalOrder ?? 0;
+1090|           {confinedOrder === 1 && (
+1093|           {confinedOrder === 2 && (
+1100|           {confinedOrder === 3 && (
+1122|           {confinedOrder === 4 && (
+1130|     const powerOrder = doc?.currentApprovalOrder ?? 0;
+1136|             {powerOrder === 1 ? "계획확인허가자 - 특별조치 입력" : powerOrder === 2 ? "점검확인결과 작성자 - 점검결과 입력" : "이행확인확인자 - 최종 서명"}
+1138|           {powerOrder === 1 && (
+1145|           {powerOrder === 2 && (
+1162|           {powerOrder === 3 && <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">정전작업이 완료되었음을 확인하고 서명하세요.</p>}
+1297|           {isConfinedSpace && confinedOrder === 3 ? (
+1342|                   ? confinedOrder === 1 ? "감시인 서명" : confinedOrder === 2 ? "(계획확인) 서명" : "(이행확인) 최종 서명"
+1370|                 ? confinedOrder === 1 ? "감시인 서명 후 (계획확인)허가자를 지정합니다"
+1371|                   : confinedOrder === 2 ? "(계획확인) 허가자 서명을 완료합니다"

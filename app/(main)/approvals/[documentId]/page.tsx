@@ -1038,6 +1038,7 @@ export default function ApprovalDetailPage() {
       const isConfinedSpace = doc?.documentType === "CONFINED_SPACE";
       const confinedOrder = doc?.currentApprovalOrder ?? 0;
       if (isConfinedSpace && confinedOrder === 2 && specialMeasuresInput) extraBody.specialMeasures = specialMeasuresInput;
+      if (doc?.documentType === "POWER_OUTAGE" && confinedOrder === 1 && specialMeasuresInput) extraBody.specialMeasures = specialMeasuresInput;
       if (isConfinedSpace && confinedOrder === 3) extraBody.gasMeasureRows = gasMeasureRef.current.length > 0 ? gasMeasureRef.current : (gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput.map((r: any) => ({ ...r, measurer: r.measurer || (fd.measurerName as string) || "" })) : DEFAULT_GAS_ROWS);
       const res = await fetch(`/api/documents/${documentId}/approve`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -1153,7 +1154,7 @@ export default function ApprovalDetailPage() {
                   {(["equipment","cutoffConfirmer","electrician","siteRepair"] as const).map(f => (
                     <input key={f} type="text" defaultValue={item[f]||""}
                       onChange={e => { const cur = inspectionItemsRef.current.length ? inspectionItemsRef.current : ((fd.inspectionItems as any[])||[{}]); inspectionItemsRef.current = cur.map((r:any,i:number)=>i===idx?{...r,[f]:e.target.value}:r); }}
-                      className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
                   ))}
                 </div>
               ))}
@@ -1340,7 +1341,7 @@ export default function ApprovalDetailPage() {
                 }} className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#16a34a" }}>
                 {isConfinedSpace
                   ? confinedOrder === 1 ? "감시인 서명" : confinedOrder === 2 ? "(계획확인) 서명" : "(이행확인) 최종 서명"
-                  : doc.currentApprovalOrder === 1 ? (doc.documentType === "SAFETY_WORK_PERMIT" ? "(계획확인) 검토완료" : "검토완료") : "최종 승인"}
+                  : doc.currentApprovalOrder === 1 ? (doc.documentType === "SAFETY_WORK_PERMIT" ? "(\uacc4\ud68d\ud655\uc778) \uac80\ud1a0\uc644\ub8cc" : doc.documentType === "POWER_OUTAGE" ? "\uc11c\uba85 \ubc0f \uc774\ud589\ud655\uc778 \ud655\uc778\uc790 \uc9c0\uc815" : "\uac80\ud1a0\uc644\ub8cc") : "최종 승인"}
               </button>
             </div>
           )}
