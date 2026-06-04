@@ -1,0 +1,93 @@
+# total lines: 1778
+
+
+===== doc config (titles / labels) (lines 14-40) =====
+   14|   currentMeasure: string; residualRisk: string; additionalMeasure: string;
+   15| }
+   16| declare global { interface Window { kakao: any; daum: any; } }
+   17| 
+   18| const DOC_TYPE_INFO: Record<string, { title: string; short: string; approverLabel: string; confirmerLabel: string }> = {
+   19|   SAFETY_WORK_PERMIT: { title: "안전작업허가서",    short: "불임윜1", approverLabel: "(계획확인)허가자", confirmerLabel: "(이행확인)확인자" },
+   20|   CONFINED_SPACE:     { title: "밀폐공간작업허가서", short: "불임윜2", approverLabel: "허가자",    confirmerLabel: "확인자" },
+   21|   HOLIDAY_WORK:       { title: "휴일작업신고서",     short: "불임윜3", approverLabel: "검토자",    confirmerLabel: "승인자" },
+   22|   POWER_OUTAGE:       { title: "정전작업허가서",     short: "불임윜4", approverLabel: "계획확인허가자",    confirmerLabel: "이행확인확인자" },
+   23| };
+   24| 
+   25| const inputClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none";
+   26| const textareaClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none";
+   27| const dateInputClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500";
+   28| const timeInputClass = "w-full px-3 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500";
+   29| 
+   30| // 위험공종 관련작업(장소) 항목 목록
+   31| const HIGH_PLACE_ITEMS = ["저수지 여수로·취수탑", "방조제 배수갑문", "양·배수장 건축물"];
+   32| const WATER_WORK_ITEMS = ["저수지 상류사면·물넘이·감세공", "방조제 제방사면·배수갑문", "양·배수장 유입·토출수로"];
+   33| 
+   34| const defaultRiskAssessRow: RiskAssessRow = {
+   35|   workType: "", riskFactor: "", riskLevel: "중",
+   36|   currentMeasure: "", residualRisk: "하", additionalMeasure: "",
+   37| };
+   38| const levelColors: Record<string, string> = {
+   39|   "상": "bg-red-100 text-red-700 border-red-200",
+   40|   "중": "bg-amber-100 text-amber-700 border-amber-200",
+
+
+===== submit button + picker trigger (lines 1720-1778) =====
+ 1720|           </Link>
+ 1721|           <span className="text-xs text-gray-500">{taskName}</span>
+ 1722|         </div>
+ 1723|         <div className="flex items-center justify-between">
+ 1724|           <div className="flex items-center gap-2">
+ 1725|             <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{info.short}</span>
+ 1726|             <h2 className="text-base font-bold text-gray-900">{info.title}</h2>
+ 1727|           </div>
+ 1728|           <div className="flex items-center gap-2">
+ 1729|             {lastSaved && <span className="text-xs text-gray-400">{lastSaved}</span>}
+ 1730|             <button onClick={() => setShowPrev(true)} className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">이전 불러오기</button>
+ 1731|           </div>
+ 1732|         </div>
+ 1733|       </div>
+ 1734| 
+ 1735|       <div className="p-4 space-y-4">
+ 1736|         {documentType === "SAFETY_WORK_PERMIT" && <Form1Fields form={form1} onChange={handleChange1} onSave={() => handleSave(true)} {...locProps} taskName={taskName} documentId={documentId} />}
+ 1737|         {documentType === "CONFINED_SPACE"     && <Form2Fields form={form2} onChange={handleChange2} {...locProps} taskName={taskName} documentId={documentId} />}
+ 1738|         {documentType === "HOLIDAY_WORK"       && <Form3Fields form={form3} onChange={handleChange3} {...locProps} taskName={taskName} documentId={documentId} />}
+ 1739|         {documentType === "POWER_OUTAGE"       && <Form4Fields form={form4} onChange={handleChange4} {...locProps} taskName={taskName} documentId={documentId} />}
+ 1740|       </div>
+ 1741| 
+ 1742|       <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 flex gap-3">
+ 1743|         <button onClick={() => handleSave(false)} disabled={saving}
+ 1744|           className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 disabled:opacity-60">
+ 1745|           {saving ? "저장 중..." : "임시저장"}
+ 1746|         </button>
+ 1747|         <button onClick={async () => { await handleSave(true); setShowApproval(true); }}
+ 1748|           className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#2563eb" }}>
+ 1749|           {documentType === "CONFINED_SPACE" ? "서명하기" : "결재자 지정 및 제출"}
+ 1750|         </button>
+ 1751|       </div>
+ 1752| 
+ 1753|       {showPrev && (
+ 1754|         <PrevDocsModal documentId={documentId} onSelect={(fd) => {
+ 1755|           const migrated = migrateFormData(fd);
+ 1756|           if (documentType === "SAFETY_WORK_PERMIT") setForm1(p => ({ ...p, ...migrated } as Form1));
+ 1757|           else if (documentType === "CONFINED_SPACE") setForm2(p => ({ ...p, ...migrated } as Form2));
+ 1758|           else if (documentType === "HOLIDAY_WORK")   setForm3(p => ({ ...p, ...migrated } as Form3));
+ 1759|           else if (documentType === "POWER_OUTAGE")   setForm4(p => ({ ...p, ...migrated } as Form4));
+ 1760|         }} onClose={() => setShowPrev(false)} />
+ 1761|       )}
+ 1762|       {showLocationPicker && (
+ 1763|         <LocationPickerModal initialAddress={workAddress} initialLat={workLatitude} initialLng={workLongitude}
+ 1764|           onConfirm={handleLocationConfirm} onClose={() => setShowLocationPicker(false)} />
+ 1765|       )}
+ 1766|       {showApproval && (
+ 1767|         <ApprovalSignModal documentId={documentId} documentType={documentType}
+ 1768|           measurerUserId={documentType === "CONFINED_SPACE" ? (form2.measurerUserId || undefined) : undefined}
+ 1769|           onClose={() => setShowApproval(false)}
+ 1770|           onSubmitted={() => {
+ 1771|             setShowApproval(false);
+ 1772|             alert("제출이 완료됐습니다. 결재자에게 알림이 전송됩니다.");
+ 1773|             router.push(`/tasks/${taskId}`);
+ 1774|           }} />
+ 1775|       )}
+ 1776|     </div>
+ 1777|   );
+ 1778| }

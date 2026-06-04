@@ -873,7 +873,7 @@ function ApprovalSignModal({ documentId, documentType, measurerUserId, onClose, 
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
       <div className="bg-white w-full rounded-t-3xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h2 className="text-base font-bold text-gray-900">{step === "approver" ? `결재자 지정(${info.approverLabel})` : "서명"}</h2>
+          <h2 className="text-base font-bold text-gray-900">{step === "approver" ? `${info.approverLabel} \uc9c0\uc815` : "서명"}</h2>
           <button onClick={onClose} className="text-gray-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         {step === "approver" ? (
@@ -1746,7 +1746,7 @@ export default function DocumentEditPage() {
         </button>
         <button onClick={async () => { await handleSave(true); setShowApproval(true); }}
           className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#2563eb" }}>
-          {documentType === "CONFINED_SPACE" ? "서명하기" : "결재자 지정 및 제출"}
+          {documentType === "CONFINED_SPACE" ? "서명하기" : `${DOC_TYPE_INFO[documentType]?.approverLabel || "\uacb0\uc7ac\uc790"} \uc9c0\uc815 \ubc0f \uc11c\uba85`}
         </button>
       </div>
 
