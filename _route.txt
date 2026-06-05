@@ -1,0 +1,66 @@
+ 150|             targetDocumentId: documentId, isRead: false,
+ 151|           });
+ 152|           generatePDFBackground(documentId, doc).catch(console.error);
+ 153|           return NextResponse.json({ success: true, action: "APPROVED" });
+ 154|         }
+ 155|       }
+ 156| 
+ 157|       // =============================================
+ 158|       // 일반 문서 2단계 분기 (기존 로직)
+ 159|       // =============================================
+ 160|       // POWER_OUTAGE 4단계
+ 161|       const isPowerOutage = doc.documentType === "POWER_OUTAGE";
+ 162|       if (isPowerOutage) {
+ 163|         if (body.specialMeasures !== undefined) updatedFd.specialMeasures = body.specialMeasures;
+ 164|         if (comment?.trim()) updatedFd.reviewOpinion = comment.trim();
+ 165|         if (reviewResult?.trim()) updatedFd.reviewResult = reviewResult.trim();
+ 166|         if (body.inspectionItems) updatedFd.inspectionItems = body.inspectionItems;
+ 167|         if (order === 1) {
+ 168|           const inspWriterId = updatedFd.inspectionWriterUserId as string | undefined;
+ 169|           if (inspWriterId) {
+ 170|             await db.insert(documentApprovalLines).values({ documentId, approverUserId: inspWriterId, approvalOrder: 2, approvalRole: "REVIEWER", stepStatus: "WAITING", signatureRequired: true });
+ 171|             await db.update(documents).set({ status: "IN_REVIEW", currentApprovalOrder: 2, currentApproverUserId: inspWriterId, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
+ 172|             await db.insert(notifications).values({ userId: inspWriterId, type: "MY_TURN", title: "정전작업허가서 - 점검확인결과 입력 요청", body: "점검확인결과를 입력하고 서명해주세요.", targetDocumentId: documentId, isRead: false });
+ 173|             return NextResponse.json({ success: true, action: "APPROVED" });
+ 174|           } else {
+ 175|             await db.update(documents).set({ status: "IN_REVIEW", currentApproverUserId: null, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
+ 176|             return NextResponse.json({ success: true, action: "NEED_INSPECTION_WRITER" });
+ 177|           }
+ 178|         } else if (order === 2) {
+ 179|           await db.update(documents).set({ status: "IN_REVIEW", currentApproverUserId: null, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
+ 180|           return NextResponse.json({ success: true, action: "NEED_FINAL_CONFIRMER_POWER" });
+ 181|         } else if (order === 3) {
+ 182|           await db.update(documents).set({ status: "APPROVED", approvedAt: new Date(), currentApproverUserId: null, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
+ 183|           await db.insert(notifications).values({ userId: doc.createdBy, type: "APPROVED", title: "정전작업허가서 최종 승인", body: "완료되었습니다.", targetDocumentId: documentId, isRead: false });
+ 184|           generatePDFBackground(documentId, doc).catch(console.error);
+ 185|           return NextResponse.json({ success: true, action: "APPROVED" });
+ 186|         }
+ 187|       }
+ 188| 
+ 189|       if (comment?.trim()) updatedFd.reviewOpinion = comment.trim();
+ 190|       if (reviewResult?.trim()) updatedFd.reviewResult = reviewResult.trim();
+ 191| 
+ 192|       if (order === 1) {
+ 193|         await db.update(documents).set({
+ 194|           status: "IN_REVIEW", currentApproverUserId: null,
+ 195|           formDataJson: updatedFd, updatedAt: new Date(),
+ 196|         }).where(eq(documents.id, documentId));
+ 197|         return NextResponse.json({ success: true, action: "NEED_FINAL_APPROVER" });
+ 198|       } else {
+ 199|         await db.update(documents).set({
+ 200|           status: "APPROVED", approvedAt: new Date(),
+ 201|           currentApproverUserId: null,
+ 202|           formDataJson: updatedFd, updatedAt: new Date(),
+ 203|         }).where(eq(documents.id, documentId));
+ 204|         await db.insert(notifications).values({
+ 205|           userId: doc.createdBy, type: "APPROVED",
+ 206|           title: "결재가 최종 승인됐습니다.",
+ 207|           body: "결재가 최종 승인됐습니다. PDF를 다운로드할 수 있습니다.",
+ 208|           targetDocumentId: documentId, isRead: false,
+ 209|         });
+ 210|         generatePDFBackground(documentId, doc).catch(console.error);
+ 211|         return NextResponse.json({ success: true, action: "APPROVED" });
+ 212|       }
+ 213|     }
+ 214|   } catch (error) {
+ 215|     console.error("[POST approve]", error);
