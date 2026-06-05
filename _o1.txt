@@ -1,0 +1,32 @@
+
+===== 메인 버튼 (lines 1340-1346) =====
+1340|                   setShowApproveConfirm(true);
+1341|                 }} className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#16a34a" }}>
+1342|                 {isConfinedSpace
+1343|                   ? confinedOrder === 1 ? "감시인 서명" : confinedOrder === 2 ? "(계획확인) 서명" : "(이행확인) 최종 서명"
+1344|                   : doc.currentApprovalOrder === 1 ? (doc.documentType === "SAFETY_WORK_PERMIT" ? "(\uacc4\ud68d\ud655\uc778) \uac80\ud1a0\uc644\ub8cc" : doc.documentType === "POWER_OUTAGE" ? "\uc11c\uba85 \ubc0f \uc774\ud589\ud655\uc778 \ud655\uc778\uc790 \uc9c0\uc815" : "\uac80\ud1a0\uc644\ub8cc") : (doc.documentType === "POWER_OUTAGE" && doc.currentApprovalOrder === 2 ? "\uc791\uc131\uc644\ub8cc \ubc0f \uc774\ud589\ud655\uc778 \ud655\uc778\uc790 \uc9c0\uc815" : "\ucd5c\uc885 \uc2b9\uc778")}
+1345|               </button>
+1346|             </div>
+
+===== 확인 팝업 제목/부제 (lines 1370-1382) =====
+1370|               {isConfinedSpace
+1371|                 ? confinedOrder === 1 ? "감시인 서명 후 (계획확인)허가자를 지정합니다"
+1372|                   : confinedOrder === 2 ? "(계획확인) 허가자 서명을 완료합니다"
+1373|                   : "(이행확인) 최종 서명을 완료합니다"
+1374|                 : doc.currentApprovalOrder === 1 ? `\uc11c\uba85 \uc644\ub8cc \ud6c4, ${FINAL_ROLE_LABELS[doc.documentType] || "\uc774\ud589\ud655\uc778\ud655\uc778\uc790"}\ub97c \uc9c0\uc815\ud569\ub2c8\ub2e4` : (doc.documentType === "POWER_OUTAGE" && doc.currentApprovalOrder === 2 ? "\uc791\uc131\uc644\ub8cc\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?" : "\ucd5c\uc885 \uc2b9\uc778\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?")}
+1375|             </h3>
+1376|             <p className="text-sm text-gray-500 mb-4">
+1377|               {isConfinedSpace
+1378|                 ? "서명 후 다음 단계가 진행됩니다."
+1379|                 : doc.currentApprovalOrder === 1 ? "승인자를 지정해주세요." : (doc.documentType === "POWER_OUTAGE" && doc.currentApprovalOrder === 2 ? "" : "\uc2b9\uc778\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?")}
+1380|             </p>
+1381|             <div className="flex gap-3">
+1382|               <button onClick={() => setShowApproveConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">취소</button>
+
+===== 서명 모달 제출버튼 (lines 1410-1415) =====
+1410|               <button onClick={handleSubmitWithSign} disabled={processing}
+1411|                 className="w-full py-3.5 rounded-xl text-white font-medium text-sm disabled:opacity-50"
+1412|                 style={{ background: pendingAction === "APPROVE" ? "#16a34a" : "#dc2626" }}>
+1413|                 {processing ? "처리 중..." : pendingAction === "APPROVE" ? (doc?.documentType === "POWER_OUTAGE" && doc?.currentApprovalOrder === 2 ? "\u2713 \uc11c\uba85 \uc644\ub8cc" : "\u2713 \uc2b9\uc778 \uc644\ub8cc") : "반려 완료"}
+1414|               </button>
+1415|             </div>

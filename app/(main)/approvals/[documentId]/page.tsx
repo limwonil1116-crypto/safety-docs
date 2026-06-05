@@ -1341,7 +1341,7 @@ export default function ApprovalDetailPage() {
                 }} className="flex-1 py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#16a34a" }}>
                 {isConfinedSpace
                   ? confinedOrder === 1 ? "감시인 서명" : confinedOrder === 2 ? "(계획확인) 서명" : "(이행확인) 최종 서명"
-                  : doc.currentApprovalOrder === 1 ? (doc.documentType === "SAFETY_WORK_PERMIT" ? "(\uacc4\ud68d\ud655\uc778) \uac80\ud1a0\uc644\ub8cc" : doc.documentType === "POWER_OUTAGE" ? "\uc11c\uba85 \ubc0f \uc774\ud589\ud655\uc778 \ud655\uc778\uc790 \uc9c0\uc815" : "\uac80\ud1a0\uc644\ub8cc") : (doc.documentType === "POWER_OUTAGE" && doc.currentApprovalOrder === 2 ? "\uc791\uc131\uc644\ub8cc \ubc0f \uc774\ud589\ud655\uc778 \ud655\uc778\uc790 \uc9c0\uc815" : "\ucd5c\uc885 \uc2b9\uc778")}
+                  : doc.currentApprovalOrder === 1 ? (doc.documentType === "SAFETY_WORK_PERMIT" ? "(\uacc4\ud68d\ud655\uc778) \uac80\ud1a0\uc644\ub8cc" : doc.documentType === "POWER_OUTAGE" ? "\uc11c\uba85\ud558\uae30" : "\uac80\ud1a0\uc644\ub8cc") : (doc.documentType === "POWER_OUTAGE" && doc.currentApprovalOrder === 2 ? "\uc791\uc131\uc644\ub8cc \ubc0f \uc774\ud589\ud655\uc778 \ud655\uc778\uc790 \uc9c0\uc815" : "\ucd5c\uc885 \uc2b9\uc778")}
               </button>
             </div>
           )}
@@ -1371,12 +1371,12 @@ export default function ApprovalDetailPage() {
                 ? confinedOrder === 1 ? "감시인 서명 후 (계획확인)허가자를 지정합니다"
                   : confinedOrder === 2 ? "(계획확인) 허가자 서명을 완료합니다"
                   : "(이행확인) 최종 서명을 완료합니다"
-                : doc.currentApprovalOrder === 1 ? `\uc11c\uba85 \uc644\ub8cc \ud6c4, ${FINAL_ROLE_LABELS[doc.documentType] || "\uc774\ud589\ud655\uc778\ud655\uc778\uc790"}\ub97c \uc9c0\uc815\ud569\ub2c8\ub2e4` : (doc.documentType === "POWER_OUTAGE" && doc.currentApprovalOrder === 2 ? "\uc791\uc131\uc644\ub8cc\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?" : "\ucd5c\uc885 \uc2b9\uc778\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?")}
+                : doc.currentApprovalOrder === 1 ? (doc.documentType === "POWER_OUTAGE" ? "\uc11c\uba85\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?" : `\uc11c\uba85 \uc644\ub8cc \ud6c4, ${FINAL_ROLE_LABELS[doc.documentType] || "\uc774\ud589\ud655\uc778\ud655\uc778\uc790"}\ub97c \uc9c0\uc815\ud569\ub2c8\ub2e4`) : (doc.documentType === "POWER_OUTAGE" && doc.currentApprovalOrder === 2 ? "\uc791\uc131\uc644\ub8cc\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?" : "\ucd5c\uc885 \uc2b9\uc778\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?")}
             </h3>
             <p className="text-sm text-gray-500 mb-4">
               {isConfinedSpace
                 ? "서명 후 다음 단계가 진행됩니다."
-                : doc.currentApprovalOrder === 1 ? "승인자를 지정해주세요." : (doc.documentType === "POWER_OUTAGE" && doc.currentApprovalOrder === 2 ? "" : "\uc2b9\uc778\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?")}
+                : doc.currentApprovalOrder === 1 ? (doc.documentType === "POWER_OUTAGE" ? "" : "\uc2b9\uc778\uc790\ub97c \uc9c0\uc815\ud574\uc8fc\uc138\uc694.") : (doc.documentType === "POWER_OUTAGE" && doc.currentApprovalOrder === 2 ? "" : "\uc2b9\uc778\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?")}
             </p>
             <div className="flex gap-3">
               <button onClick={() => setShowApproveConfirm(false)} className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600">취소</button>
@@ -1410,7 +1410,7 @@ export default function ApprovalDetailPage() {
               <button onClick={handleSubmitWithSign} disabled={processing}
                 className="w-full py-3.5 rounded-xl text-white font-medium text-sm disabled:opacity-50"
                 style={{ background: pendingAction === "APPROVE" ? "#16a34a" : "#dc2626" }}>
-                {processing ? "처리 중..." : pendingAction === "APPROVE" ? (doc?.documentType === "POWER_OUTAGE" && doc?.currentApprovalOrder === 2 ? "\u2713 \uc11c\uba85 \uc644\ub8cc" : "\u2713 \uc2b9\uc778 \uc644\ub8cc") : "반려 완료"}
+                {processing ? "처리 중..." : pendingAction === "APPROVE" ? (doc?.documentType === "POWER_OUTAGE" && (doc?.currentApprovalOrder === 1 || doc?.currentApprovalOrder === 2) ? "\u2713 \uc11c\uba85 \uc644\ub8cc" : "\u2713 \uc2b9\uc778 \uc644\ub8cc") : "반려 완료"}
               </button>
             </div>
           </div>
