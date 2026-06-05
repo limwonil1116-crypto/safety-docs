@@ -1410,7 +1410,7 @@ export default function ApprovalDetailPage() {
               <button onClick={handleSubmitWithSign} disabled={processing}
                 className="w-full py-3.5 rounded-xl text-white font-medium text-sm disabled:opacity-50"
                 style={{ background: pendingAction === "APPROVE" ? "#16a34a" : "#dc2626" }}>
-                {processing ? "처리 중..." : pendingAction === "APPROVE" ? "✓ 승인 완료" : "반려 완료"}
+                {processing ? "처리 중..." : pendingAction === "APPROVE" ? (doc?.documentType === "POWER_OUTAGE" && doc?.currentApprovalOrder === 2 ? "\u2713 \uc11c\uba85 \uc644\ub8cc" : "\u2713 \uc2b9\uc778 \uc644\ub8cc") : "반려 완료"}
               </button>
             </div>
           </div>

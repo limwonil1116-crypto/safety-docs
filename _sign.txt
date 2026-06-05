@@ -1,0 +1,32 @@
+1389|       {showSign && (
+1390|         <div ref={signModalRef} className="fixed inset-0 bg-black/50 z-50 flex items-end" style={{ touchAction: "none" }} onTouchMove={e => e.preventDefault()}>
+1391|           <div className="bg-white w-full rounded-t-3xl" style={{ paddingBottom: "env(safe-area-inset-bottom, 20px)", maxHeight: "80vh", overflowY: "auto" }}>
+1392|             <div className="px-6 pt-6 pb-2">
+1393|               <h2 className="text-base font-bold text-gray-900 mb-1">{pendingAction === "APPROVE" ? "승인 서명" : "반려 서명"}</h2>
+1394|               <p className="text-xs text-gray-500">서명 후 처리가 완료됩니다.</p>
+1395|             </div>
+1396|             <div className="px-6 py-3">
+1397|               <div className="border-2 border-gray-200 rounded-2xl overflow-hidden bg-white relative">
+1398|                 <div className="absolute top-2 left-3 text-xs text-gray-300 pointer-events-none">아래에 서명해주세요</div>
+1399|                 <canvas ref={canvasRef} width={600} height={180} className="w-full"
+1400|                   style={{ cursor: "crosshair", touchAction: "none", display: "block" }}
+1401|                   onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
+1402|                   onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
+1403|               </div>
+1404|             </div>
+1405|             <div className="px-6 pb-24 space-y-2">
+1406|               <div className="flex gap-2">
+1407|                 <button onClick={clearCanvas} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium">서명 지우기</button>
+1408|                 <button onClick={() => setShowSign(false)} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium">취소</button>
+1409|               </div>
+1410|               <button onClick={handleSubmitWithSign} disabled={processing}
+1411|                 className="w-full py-3.5 rounded-xl text-white font-medium text-sm disabled:opacity-50"
+1412|                 style={{ background: pendingAction === "APPROVE" ? "#16a34a" : "#dc2626" }}>
+1413|                 {processing ? "처리 중..." : pendingAction === "APPROVE" ? "✓ 승인 완료" : "반려 완료"}
+1414|               </button>
+1415|             </div>
+1416|           </div>
+1417|         </div>
+1418|       )}
+1419| 
+1420|       {showFinalApprover && doc && (
