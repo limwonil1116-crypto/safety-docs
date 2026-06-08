@@ -1,0 +1,58 @@
+
+===== hooks (lines 909-925) =====
+ 909|   const [step1ApproverName, setStep1ApproverName] = useState("");
+ 910|   const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+ 911|   const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+ 912|   const [processing, setProcessing] = useState(false);
+ 913|   const [cancelling, setCancelling] = useState(false);
+ 914|   const [showSign, setShowSign] = useState(false);
+ 915|   const [showFinalApprover, setShowFinalApprover] = useState(false);
+ 916|   const [showConfinedNextModal, setShowConfinedNextModal] = useState(false);
+ 917|   const [showPowerNextModal, setShowPowerNextModal] = useState(false);
+ 918|   const [powerNextAction, setPowerNextAction] = useState("");
+ 919|   const [confinedNextAction, setConfinedNextAction] = useState<"PLAN_APPROVER"|"FINAL_CONFIRMER"|null>(null);
+ 920|   const [specialMeasuresInput, setSpecialMeasuresInput] = useState("");
+ 921|   const inspectionItemsRef = useRef<any[]>([]);
+ 922|   const [gasMeasureRowsInput, setGasMeasureRowsInput] = useState<any[]>([]);
+ 923|   const [gasRowsLoaded, setGasRowsLoaded] = useState(false);
+ 924|   const gasMeasureRef = useRef<any[]>([]);
+ 925|   // gasMeasureRows: doc 로드 후 초기화
+
+===== power order2 inspection input (lines 1142-1170) =====
+1142|               <AiSpecialMeasuresButton doc={doc} onGenerated={setSpecialMeasuresInput} />
+1143|               <SpecialMeasuresInput value={specialMeasuresInput} onChange={setSpecialMeasuresInput} />
+1144|             </div>
+1145|           )}
+1146|           {powerOrder === 2 && (
+1147|             <div className="space-y-3">
+1148|               <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">점검기기, 차단확인자, 전기담당자, 현장정비를 입력하고 서명하세요.</p>
+1149|               <div className="grid grid-cols-4 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg mb-2">
+1150|                 {["점검기기", "차단확인자", "전기담당자", "현장정비"].map(h => <div key={h} className="text-xs font-medium text-gray-600 text-center">{h}</div>)}
+1151|               </div>
+1152|               {((fd.inspectionItems as any[]) || [{ equipment:"", cutoffConfirmer:"", electrician:"", siteRepair:"" }]).map((item: any, idx: number) => (
+1153|                 <div key={idx} className="grid grid-cols-4 gap-1">
+1154|                   {(["equipment","cutoffConfirmer","electrician","siteRepair"] as const).map(f => (
+1155|                     <input key={f} type="text" defaultValue={item[f]||""}
+1156|                       onChange={e => { const cur = inspectionItemsRef.current.length ? inspectionItemsRef.current : ((fd.inspectionItems as any[])||[{}]); inspectionItemsRef.current = cur.map((r:any,i:number)=>i===idx?{...r,[f]:e.target.value}:r); }}
+1157|                       className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+1158|                   ))}
+1159|                 </div>
+1160|               ))}
+1161|             </div>
+1162|           )}
+1163|           {powerOrder === 3 && <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">정전작업이 완료되었음을 확인하고 서명하세요.</p>}
+1164|         </div>
+1165|       );
+1166|     }
+1167| 
+1168|     // 검토의견 입력 섹션
+1169|     return (
+1170|       <div className="bg-white rounded-2xl p-4 shadow-sm border border-blue-100">
+
+===== struct scan =====
+ 149|       const fd = new FormData();
+ 237|   const fd = doc.formDataJson ?? {};
+ 961|       const fd = docObj.formDataJson ?? {};
+1065|   const fd = (doc.formDataJson ?? {}) as Record<string, unknown>;
+1130|     const isPowerOutage = doc?.documentType === "POWER_OUTAGE";
+1132|     if (isPowerOutage) {

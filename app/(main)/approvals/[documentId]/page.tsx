@@ -919,6 +919,19 @@ export default function ApprovalDetailPage() {
   const [confinedNextAction, setConfinedNextAction] = useState<"PLAN_APPROVER"|"FINAL_CONFIRMER"|null>(null);
   const [specialMeasuresInput, setSpecialMeasuresInput] = useState("");
   const inspectionItemsRef = useRef<any[]>([]);
+  const [inspRows, setInspRows] = useState<any[]>([]);
+  const inspSeededRef = useRef(false);
+  useEffect(() => {
+    if (doc?.documentType === "POWER_OUTAGE" && doc?.currentApprovalOrder === 2 && !inspSeededRef.current) {
+      const fdi = (doc?.formDataJson as any)?.inspectionItems;
+      const seed = Array.isArray(fdi) && fdi.length > 0
+        ? fdi.map((r: any) => ({ equipment: r.equipment || "", cutoffConfirmer: r.cutoffConfirmer || "", electrician: r.electrician || "", siteRepair: r.siteRepair || "" }))
+        : [{ equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" }];
+      setInspRows(seed);
+      inspectionItemsRef.current = seed.map((r: any) => ({ ...r }));
+      inspSeededRef.current = true;
+    }
+  }, [doc]);
   const [gasMeasureRowsInput, setGasMeasureRowsInput] = useState<any[]>([]);
   const [gasRowsLoaded, setGasRowsLoaded] = useState(false);
   const gasMeasureRef = useRef<any[]>([]);
@@ -1149,15 +1162,19 @@ export default function ApprovalDetailPage() {
               <div className="grid grid-cols-4 gap-1 px-2 py-1.5 bg-gray-100 rounded-lg mb-2">
                 {["점검기기", "차단확인자", "전기담당자", "현장정비"].map(h => <div key={h} className="text-xs font-medium text-gray-600 text-center">{h}</div>)}
               </div>
-              {((fd.inspectionItems as any[]) || [{ equipment:"", cutoffConfirmer:"", electrician:"", siteRepair:"" }]).map((item: any, idx: number) => (
-                <div key={idx} className="grid grid-cols-4 gap-1">
-                  {(["equipment","cutoffConfirmer","electrician","siteRepair"] as const).map(f => (
-                    <input key={f} type="text" defaultValue={item[f]||""}
-                      onChange={e => { const cur = inspectionItemsRef.current.length ? inspectionItemsRef.current : ((fd.inspectionItems as any[])||[{}]); inspectionItemsRef.current = cur.map((r:any,i:number)=>i===idx?{...r,[f]:e.target.value}:r); }}
-                      className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                  ))}
+              {inspRows.map((item: any, idx: number) => (
+                <div key={idx} className="flex items-center gap-1">
+                  <div className="grid grid-cols-4 gap-1 flex-1">
+                    {(["equipment","cutoffConfirmer","electrician","siteRepair"] as const).map(f => (
+                      <input key={f} type="text" value={item[f] || ""}
+                        onChange={e => setInspRows(prev => { const next = prev.map((r:any,i:number)=> i===idx ? {...r,[f]:e.target.value} : r); inspectionItemsRef.current = next; return next; })}
+                        className="px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    ))}
+                  </div>
+                  <button type="button" onClick={() => setInspRows(prev => { const ff = prev.filter((_:any,i:number)=> i!==idx); const next = ff.length ? ff : [{ equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" }]; inspectionItemsRef.current = next; return next; })} className="shrink-0 text-gray-300 hover:text-red-500 text-sm px-1">{"\u2715"}</button>
                 </div>
               ))}
+              {inspRows.length < 20 && <button type="button" onClick={() => setInspRows(prev => { const next = [...prev, { equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" }]; inspectionItemsRef.current = next; return next; })} className="w-full py-2 rounded-lg border border-dashed border-blue-300 text-xs text-blue-600 font-medium">{"+ \ud589 \ucd94\uac00"}</button>}
             </div>
           )}
           {powerOrder === 3 && <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">정전작업이 완료되었음을 확인하고 서명하세요.</p>}
