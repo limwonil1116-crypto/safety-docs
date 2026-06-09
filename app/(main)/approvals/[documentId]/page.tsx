@@ -898,6 +898,7 @@ export default function ApprovalDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isMyTurn, setIsMyTurn] = useState(false);
+  const [pendingDesignation, setPendingDesignation] = useState<string | null>(null);
   const [myUserId, setMyUserId] = useState("");
   const [myRole, setMyRole] = useState("");
   const [activeTab, setActiveTab] = useState("내용");
@@ -1060,11 +1061,11 @@ export default function ApprovalDetailPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "오류 발생");
       setShowSign(false);
-      if (data.action === "NEED_FINAL_APPROVER") { setShowFinalApprover(true); }
-      else if (data.action === "NEED_PLAN_APPROVER") { setConfinedNextAction("PLAN_APPROVER"); setShowConfinedNextModal(true); }
+      if (data.action === "NEED_FINAL_APPROVER") { setPendingDesignation("FINAL_APPROVER"); setIsMyTurn(false); setShowFinalApprover(true); }
+      else if (data.action === "NEED_PLAN_APPROVER") { setPendingDesignation("PLAN_APPROVER"); setIsMyTurn(false); setConfinedNextAction("PLAN_APPROVER"); setShowConfinedNextModal(true); }
       else if (data.action === "NEED_MEASUREMENT") { alert("(계획확인) 서명이 완료됩니다."); router.push("/approvals"); }
-      else if (data.action === "NEED_FINAL_CONFIRMER") { setConfinedNextAction("FINAL_CONFIRMER"); setShowConfinedNextModal(true); }
-      else if (data.action === "NEED_FINAL_CONFIRMER_POWER") { setShowPowerNextModal(true); }
+      else if (data.action === "NEED_FINAL_CONFIRMER") { setPendingDesignation("FINAL_CONFIRMER"); setIsMyTurn(false); setConfinedNextAction("FINAL_CONFIRMER"); setShowConfinedNextModal(true); }
+      else if (data.action === "NEED_FINAL_CONFIRMER_POWER") { setPendingDesignation("POWER"); setIsMyTurn(false); setShowPowerNextModal(true); }
       else if (data.action === "NEED_INSPECTION_WRITER") { alert("점검확인작성자를 지정해주세요."); router.push("/approvals"); }
       else if (data.action === "APPROVED") { alert("최종 승인이 완료됩니다."); router.push("/approvals"); }
       else { alert("처리됩니다."); router.push("/approvals"); }
@@ -1434,6 +1435,11 @@ export default function ApprovalDetailPage() {
         </div>
       )}
 
+      {!isMyTurn && pendingDesignation && (
+        <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-3 pb-4">
+          <button onClick={() => { if (pendingDesignation === "FINAL_APPROVER") setShowFinalApprover(true); else if (pendingDesignation === "PLAN_APPROVER") { setConfinedNextAction("PLAN_APPROVER"); setShowConfinedNextModal(true); } else if (pendingDesignation === "FINAL_CONFIRMER") { setConfinedNextAction("FINAL_CONFIRMER"); setShowConfinedNextModal(true); } else if (pendingDesignation === "POWER") setShowPowerNextModal(true); }} className="w-full py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#2563eb" }}>{"\ub2e4\uc74c \uacb0\uc7ac\uc790 \uc9c0\uc815"}</button>
+        </div>
+      )}
       {showFinalApprover && doc && (
         <FinalApproverModal
           documentId={documentId}

@@ -1,0 +1,129 @@
+
+===== main button gating / 지정 trigger (lines 1288-1348) =====
+1288|             )}
+1289|             {isMyTurn && (activeTab as string) !== "결재현황" && <ReviewInputSection />}
+1290|             <CancelButton />
+1291|           </>
+1292|         )}
+1293| 
+1294|         {/* 결재현황 탭 - 결재흐름 + 특별조치 + 사진 */}
+1295|         {activeTab === "결재현황" && (
+1296|           <>
+1297|             <ApprovalFlow doc={doc} approvalLines={approvalLines} writerName={(fd.applicantName as string) || writerName} applicantSignature={(fd.signatureData as string) || undefined} />
+1298|             {(doc.documentType === "CONFINED_SPACE" || doc.documentType === "POWER_OUTAGE") && fd.specialMeasures && doc.currentApprovalOrder !== 1 && doc.status !== "SUBMITTED" && (
+1299|               <div className="bg-white rounded-2xl p-4 shadow-sm">
+1300|                 <h3 className="text-sm font-bold text-gray-900 mb-2">특별조치 필요사항</h3>
+1301|                 <p className="text-sm text-gray-800">{fd.specialMeasures as string}</p>
+1302|               </div>
+1303|             )}
+1304|             <PhotoViewer documentId={documentId} />
+1305|             {isMyTurn && (activeTab as string) !== "결재현황" && <ReviewInputSection />}
+1306|             <CancelButton />
+1307|           </>
+1308|         )}
+1309|       </div>
+1310| 
+1311|       {/* 하단 고정 버튼 - 결재 액션 */}
+1312|       {isMyTurn && (
+1313|         <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-3 pb-4">
+1314|           {/* 밀폐공간 3단계: 서명 없이 측정결과만 제출 */}
+1315|           {isConfinedSpace && confinedOrder === 3 ? (
+1316|             <button onClick={async () => {
+1317|               const gasRows = gasMeasureRef.current.length > 0 ? gasMeasureRef.current : (gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : DEFAULT_GAS_ROWS);
+1318|               setProcessing(true);
+1319|               try {
+1320|                 const res = await fetch(`/api/documents/${documentId}/approve`, {
+1321|                   method: "POST", headers: { "Content-Type": "application/json" },
+1322|                   body: JSON.stringify({ action: "APPROVE", signatureData: null, gasMeasureRows: gasRows }),
+1323|                 });
+1324|                 const data = await res.json();
+1325|                 if (!res.ok) throw new Error(data.error || "오류 발생");
+1326|                 if (data.action === "NEED_FINAL_CONFIRMER") {
+1327|                   setConfinedNextAction("FINAL_CONFIRMER");
+1328|                   setShowConfinedNextModal(true);
+1329|                 } else {
+1330|                   alert("결재가 취소됩니다. 문서탭에서 다시 작성할 수 있습니다.");
+1331|                   router.push("/approvals");
+1332|                 }
+1333|               } catch (e: unknown) { alert(e instanceof Error ? e.message : "취소에 실패했습니다."); }
+1334|               finally { setProcessing(false); }
+1335|             }} disabled={processing}
+1336|               className="w-full py-3 rounded-xl text-white text-sm font-medium disabled:opacity-50" style={{ background: "#16a34a" }}>
+1337|               {processing ? "취소 중..." : "📊 측정결과 제출 및 이행확인자 지정"}
+1338|             </button>
+1339|           ) : (
+1340|             <div className="flex gap-3">
+1341|               <button onClick={() => {
+1342|                   const opinion = (reviewOpinionRef.current?.value ?? "").trim();
+1343|                   const result = (reviewResultRef.current?.value ?? "").trim();
+1344|                   setPendingOpinion(opinion);
+1345|                   setPendingResult(result);
+1346|                   setReviewOpinion(opinion);
+1347|                   setReviewResult(result);
+1348|                   setShowRejectConfirm(true);
+
+===== designation modals (onClose/onAssigned) (lines 1416-1470) =====
+1416|                 <canvas ref={canvasRef} width={600} height={180} className="w-full"
+1417|                   style={{ cursor: "crosshair", touchAction: "none", display: "block" }}
+1418|                   onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
+1419|                   onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
+1420|               </div>
+1421|             </div>
+1422|             <div className="px-6 pb-24 space-y-2">
+1423|               <div className="flex gap-2">
+1424|                 <button onClick={clearCanvas} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium">서명 지우기</button>
+1425|                 <button onClick={() => setShowSign(false)} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium">취소</button>
+1426|               </div>
+1427|               <button onClick={handleSubmitWithSign} disabled={processing}
+1428|                 className="w-full py-3.5 rounded-xl text-white font-medium text-sm disabled:opacity-50"
+1429|                 style={{ background: pendingAction === "APPROVE" ? "#16a34a" : "#dc2626" }}>
+1430|                 {processing ? "처리 중..." : pendingAction === "APPROVE" ? (doc?.documentType === "POWER_OUTAGE" && (doc?.currentApprovalOrder === 1 || doc?.currentApprovalOrder === 2) ? "\u2713 \uc11c\uba85 \uc644\ub8cc" : "\u2713 \uc2b9\uc778 \uc644\ub8cc") : "반려 완료"}
+1431|               </button>
+1432|             </div>
+1433|           </div>
+1434|         </div>
+1435|       )}
+1436| 
+1437|       {showFinalApprover && doc && (
+1438|         <FinalApproverModal
+1439|           documentId={documentId}
+1440|           documentType={doc.documentType}
+1441|           isFirstStep={doc.documentType !== "SAFETY_WORK_PERMIT" || !(doc.currentApprovalOrder && doc.currentApprovalOrder >= 1)}
+1442|           onClose={() => setShowFinalApprover(false)}
+1443|           onAssigned={() => {
+1444|             setShowFinalApprover(false);
+1445|             if (doc.documentType === "SAFETY_WORK_PERMIT") {
+1446|               const isFirst = !(doc.currentApprovalOrder && doc.currentApprovalOrder >= 1);
+1447|               alert(isFirst ? "(계획확인)허가자가 지정되었습니다." : "(이행확인)확인자가 지정되었습니다.");
+1448|             } else {
+1449|               alert("최종허가자가 지정되었습니다.");
+1450|             }
+1451|             router.push("/approvals");
+1452|           }}
+1453|         />
+1454|       )}
+1455| 
+1456|       {/* 밀폐공간 다음단계 지정 모달 */}
+1457|       {showPowerNextModal && doc && (
+1458|         <ConfinedNextModal
+1459|           documentId={documentId}
+1460|           action="FINAL_CONFIRMER"
+1461|           {...{nextOrderOverride: 3} as any}
+1462|           notice={"\uc810\uac80\ud655\uc778 \uacb0\uacfc\uc791\uc131\uc790\uac00 \uc791\uc131 \ud6c4, \uc774\ud589\ud655\uc778 \ud655\uc778\uc790 \uacb0\uc7ac\ub85c \ubc18\uc601\ub429\ub2c8\ub2e4"}
+1463|           onClose={() => setShowPowerNextModal(false)}
+1464|           onAssigned={() => { setShowPowerNextModal(false); router.refresh(); window.location.reload(); }}
+1465|         />
+1466|       )}
+1467|       {showConfinedNextModal && confinedNextAction && doc && (
+1468|         <ConfinedNextModal
+1469|           documentId={documentId}
+1470|           action={confinedNextAction}
+
+===== currentApproverUserId / isMyTurn scan =====
+  11|   createdBy: string; currentApproverUserId?: string; currentApprovalOrder?: number;
+ 900|   const [isMyTurn, setIsMyTurn] = useState(false);
+ 989|         setIsMyTurn(docObj.currentApproverUserId === myId);
+1257|           {isMyTurn && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium animate-pulse">지금 결재 차레입니다</span>}
+1289|             {isMyTurn && (activeTab as string) !== "결재현황" && <ReviewInputSection />}
+1305|             {isMyTurn && (activeTab as string) !== "결재현황" && <ReviewInputSection />}
+1312|       {isMyTurn && (

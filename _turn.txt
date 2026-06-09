@@ -1,0 +1,101 @@
+
+===== approve route - turn check (lines 1-55, total 286) =====
+   1| // app/api/documents/[documentId]/approve/route.ts
+   2| import { NextRequest, NextResponse } from "next/server";
+   3| import { auth } from "@/auth";
+   4| import { db } from "@/db";
+   5| import { documents, documentApprovalLines, documentSignatures, documentOutputs, notifications, users } from "@/db/schema";
+   6| import { eq, sql } from "drizzle-orm";
+   7| import { generateAndUploadPDF } from "@/lib/pdf/generator";
+   8| 
+   9| export async function POST(
+  10|   req: NextRequest,
+  11|   { params }: { params: Promise<{ documentId: string }> }
+  12| ) {
+  13|   try {
+  14|     const session = await auth();
+  15|     if (!session?.user) {
+  16|       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+  17|     }
+  18|     const { documentId } = await params;
+  19|     const body = await req.json();
+  20|     const { action, comment, reviewResult, signatureData, specialMeasures, gasMeasureRows } = body;
+  21| 
+  22|     if (!["APPROVE", "REJECT"].includes(action)) {
+  23|       return NextResponse.json({ error: "올바르지 않은 액션입니다." }, { status: 400 });
+  24|     }
+  25|     if (action === "REJECT" && !comment?.trim()) {
+  26|       return NextResponse.json({ error: "반려 사유를 입력해주세요." }, { status: 400 });
+  27|     }
+  28| 
+  29|     const [doc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+  30|     if (!doc || doc.deletedAt) {
+  31|       return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
+  32|     }
+  33|     if (doc.currentApproverUserId !== session.user.id) {
+  34|       return NextResponse.json({ error: "현재 결재 차례가 아닙니다." }, { status: 403 });
+  35|     }
+  36| 
+  37|     const [currentLine] = await db
+  38|       .select()
+  39|       .from(documentApprovalLines)
+  40|       .where(
+  41|         sql`${documentApprovalLines.documentId} = ${documentId}
+  42|           AND ${documentApprovalLines.approverUserId} = ${session.user.id}
+  43|           AND ${documentApprovalLines.stepStatus} = 'WAITING'`
+  44|       )
+  45|       .limit(1);
+  46| 
+  47|     if (!currentLine) {
+  48|       return NextResponse.json({ error: "결재선을 찾을 수 없습니다." }, { status: 404 });
+  49|     }
+  50| 
+  51|     const isConfinedSpace = doc.documentType === "CONFINED_SPACE";
+  52|     const order = currentLine.approvalOrder;
+  53| 
+  54|     if (action === "REJECT") {
+  55|       await db.update(documentApprovalLines).set({
+
+===== handleSubmitWithSign (lines 1031-1072, total 1484) =====
+1031|   const clearCanvas = () => { const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext("2d"); if (!ctx) return; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); };
+1032|   const initCanvas = () => { setTimeout(() => { const canvas = canvasRef.current; if (!canvas) return; const ctx = canvas.getContext("2d"); if (!ctx) return; ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.strokeStyle = "#1e3a5f"; ctx.lineWidth = 2.5; ctx.lineCap = "round"; }, 100); };
+1033| 
+1034|   const handleAction = async (action: "APPROVE" | "REJECT") => {
+1035|     const opinionVal = (reviewOpinionRef.current?.value ?? reviewOpinion).trim();
+1036|     const resultVal = (reviewResultRef.current?.value ?? reviewResult).trim();
+1037|     if (action === "REJECT" && !opinionVal) { alert("반려 사유를 검토의견란에 입력해주세요."); return; }
+1038|     setPendingOpinion(opinionVal); setPendingResult(resultVal);
+1039|     setReviewOpinion(opinionVal); setReviewResult(resultVal);
+1040|     setPendingAction(action); setShowRejectConfirm(false); setShowApproveConfirm(false);
+1041|     setShowSign(true); initCanvas();
+1042|   };
+1043| 
+1044|   const handleSubmitWithSign = async () => {
+1045|     if (!pendingAction) return;
+1046|     setProcessing(true);
+1047|     try {
+1048|       const canvas = canvasRef.current;
+1049|       const signatureData = canvas ? canvas.toDataURL("image/png") : null;
+1050|       const extraBody: Record<string, unknown> = {};
+1051|       const isConfinedSpace = doc?.documentType === "CONFINED_SPACE";
+1052|       const confinedOrder = doc?.currentApprovalOrder ?? 0;
+1053|       if (isConfinedSpace && confinedOrder === 2 && specialMeasuresInput) extraBody.specialMeasures = specialMeasuresInput;
+1054|       if (doc?.documentType === "POWER_OUTAGE" && confinedOrder === 1 && specialMeasuresInput) extraBody.specialMeasures = specialMeasuresInput;
+1055|       if (isConfinedSpace && confinedOrder === 3) extraBody.gasMeasureRows = gasMeasureRef.current.length > 0 ? gasMeasureRef.current : (gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput.map((r: any) => ({ ...r, measurer: r.measurer || (fd.measurerName as string) || "" })) : DEFAULT_GAS_ROWS);
+1056|       const res = await fetch(`/api/documents/${documentId}/approve`, {
+1057|         method: "POST", headers: { "Content-Type": "application/json" },
+1058|         body: JSON.stringify({ action: pendingAction, comment: pendingOpinion || null, reviewResult: pendingResult || null, signatureData, inspectionItems: inspectionItemsRef.current.length > 0 ? inspectionItemsRef.current : undefined, ...extraBody }),
+1059|       });
+1060|       const data = await res.json();
+1061|       if (!res.ok) throw new Error(data.error || "오류 발생");
+1062|       setShowSign(false);
+1063|       if (data.action === "NEED_FINAL_APPROVER") { setShowFinalApprover(true); }
+1064|       else if (data.action === "NEED_PLAN_APPROVER") { setConfinedNextAction("PLAN_APPROVER"); setShowConfinedNextModal(true); }
+1065|       else if (data.action === "NEED_MEASUREMENT") { alert("(계획확인) 서명이 완료됩니다."); router.push("/approvals"); }
+1066|       else if (data.action === "NEED_FINAL_CONFIRMER") { setConfinedNextAction("FINAL_CONFIRMER"); setShowConfinedNextModal(true); }
+1067|       else if (data.action === "NEED_FINAL_CONFIRMER_POWER") { setShowPowerNextModal(true); }
+1068|       else if (data.action === "NEED_INSPECTION_WRITER") { alert("점검확인작성자를 지정해주세요."); router.push("/approvals"); }
+1069|       else if (data.action === "APPROVED") { alert("최종 승인이 완료됩니다."); router.push("/approvals"); }
+1070|       else { alert("처리됩니다."); router.push("/approvals"); }
+1071|     } catch (e: unknown) { alert(e instanceof Error ? e.message : "오류가 발생했습니다."); }
+1072|     finally { setProcessing(false); }
