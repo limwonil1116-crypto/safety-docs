@@ -33,12 +33,18 @@ export async function POST(req: NextRequest) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: maxTokens, temperature: 0.4 },
+            generationConfig: { maxOutputTokens: maxTokens, temperature: 0.4, thinkingConfig: { thinkingBudget: 0 } },
           }),
         }
       );
       const data = await response.json();
-      return (data.candidates?.[0]?.content?.parts || []).map((p: any) => p.text || "").join("").trim();
+      const cand = data.candidates?.[0];
+      const text = ((cand?.content?.parts || []).map((p: any) => p.text || "").join("") as string).trim();
+      if (!text) {
+        const fr = cand?.finishReason || data?.promptFeedback?.blockReason || "EMPTY";
+        throw new Error("Gemini empty response (" + fr + ")");
+      }
+      return text;
     };
 
     // 검토의견 초안 (검토 단계)
