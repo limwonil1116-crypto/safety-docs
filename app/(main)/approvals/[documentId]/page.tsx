@@ -876,7 +876,7 @@ function AiSpecialMeasuresButton({ doc, onGenerated, label = "AI 특별조치 �
 
 function SpecialMeasuresInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const ref = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => { if (ref.current) ref.current.value = value; }, []);
+  useEffect(() => { if (ref.current && ref.current.value !== value) ref.current.value = value; }, [value]);
   return (
     <textarea ref={ref} defaultValue={value}
       onChange={e => onChange(e.target.value)}

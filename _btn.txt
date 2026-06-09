@@ -1,0 +1,65 @@
+ 842| function AiSpecialMeasuresButton({ doc, onGenerated, label = "AI 특별조치 초안 생성" }: {
+ 843|   doc: DocumentDetail;
+ 844|   onGenerated: (v: string) => void;
+ 845|   label?: string;
+ 846| }) {
+ 847|   const [loading, setLoading] = useState(false);
+ 848|   const [error, setError] = useState("");
+ 849|   const handleGenerate = async () => {
+ 850|     setLoading(true); setError("");
+ 851|     try {
+ 852|       const res = await fetch("/api/ai/special-measures", {
+ 853|         method: "POST", headers: { "Content-Type": "application/json" },
+ 854|         // 검토의견용은 항상 specialMeasures 텍스트 반환하도록 타입 고정
+ 855|         body: JSON.stringify({ documentType: "REVIEW_OPINION", formData: doc.formDataJson, originalType: doc.documentType }),
+ 856|       });
+ 857|       const data = await res.json();
+ 858|       if (!res.ok) throw new Error(data.error || "AI 생성 오류");
+ 859|       const result = data.specialMeasures || data.riskFactors || data.text || "";
+ 860|       if (!result) throw new Error("AI 응답이 비어있습니다.");
+ 861|       onGenerated(result);
+ 862|     } catch (e: unknown) { setError(e instanceof Error ? e.message : "오류가 발생했습니다."); }
+ 863|     finally { setLoading(false); }
+ 864|   };
+ 865|   return (
+ 866|     <div>
+ 867|       <button onClick={handleGenerate} disabled={loading}
+ 868|         className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-50"
+ 869|         style={{ background: loading ? "#6b7280" : "linear-gradient(135deg, #7c3aed, #2563eb)" }}>
+ 870|         {loading ? "AI 초안 생성 중..." : `✨ ${label}`}
+ 871|       </button>
+ 872|       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+ 873|     </div>
+ 874|   );
+ 875| }
+ 876| 
+
+----- order2 usage 1118-1130 -----
+1118|             {stepDesc}
+1119|           </h3>
+1120|           {confinedOrder === 1 && (
+1121|             <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">감시인으로서 작업 계획을 확인하고 서명해주세요.</p>
+1122|           )}
+1123|           {confinedOrder === 2 && (
+1124|             <div className="space-y-2">
+1125|               <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">특별조치 필요사항을 입력 후 서명해주세요.</p>
+1126|               <AiSpecialMeasuresButton doc={doc} onGenerated={setSpecialMeasuresInput} />
+1127|               <SpecialMeasuresInput value={specialMeasuresInput} onChange={setSpecialMeasuresInput} />
+1128|             </div>
+1129|           )}
+1130|           {confinedOrder === 3 && (
+
+----- 1208-1220 -----
+1208|         {reviewGuideText && <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2 mb-3">{reviewGuideText}</p>}
+1209|         <div className="space-y-3">
+1210|           <div>
+1211|             {doc.currentApprovalOrder === 1 && (
+1212|               <AiSpecialMeasuresButton doc={doc} onGenerated={(v) => {
+1213|                 if (reviewOpinionRef.current) reviewOpinionRef.current.value = v;
+1214|                 setReviewOpinion(v);
+1215|               }} label="AI 검토의견 초안" />
+1216|             )}
+1217|             <label className="block text-xs font-medium text-gray-600 mb-1.5">
+1218|               검토의견 {doc.currentApprovalOrder === 1 && <span className="text-red-500 text-xs">(반려 시 필수)</span>}
+1219|             </label>
+1220|             <textarea
