@@ -1,0 +1,360 @@
+
+===== types: DocumentDetail / ApprovalLine (1-25) =====
+   1| "use client";
+   2| 
+   3| import { useState, useEffect, useCallback, useRef } from "react";
+   4| import Link from "next/link";
+   5| import { useParams, useRouter } from "next/navigation";
+   6| import { DOCUMENT_TYPE_LABELS, DOCUMENT_TYPE_SHORT, DocumentType } from "@/types";
+   7| 
+   8| interface DocumentDetail {
+   9|   id: string; taskId: string; documentType: DocumentType; status: string;
+  10|   formDataJson: Record<string, unknown>; submittedAt?: string;
+  11|   createdBy: string; currentApproverUserId?: string; currentApprovalOrder?: number;
+  12|   workLatitude?: number | null; workLongitude?: number | null; workAddress?: string | null;
+  13| }
+  14| interface ApprovalLine {
+  15|   id: string; approvalOrder: number; approvalRole: string; stepStatus: string;
+  16|   approverName?: string; approverOrg?: string; approverUserId?: string;
+  17|   actedAt?: string; comment?: string; signatureData?: string;
+  18| }
+  19| interface UserItem { id: string; name: string; organization?: string; employeeNo?: string; }
+  20| interface Attachment {
+  21|   id: string; fileName: string; fileUrl: string; fileSize: number | null;
+  22|   mimeType: string | null; attachmentType: string; description: string | null;
+  23| }
+  24| 
+  25| const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
+
+===== load region (fetch urls / lines / myId / isMyTurn) (940-998) =====
+ 940|   useEffect(() => {
+ 941|     if (!doc) return;
+ 942|     const rows = (doc.formDataJson as any)?.gasMeasureRows;
+ 943|     const mn = (doc.formDataJson as any)?.measurerName || "";
+ 944|     if (Array.isArray(rows) && rows.length > 0) {
+ 945|       setGasMeasureRowsInput(rows.map((r: any) => ({ ...r, measurer: r.measurer || mn })));
+ 946|       setGasRowsLoaded(true);
+ 947|     } else if (mn) {
+ 948|       setGasMeasureRowsInput(["\uc791\uc5c5 \uc804", "\uc791\uc5c5 \uc911(1\ucc28)", "\uc791\uc5c5 \uc911(2\ucc28)"].map((ph, i) => ({ ...DEFAULT_GAS_ROWS[i], phase: ph, measurer: mn })));
+ 949|       setGasRowsLoaded(true);
+ 950|     }
+ 951|   }, [doc?.id]);
+ 952|   const [pendingAction, setPendingAction] = useState<"APPROVE"|"REJECT"|null>(null);
+ 953|   const [pendingOpinion, setPendingOpinion] = useState("");
+ 954|   const [pendingResult, setPendingResult] = useState("");
+ 955|   const canvasRef = useRef<HTMLCanvasElement>(null);
+ 956|   const isDrawing = useRef(false);
+ 957|   const signModalRef = useRef<HTMLDivElement>(null);
+ 958| 
+ 959|   const fetchData = useCallback(async () => {
+ 960|     setLoading(true); setError("");
+ 961|     try {
+ 962|       const [docRes, linesRes] = await Promise.all([
+ 963|         fetch(`/api/documents/${documentId}`),
+ 964|         fetch(`/api/documents/${documentId}/approval-lines`),
+ 965|       ]);
+ 966|       const docData = await docRes.json();
+ 967|       const linesData = await linesRes.json();
+ 968|       if (!docRes.ok) throw new Error(docData.error || "데이터 오류");
+ 969|       const docObj = docData.document;
+ 970|       setDoc(docObj);
+ 971|       const lines = linesData.approvalLines ?? [];
+ 972|       setApprovalLines(lines);
+ 973|       const line1 = lines.find((l: ApprovalLine) => l.approvalOrder === 1);
+ 974|       if (line1?.approverName) setStep1ApproverName(line1.approverName);
+ 975|       const fd = docObj.formDataJson ?? {};
+ 976|       const line1Data = lines.find((l: ApprovalLine) => l.approvalOrder === 1);
+ 977|       const initialOpinion = (line1Data?.comment || fd.reviewOpinion || "") as string;
+ 978|       const initialResult = (fd.reviewResult || "") as string;
+ 979|       setReviewOpinion(initialOpinion);
+ 980|       setReviewResult(initialResult);
+ 981|       setDataKey(prev => prev + 1);
+ 982|       const taskRes = await fetch(`/api/tasks/${docObj.taskId}`);
+ 983|       const taskData = await taskRes.json();
+ 984|       if (taskRes.ok) setTaskName(taskData.task?.name ?? "");
+ 985|       const meRes = await fetch("/api/users/me");
+ 986|       if (meRes.ok) {
+ 987|         const meData = await meRes.json();
+ 988|         const myId = meData.user?.id;
+ 989|         setMyUserId(myId); setMyRole(meData.user?.role ?? ""); setWriterName(meData.user?.name ?? "");
+ 990|         setIsMyTurn(docObj.currentApproverUserId === myId);
+ 991|       }
+ 992|     } catch (e: unknown) { setError(e instanceof Error ? e.message : "오류가 발생했습니다."); }
+ 993|     finally { setLoading(false); }
+ 994|   }, [documentId]);
+ 995| 
+ 996|   useEffect(() => { fetchData(); }, [fetchData]);
+ 997| 
+ 998|   useEffect(() => {
+
+===== existing recovery button block (1436-1445) =====
+1436|       )}
+1437| 
+1438|       {!isMyTurn && pendingDesignation && (
+1439|         <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-3 pb-4">
+1440|           <button onClick={() => { if (pendingDesignation === "FINAL_APPROVER") setShowFinalApprover(true); else if (pendingDesignation === "PLAN_APPROVER") { setConfinedNextAction("PLAN_APPROVER"); setShowConfinedNextModal(true); } else if (pendingDesignation === "FINAL_CONFIRMER") { setConfinedNextAction("FINAL_CONFIRMER"); setShowConfinedNextModal(true); } else if (pendingDesignation === "POWER") setShowPowerNextModal(true); }} className="w-full py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#2563eb" }}>{"\ub2e4\uc74c \uacb0\uc7ac\uc790 \uc9c0\uc815"}</button>
+1441|         </div>
+1442|       )}
+1443|       {showFinalApprover && doc && (
+1444|         <FinalApproverModal
+1445|           documentId={documentId}
+
+===== power/confined next modals usage (1455-1490) =====
+1455|               alert("최종허가자가 지정되었습니다.");
+1456|             }
+1457|             router.push("/approvals");
+1458|           }}
+1459|         />
+1460|       )}
+1461| 
+1462|       {/* 밀폐공간 다음단계 지정 모달 */}
+1463|       {showPowerNextModal && doc && (
+1464|         <ConfinedNextModal
+1465|           documentId={documentId}
+1466|           action="FINAL_CONFIRMER"
+1467|           {...{nextOrderOverride: 3} as any}
+1468|           notice={"\uc810\uac80\ud655\uc778 \uacb0\uacfc\uc791\uc131\uc790\uac00 \uc791\uc131 \ud6c4, \uc774\ud589\ud655\uc778 \ud655\uc778\uc790 \uacb0\uc7ac\ub85c \ubc18\uc601\ub429\ub2c8\ub2e4"}
+1469|           onClose={() => setShowPowerNextModal(false)}
+1470|           onAssigned={() => { setShowPowerNextModal(false); router.refresh(); window.location.reload(); }}
+1471|         />
+1472|       )}
+1473|       {showConfinedNextModal && confinedNextAction && doc && (
+1474|         <ConfinedNextModal
+1475|           documentId={documentId}
+1476|           action={confinedNextAction}
+1477|           onClose={() => setShowConfinedNextModal(false)}
+1478|           onAssigned={() => {
+1479|             setShowConfinedNextModal(false);
+1480|             const msg = confinedNextAction === "PLAN_APPROVER"
+1481|               ? "(계획확인) 허가자가 지정됩니다."
+1482|               : "(이행확인) 확인자가 지정됩니다.";
+1483|             alert(msg);
+1484|             router.push("/approvals");
+1485|           }}
+1486|         />
+1487|       )}
+1488|     </div>
+1489|   );
+1490| }
+
+===== api dir listing =====
+E:\safety-docs\app\api\documents\[documentId]\route.ts
+E:\safety-docs\app\api\documents\[documentId]\approval-lines\route.ts
+E:\safety-docs\app\api\documents\[documentId]\approve\route.ts
+E:\safety-docs\app\api\documents\[documentId]\attachments\route.ts
+E:\safety-docs\app\api\documents\[documentId]\delete\route.ts
+E:\safety-docs\app\api\documents\[documentId]\pdf\route.ts
+E:\safety-docs\app\api\documents\[documentId]\previous\route.ts
+
+===== E:\safety-docs\app\api\documents\[documentId]\route.ts =====
+   1| import { NextRequest, NextResponse } from "next/server";
+   2| import { auth } from "@/auth";
+   3| import { db } from "@/db";
+   4| import { documents, documentHistories } from "@/db/schema";
+   5| import { eq } from "drizzle-orm";
+   6| 
+   7| // GET /api/documents/[documentId]
+   8| export async function GET(
+   9|   req: NextRequest,
+  10|   { params }: { params: Promise<{ documentId: string }> }
+  11| ) {
+  12|   try {
+  13|     const session = await auth();
+  14|     if (!session?.user) {
+  15|       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+  16|     }
+  17|     const { documentId } = await params;
+  18|     const [doc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+  19|     if (!doc || doc.deletedAt) {
+  20|       return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
+  21|     }
+  22|     return NextResponse.json({ document: doc });
+  23|   } catch (error) {
+  24|     console.error("[GET /api/documents/[documentId]]", error);
+  25|     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+  26|   }
+  27| }
+  28| 
+  29| // PATCH /api/documents/[documentId] - 임시저장 (위치 포함)
+  30| export async function PATCH(
+  31|   req: NextRequest,
+  32|   { params }: { params: Promise<{ documentId: string }> }
+  33| ) {
+  34|   try {
+  35|     const session = await auth();
+  36|     if (!session?.user) {
+  37|       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+  38|     }
+  39| 
+  40|     const { documentId } = await params;
+  41|     const body = await req.json();
+  42|     const { formDataJson, workLatitude, workLongitude, workAddress, gasMeasureRowsOnly } = body;
+  43| 
+  44|     const [existing] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+  45|     if (!existing || existing.deletedAt) {
+  46|       return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
+  47|     }
+  48|     if (!["DRAFT", "REJECTED"].includes(existing.status) && !gasMeasureRowsOnly) {
+  49|       return NextResponse.json({ error: "저장할 수 없는 상태입니다." }, { status: 400 });
+  50|     }
+  51| 
+  52|     // ✅ workAddress가 들어오면 formDataJson의 workLocation/facilityLocation도 주소로 동기화
+  53|     // gasMeasureRows 전용 임시저장
+  54|     if (gasMeasureRowsOnly && formDataJson?.gasMeasureRows) {
+  55|       const merged = { ...(existing.formDataJson as object), gasMeasureRows: formDataJson.gasMeasureRows };
+  56|       await db.update(documents).set({ formDataJson: merged, updatedAt: new Date() }).where(eq(documents.id, documentId));
+  57|       return NextResponse.json({ success: true });
+  58|     }
+  59|         let mergedFormData = formDataJson ?? existing.formDataJson;
+  60|     if (workAddress && typeof workAddress === "string" && workAddress.trim()) {
+  61|       const fd = (mergedFormData ?? {}) as Record<string, unknown>;
+  62|       const docType = existing.documentType;
+  63|       if (docType === "HOLIDAY_WORK") {
+  64|         // 붙임3은 facilityLocation 사용
+  65|         mergedFormData = { ...fd, facilityLocation: workAddress };
+  66|       } else {
+  67|         // 붙임1,2,4는 workLocation 사용
+  68|         mergedFormData = { ...fd, workLocation: workAddress };
+  69|       }
+  70|     }
+  71| 
+  72|     const [updated] = await db
+  73|       .update(documents)
+  74|       .set({
+  75|         formDataJson: mergedFormData,
+  76|         ...(workLatitude  !== undefined && { workLatitude }),
+  77|         ...(workLongitude !== undefined && { workLongitude }),
+  78|         ...(workAddress   !== undefined && { workAddress }),
+  79|         lastUpdatedBy: session.user.id,
+  80|         updatedAt: new Date(),
+  81|       })
+  82|       .where(eq(documents.id, documentId))
+  83|       .returning();
+  84| 
+  85|     return NextResponse.json({ document: updated });
+  86|   } catch (error) {
+  87|     console.error("[PATCH /api/documents/[documentId]]", error);
+  88|     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+  89|   }
+  90| }
+  91| 
+  92| // POST /api/documents/[documentId] - 제출
+  93| export async function POST(
+  94|   req: NextRequest,
+  95|   { params }: { params: Promise<{ documentId: string }> }
+  96| ) {
+  97|   try {
+  98|     const session = await auth();
+  99|     if (!session?.user) {
+ 100|       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+ 101|     }
+ 102| 
+ 103|     const { documentId } = await params;
+ 104|     const body = await req.json();
+ 105|     const { formDataJson, workLatitude, workLongitude, workAddress, gasMeasureRowsOnly } = body;
+ 106| 
+ 107|     const [existing] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+ 108|     if (!existing || existing.deletedAt) {
+ 109|       return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
+ 110|     }
+ 111|     if (!["DRAFT", "REJECTED"].includes(existing.status) && !gasMeasureRowsOnly) {
+ 112|       return NextResponse.json({ error: "제출할 수 없는 상태입니다." }, { status: 400 });
+ 113|     }
+ 114| 
+ 115|     const [updated] = await db
+ 116|       .update(documents)
+ 117|       .set({
+ 118|         formDataJson: gasMeasureRowsOnly
+ 119|           ? { ...(existing.formDataJson as object), ...(formDataJson as object) }
+ 120|           : (formDataJson ?? existing.formDataJson),
+ 121|         status: "SUBMITTED",
+ 122|         lastUpdatedBy: session.user.id,
+ 123|         submittedAt: new Date(),
+ 124|         updatedAt: new Date(),
+ 125|       })
+ 126|       .where(eq(documents.id, documentId))
+ 127|       .returning();
+ 128| 
+ 129|     await db.insert(documentHistories).values({
+ 130|       documentId,
+ 131|       actionType: existing.status === "REJECTED" ? "RESUBMITTED" : "SUBMITTED",
+ 132|       actorUserId: session.user.id,
+ 133|       previousStatus: existing.status,
+ 134|       nextStatus: "SUBMITTED",
+ 135|     });
+ 136| 
+ 137|     return NextResponse.json({ document: updated });
+ 138|   } catch (error) {
+ 139|     console.error("[POST /api/documents/[documentId]]", error);
+ 140|     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+ 141|   }
+ 142| }
+ 143| 
+ 144| // DELETE /api/documents/[documentId] - 결재 취소 → DRAFT 복원
+ 145| export async function DELETE(
+ 146|   req: NextRequest,
+ 147|   { params }: { params: Promise<{ documentId: string }> }
+ 148| ) {
+ 149|   try {
+ 150|     const session = await auth();
+ 151|     if (!session?.user) {
+ 152|       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+ 153|     }
+ 154| 
+ 155|     const { documentId } = await params;
+ 156|     const [existing] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+ 157|     if (!existing || existing.deletedAt) {
+ 158|       return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
+ 159|     }
+ 160| 
+ 161|     const userRole = (session.user as any).role ?? "";
+ 162|     const isOwner = String(existing.createdBy).toLowerCase() === String(session.user.id).toLowerCase();
+ 163|     const isStaff = ["REVIEWER", "FINAL_APPROVER", "ADMIN"].includes(userRole);
+ 164|     if (!isOwner && !isStaff) {
+ 165|       return NextResponse.json({ error: "결재 취소 권한이 없습니다. (작성자 또는 관리자만 가능)" }, { status: 403 });
+ 166|     }
+ 167| 
+ 168|     if (existing.status === "DRAFT") {
+ 169|       return NextResponse.json({ error: "이미 작성중 상태입니다." }, { status: 400 });
+ 170|     }
+ 171| 
+ 172|     const previousStatus = existing.status;
+ 173|     const formData = (existing.formDataJson as Record<string, unknown>) ?? {};
+ 174|     const { signatureData: _removed, ...cleanFormData } = formData;
+ 175| 
+ 176|     const [updated] = await db
+ 177|       .update(documents)
+ 178|       .set({
+ 179|         status: "DRAFT",
+ 180|         formDataJson: cleanFormData,
+ 181|         currentApprovalOrder: null,
+ 182|         currentApproverUserId: null,
+ 183|         submittedAt: null,
+ 184|         approvedAt: null,
+ 185|         rejectedAt: null,
+ 186|         rejectionReason: null,
+ 187|         lastUpdatedBy: session.user.id,
+ 188|         updatedAt: new Date(),
+ 189|       })
+ 190|       .where(eq(documents.id, documentId))
+ 191|       .returning();
+ 192| 
+ 193|     const { documentApprovalLines, documentSignatures } = await import("@/db/schema");
+ 194|     await db.delete(documentSignatures).where(eq(documentSignatures.documentId, documentId));
+ 195|     await db.delete(documentApprovalLines).where(eq(documentApprovalLines.documentId, documentId));
+ 196| 
+ 197|     await db.insert(documentHistories).values({
+ 198|       documentId,
+ 199|       actionType: "CANCELLED",
+ 200|       actorUserId: session.user.id,
+ 201|       previousStatus: previousStatus as "SUBMITTED" | "IN_REVIEW" | "APPROVED" | "REJECTED" | "DRAFT",
+ 202|       nextStatus: "DRAFT",
+ 203|       memo: "결재 취소 - 작성중으로 복원",
+ 204|     });
+ 205| 
+ 206|     return NextResponse.json({ document: updated, message: "결재가 취소됐습니다." });
+ 207|   } catch (error) {
+ 208|     console.error("[DELETE /api/documents/[documentId]]", error);
+ 209|     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+ 210|   }
+ 211| }

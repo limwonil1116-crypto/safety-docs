@@ -1,0 +1,435 @@
+########## approve/route.ts (total 286) ##########
+   1| // app/api/documents/[documentId]/approve/route.ts
+   2| import { NextRequest, NextResponse } from "next/server";
+   3| import { auth } from "@/auth";
+   4| import { db } from "@/db";
+   5| import { documents, documentApprovalLines, documentSignatures, documentOutputs, notifications, users } from "@/db/schema";
+   6| import { eq, sql } from "drizzle-orm";
+   7| import { generateAndUploadPDF } from "@/lib/pdf/generator";
+   8| 
+   9| export async function POST(
+  10|   req: NextRequest,
+  11|   { params }: { params: Promise<{ documentId: string }> }
+  12| ) {
+  13|   try {
+  14|     const session = await auth();
+  15|     if (!session?.user) {
+  16|       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+  17|     }
+  18|     const { documentId } = await params;
+  19|     const body = await req.json();
+  20|     const { action, comment, reviewResult, signatureData, specialMeasures, gasMeasureRows } = body;
+  21| 
+  22|     if (!["APPROVE", "REJECT"].includes(action)) {
+  23|       return NextResponse.json({ error: "올바르지 않은 액션입니다." }, { status: 400 });
+  24|     }
+  25|     if (action === "REJECT" && !comment?.trim()) {
+  26|       return NextResponse.json({ error: "반려 사유를 입력해주세요." }, { status: 400 });
+  27|     }
+  28| 
+  29|     const [doc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+  30|     if (!doc || doc.deletedAt) {
+  31|       return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
+  32|     }
+  33|     if (doc.currentApproverUserId !== session.user.id) {
+  34|       return NextResponse.json({ error: "현재 결재 차례가 아닙니다." }, { status: 403 });
+  35|     }
+  36| 
+  37|     const [currentLine] = await db
+  38|       .select()
+  39|       .from(documentApprovalLines)
+  40|       .where(
+  41|         sql`${documentApprovalLines.documentId} = ${documentId}
+  42|           AND ${documentApprovalLines.approverUserId} = ${session.user.id}
+  43|           AND ${documentApprovalLines.stepStatus} = 'WAITING'`
+  44|       )
+  45|       .limit(1);
+  46| 
+  47|     if (!currentLine) {
+  48|       return NextResponse.json({ error: "결재선을 찾을 수 없습니다." }, { status: 404 });
+  49|     }
+  50| 
+  51|     const isConfinedSpace = doc.documentType === "CONFINED_SPACE";
+  52|     const order = currentLine.approvalOrder;
+  53| 
+  54|     if (action === "REJECT") {
+  55|       await db.update(documentApprovalLines).set({
+  56|         stepStatus: "REJECTED", actedAt: new Date(), comment, updatedAt: new Date(),
+  57|       }).where(eq(documentApprovalLines.id, currentLine.id));
+  58|       await db.update(documents).set({
+  59|         status: "REJECTED", rejectedAt: new Date(), rejectionReason: comment,
+  60|         currentApproverUserId: null, updatedAt: new Date(),
+  61|       }).where(eq(documents.id, documentId));
+  62|       await db.insert(notifications).values({
+  63|         userId: doc.createdBy, type: "REJECTED",
+  64|         title: "결재가 반려됐습니다.",
+  65|         body: `반려 사유: ${comment}`,
+  66|         targetDocumentId: documentId, isRead: false,
+  67|       });
+  68|       return NextResponse.json({ success: true, action: "REJECTED" });
+  69| 
+  70|     } else {
+  71|       // 서명 저장
+  72|       await db.update(documentApprovalLines).set({
+  73|         stepStatus: "APPROVED", actedAt: new Date(), comment: comment || null, updatedAt: new Date(),
+  74|       }).where(eq(documentApprovalLines.id, currentLine.id));
+  75|       if (signatureData) {
+  76|         await db.delete(documentSignatures).where(
+  77|           sql`${documentSignatures.documentId} = ${documentId} AND ${documentSignatures.approvalLineId} = ${currentLine.id}`
+  78|         );
+  79|         await db.insert(documentSignatures).values({
+  80|           documentId, approvalLineId: currentLine.id, signerUserId: session.user.id, signatureData,
+  81|         });
+  82|       }
+  83| 
+  84|       const currentFd = (doc.formDataJson as Record<string, unknown>) ?? {};
+  85|       const updatedFd: Record<string, unknown> = { ...currentFd };
+  86| 
+  87|       // =============================================
+  88|       // 밀폐공간 5단계 분기
+  89|       // =============================================
+  90|       if (isConfinedSpace) {
+  91|         if (order === 1) {
+  92|           // 2단계: 감시인 서명 완료 → (계획확인)허가자 지정 필요
+  93|           await db.update(documents).set({
+  94|             status: "IN_REVIEW", currentApproverUserId: null,
+  95|             formDataJson: updatedFd, updatedAt: new Date(),
+  96|           }).where(eq(documents.id, documentId));
+  97|           return NextResponse.json({ success: true, action: "NEED_PLAN_APPROVER" });
+  98| 
+  99|         } else if (order === 2) {
+ 100|           // 3단계: (계획확인)허가자 - 특별조치 입력 + 서명 완료 → 측정담당자 차례
+ 101|           if (body.specialMeasures !== undefined) updatedFd.specialMeasures = body.specialMeasures;
+ 102|           // 측정담당자 userId는 formData에서 가져옴
+ 103|           const measurerUserId = updatedFd.measurerUserId as string | undefined;
+ 104|           if (!measurerUserId) {
+ 105|             await db.update(documents).set({
+ 106|               status: "IN_REVIEW", currentApproverUserId: null,
+ 107|               formDataJson: updatedFd, updatedAt: new Date(),
+ 108|             }).where(eq(documents.id, documentId));
+ 109|             return NextResponse.json({ success: true, action: "NEED_MEASURER" });
+ 110|           }
+ 111|           // 측정담당자 3단계 결재선 생성
+ 112|           await db.insert(documentApprovalLines).values({
+ 113|             documentId, approverUserId: measurerUserId,
+ 114|             approvalOrder: 3, approvalRole: "REVIEWER",
+ 115|             stepStatus: "WAITING", signatureRequired: false,
+ 116|           });
+ 117|           await db.update(documents).set({
+ 118|             status: "IN_REVIEW", currentApprovalOrder: 3,
+ 119|             currentApproverUserId: measurerUserId,
+ 120|             formDataJson: updatedFd, updatedAt: new Date(),
+ 121|           }).where(eq(documents.id, documentId));
+ 122|           await db.insert(notifications).values({
+ 123|             userId: measurerUserId, type: "MY_TURN",
+ 124|             title: "밀폐공간 측정결과 입력 요청",
+ 125|             body: "산소 및 유해가스 농도 측정결과를 입력해주세요.",
+ 126|             targetDocumentId: documentId, isRead: false,
+ 127|           });
+ 128|           return NextResponse.json({ success: true, action: "NEED_MEASUREMENT" });
+ 129| 
+ 130|         } else if (order === 3) {
+ 131|           // 4단계: 측정담당자 - 측정결과 입력 완료 → (이행확인)확인자 지정 필요
+ 132|           if (body.gasMeasureRows) updatedFd.gasMeasureRows = body.gasMeasureRows;
+ 133|           await db.update(documents).set({
+ 134|             status: "IN_REVIEW", currentApproverUserId: null,
+ 135|             formDataJson: updatedFd, updatedAt: new Date(),
+ 136|           }).where(eq(documents.id, documentId));
+ 137|           return NextResponse.json({ success: true, action: "NEED_FINAL_CONFIRMER" });
+ 138| 
+ 139|         } else if (order === 4) {
+ 140|           // 5단계: (이행확인)확인자 최종 서명 → 승인완료
+ 141|           await db.update(documents).set({
+ 142|             status: "APPROVED", approvedAt: new Date(),
+ 143|             currentApproverUserId: null,
+ 144|             formDataJson: updatedFd, updatedAt: new Date(),
+ 145|           }).where(eq(documents.id, documentId));
+ 146|           await db.insert(notifications).values({
+ 147|             userId: doc.createdBy, type: "APPROVED",
+ 148|             title: "밀폐공간 작업허가서 최종 승인됐습니다.",
+ 149|             body: "최종 승인됐습니다. PDF를 다운로드할 수 있습니다.",
+ 150|             targetDocumentId: documentId, isRead: false,
+ 151|           });
+ 152|           generatePDFBackground(documentId, doc).catch(console.error);
+ 153|           return NextResponse.json({ success: true, action: "APPROVED" });
+ 154|         }
+ 155|       }
+ 156| 
+ 157|       // =============================================
+ 158|       // 일반 문서 2단계 분기 (기존 로직)
+ 159|       // =============================================
+ 160|       // POWER_OUTAGE 4단계
+ 161|       const isPowerOutage = doc.documentType === "POWER_OUTAGE";
+ 162|       if (isPowerOutage) {
+ 163|         if (body.specialMeasures !== undefined) updatedFd.specialMeasures = body.specialMeasures;
+ 164|         if (comment?.trim()) updatedFd.reviewOpinion = comment.trim();
+ 165|         if (reviewResult?.trim()) updatedFd.reviewResult = reviewResult.trim();
+ 166|         if (body.inspectionItems) updatedFd.inspectionItems = body.inspectionItems;
+ 167|         if (order === 1) {
+ 168|           const inspWriterId = updatedFd.inspectionWriterUserId as string | undefined;
+ 169|           if (inspWriterId) {
+ 170|             await db.insert(documentApprovalLines).values({ documentId, approverUserId: inspWriterId, approvalOrder: 2, approvalRole: "REVIEWER", stepStatus: "WAITING", signatureRequired: true });
+ 171|             await db.update(documents).set({ status: "IN_REVIEW", currentApprovalOrder: 2, currentApproverUserId: inspWriterId, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
+ 172|             await db.insert(notifications).values({ userId: inspWriterId, type: "MY_TURN", title: "정전작업허가서 - 점검확인결과 입력 요청", body: "점검확인결과를 입력하고 서명해주세요.", targetDocumentId: documentId, isRead: false });
+ 173|             return NextResponse.json({ success: true, action: "APPROVED" });
+ 174|           } else {
+ 175|             await db.update(documents).set({ status: "IN_REVIEW", currentApproverUserId: null, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
+ 176|             return NextResponse.json({ success: true, action: "NEED_INSPECTION_WRITER" });
+ 177|           }
+ 178|         } else if (order === 2) {
+ 179|           await db.update(documents).set({ status: "IN_REVIEW", currentApproverUserId: null, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
+ 180|           return NextResponse.json({ success: true, action: "NEED_FINAL_CONFIRMER_POWER" });
+ 181|         } else if (order === 3) {
+ 182|           await db.update(documents).set({ status: "APPROVED", approvedAt: new Date(), currentApproverUserId: null, formDataJson: updatedFd, updatedAt: new Date() }).where(eq(documents.id, documentId));
+ 183|           await db.insert(notifications).values({ userId: doc.createdBy, type: "APPROVED", title: "정전작업허가서 최종 승인", body: "완료되었습니다.", targetDocumentId: documentId, isRead: false });
+ 184|           generatePDFBackground(documentId, doc).catch(console.error);
+ 185|           return NextResponse.json({ success: true, action: "APPROVED" });
+ 186|         }
+ 187|       }
+ 188| 
+ 189|       if (comment?.trim()) updatedFd.reviewOpinion = comment.trim();
+ 190|       if (reviewResult?.trim()) updatedFd.reviewResult = reviewResult.trim();
+ 191| 
+ 192|       if (order === 1) {
+ 193|         await db.update(documents).set({
+ 194|           status: "IN_REVIEW", currentApproverUserId: null,
+ 195|           formDataJson: updatedFd, updatedAt: new Date(),
+ 196|         }).where(eq(documents.id, documentId));
+ 197|         return NextResponse.json({ success: true, action: "NEED_FINAL_APPROVER" });
+ 198|       } else {
+ 199|         await db.update(documents).set({
+ 200|           status: "APPROVED", approvedAt: new Date(),
+ 201|           currentApproverUserId: null,
+ 202|           formDataJson: updatedFd, updatedAt: new Date(),
+ 203|         }).where(eq(documents.id, documentId));
+ 204|         await db.insert(notifications).values({
+ 205|           userId: doc.createdBy, type: "APPROVED",
+ 206|           title: "결재가 최종 승인됐습니다.",
+ 207|           body: "결재가 최종 승인됐습니다. PDF를 다운로드할 수 있습니다.",
+ 208|           targetDocumentId: documentId, isRead: false,
+ 209|         });
+ 210|         generatePDFBackground(documentId, doc).catch(console.error);
+ 211|         return NextResponse.json({ success: true, action: "APPROVED" });
+ 212|       }
+ 213|     }
+ 214|   } catch (error) {
+ 215|     console.error("[POST approve]", error);
+ 216|     return NextResponse.json({ error: "오류가 발생했습니다." }, { status: 500 });
+ 217|   }
+ 218| }
+ 219| 
+ 220| async function generatePDFBackground(
+ 221|   documentId: string,
+ 222|   doc: { documentType: string; formDataJson: unknown; createdAt: Date }
+ 223| ) {
+ 224|   try {
+ 225|     const [latestDoc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+ 226|     const fd = (latestDoc?.formDataJson as Record<string, unknown>) ?? {};
+ 227| 
+ 228|     // ★ workAddress(별도 컬럼)를 formData에 병합 → PDF workLocation 정상 출력
+ 229|     const mergedFd: Record<string, unknown> = { ...fd };
+ 230|     if (latestDoc?.workAddress && !mergedFd.workLocation) {
+ 231|       mergedFd.workLocation = latestDoc.workAddress;
+ 232|     }
+ 233|     if (latestDoc?.workAddress && !mergedFd.facilityLocation) {
+ 234|       mergedFd.facilityLocation = latestDoc.workAddress;
+ 235|     }
+ 236| 
+ 237|     const lines = await db
+ 238|       .select({
+ 239|         id: documentApprovalLines.id,
+ 240|         approvalOrder: documentApprovalLines.approvalOrder,
+ 241|         actedAt: documentApprovalLines.actedAt,
+ 242|         approverName: users.name,
+ 243|         approverOrg: users.organization,
+ 244|       })
+ 245|       .from(documentApprovalLines)
+ 246|       .leftJoin(users, eq(documentApprovalLines.approverUserId, users.id))
+ 247|       .where(eq(documentApprovalLines.documentId, documentId))
+ 248|       .orderBy(documentApprovalLines.approvalOrder);
+ 249| 
+ 250|     const signatures = await db
+ 251|       .select()
+ 252|       .from(documentSignatures)
+ 253|       .where(eq(documentSignatures.documentId, documentId));
+ 254| 
+ 255|     const approvalLinesWithSig = lines.map((line: typeof lines[0]) => ({
+ 256|       approvalOrder: line.approvalOrder,
+ 257|       approverName: line.approverName ?? undefined,
+ 258|       approverOrg: line.approverOrg ?? undefined,
+ 259|       actedAt: line.actedAt?.toISOString(),
+ 260|       signatureData: signatures.find((s: { approvalLineId: string; signatureData: string }) => s.approvalLineId === line.id)?.signatureData ?? undefined,
+ 261|     }));
+ 262| 
+ 263|     let applicantSignature = typeof fd.signatureData === "string" ? fd.signatureData : undefined;
+ 264|     if (!applicantSignature) {
+ 265|       const applicantSig = signatures.find((s: any) => s.signerUserId === latestDoc?.createdBy && s.signatureData);
+ 266|       if (applicantSig?.signatureData) applicantSignature = applicantSig.signatureData;
+ 267|     }
+ 268| 
+ 269|     const { url, filename, size } = await generateAndUploadPDF({
+ 270|       documentId, documentType: doc.documentType,
+ 271|       formData: mergedFd,  // ★ workAddress 병합된 데이터 사용
+ 272|       approvalLines: approvalLinesWithSig,
+ 273|       createdAt: doc.createdAt.toISOString(), applicantSignature,
+ 274|     });
+ 275| 
+ 276|     await db.insert(documentOutputs).values({
+ 277|       documentId, outputType: "PDF", fileName: filename, fileUrl: url,
+ 278|       fileSize: BigInt(size), mimeType: "application/pdf",
+ 279|       generationStatus: "COMPLETED", isOfficial: true, generatedAt: new Date(),
+ 280|     });
+ 281| 
+ 282|     console.log(`[PDF Auto-Generated] ${documentId} -> ${url}`);
+ 283|   } catch (err) {
+ 284|     console.error(`[PDF Auto-Generate Failed] ${documentId}`, err);
+ 285|   }
+ 286| }
+
+
+########## page.tsx (total 1490) ##########
+
+===== SCAN: doc fetch / setDoc =====
+ 104|     fetch(`/api/documents/${documentId}/attachments`).then(r => r.json()).then(data => {
+ 138|       const data = await res.json();
+ 152|       const data = await res.json();
+ 318|   useEffect(() => { const q = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""; fetch(`/api/users?krcOnly=true&role=FINAL_APPROVER${q}`).then(r => r.json()).then(d => setUsers(d.users ?? [])); }, [keyword]);
+ 324|       const data = await res.json();
+ 363|     useEffect(() => { const q = keyword ? `&keyword=${encodeURIComponent(keyword)}` : ""; fetch(`/api/users?krcOnly=true${q}`).then(r => r.json()).then(d => setUsers(d.users ?? [])); }, [keyword]);
+ 369|       const data = await res.json();
+ 406|       if (!res.ok) { const data = await res.json().catch(() => ({})); alert(`PDF 생성 실패: ${data.error || res.statusText}`); return; }
+ 409|       else { const data = await res.json(); if (data.url) window.open(data.url, "_blank"); else alert(`PDF 생성 실패: ${data.error || "알 수 없는 오류"}`); }
+ 810|       const existingData = await existingRes.json();
+ 857|       const data = await res.json();
+ 966|       const docData = await docRes.json();
+ 967|       const linesData = await linesRes.json();
+ 970|       setDoc(docObj);
+ 983|       const taskData = await taskRes.json();
+ 987|         const meData = await meRes.json();
+1016|       const data = await res.json();
+1061|       const data = await res.json();
+1325|                 const data = await res.json();
+
+===== SCAN: isMyTurn =====
+ 900|   const [isMyTurn, setIsMyTurn] = useState(false);
+ 990|         setIsMyTurn(docObj.currentApproverUserId === myId);
+1064|       if (data.action === "NEED_FINAL_APPROVER") { setPendingDesignation("FINAL_APPROVER"); setIsMyTurn(false); setShowFinalApprover(true); }
+1065|       else if (data.action === "NEED_PLAN_APPROVER") { setPendingDesignation("PLAN_APPROVER"); setIsMyTurn(false); setConfinedNextAction("PLAN_APPROVER"); setShowConfinedNextModal(true); }
+1067|       else if (data.action === "NEED_FINAL_CONFIRMER") { setPendingDesignation("FINAL_CONFIRMER"); setIsMyTurn(false); setConfinedNextAction("FINAL_CONFIRMER"); setShowConfinedNextModal(true); }
+1068|       else if (data.action === "NEED_FINAL_CONFIRMER_POWER") { setPendingDesignation("POWER"); setIsMyTurn(false); setShowPowerNextModal(true); }
+1258|           {isMyTurn && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium animate-pulse">지금 결재 차레입니다</span>}
+1290|             {isMyTurn && (activeTab as string) !== "결재현황" && <ReviewInputSection />}
+1306|             {isMyTurn && (activeTab as string) !== "결재현황" && <ReviewInputSection />}
+1313|       {isMyTurn && (
+1438|       {!isMyTurn && pendingDesignation && (
+
+===== SCAN: currentApproverUserId =====
+  11|   createdBy: string; currentApproverUserId?: string; currentApprovalOrder?: number;
+ 990|         setIsMyTurn(docObj.currentApproverUserId === myId);
+
+===== SCAN: currentApprovalOrder =====
+  11|   createdBy: string; currentApproverUserId?: string; currentApprovalOrder?: number;
+  53|   if (doc.status === "IN_REVIEW" && doc.currentApprovalOrder === 2) return "IN_REVIEW_FINAL";
+ 592|       {(isForm2 || isForm4) && fd.specialMeasures && doc.currentApprovalOrder !== 1 && doc.status !== "SUBMITTED" && <div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-2">특별조치 필요사항</h3><p className="text-sm text-gray-800">{fd.specialMeasures as string}</p></div>}
+ 926|     if (doc?.documentType === "POWER_OUTAGE" && doc?.currentApprovalOrder === 2 && !inspSeededRef.current) {
+1053|       const confinedOrder = doc?.currentApprovalOrder ?? 0;
+1089|   const confinedOrder = doc.currentApprovalOrder ?? 0;
+1091|   const reviewGuideText = doc.currentApprovalOrder === 2 ? `💡 ${step1ApproverNameVal || "1단계 검토자"}(검토자)가 작성한 내용을 확인하여 최종 결재해주세요.` : null;
+1096|     const confinedOrder = doc?.currentApprovalOrder ?? 0;
+1145|     const powerOrder = doc?.currentApprovalOrder ?? 0;
+1191|           {doc.currentApprovalOrder === 1 ? (doc.documentType === "SAFETY_WORK_PERMIT" ? "(계획확인) 검토의견 입력" : "검토 의견 입력") : (doc.documentType === "SAFETY_WORK_PERMIT" ? "(이행확인) 검토의견 확인" : "검토의견 확인 및 설정")}
+1196|             {doc.currentApprovalOrder === 1 && (
+1203|               검토의견 {doc.currentApprovalOrder === 1 && <span className="text-red-500 text-xs">(반려 시 필수)</span>}
+1299|             {(doc.documentType === "CONFINED_SPACE" || doc.documentType === "POWER_OUTAGE") && fd.specialMeasures && doc.currentApprovalOrder !== 1 && doc.status !== "SUBMITTED" && (
+1362|                   : doc.currentApprovalOrder === 1 ? (doc.documentType === "SAFETY_WORK_PERMIT" ? "(\uacc4\ud68d\ud655\uc778) \uac80\ud1a0\uc644\ub8cc" : doc.documentType === "POWER_OUTAGE" ? "\uc11c\uba85\ud558\uae30" : "\uac80\ud1a0\uc644\ub8cc") : (doc.documentType === "POWER_OUTAGE" && doc.currentApprovalOrder === 2 ? "\uc791\uc131\uc644\ub8cc \ubc0f \uc774\ud589\ud655\uc778 \ud655\uc778\uc790 \uc9c0\uc815" : "\ucd5c\uc885 \uc2b9\uc778")}
+1392|                 : doc.currentApprovalOrder === 1 ? (doc.documentType === "POWER_OUTAGE" ? "\uc11c\uba85\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?" : `\uc11c\uba85 \uc644\ub8cc \ud6c4, ${FINAL_ROLE_LABELS[doc.documentType] || "\uc774\ud589\ud655\uc778\ud655\uc778\uc790"}\ub97c \uc9c0\uc815\ud569\ub2c8\ub2e4`) : (doc.documentType === "POWER_OUTAGE" && doc.currentApprovalOrder === 2 ? "\uc791\uc131\uc644\ub8cc\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?" : "\ucd5c\uc885 \uc2b9\uc778\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?")}
+1397|                 : doc.currentApprovalOrder === 1 ? (doc.documentType === "POWER_OUTAGE" ? "" : "\uc2b9\uc778\uc790\ub97c \uc9c0\uc815\ud574\uc8fc\uc138\uc694.") : (doc.documentType === "POWER_OUTAGE" && doc.currentApprovalOrder === 2 ? "" : "\uc2b9\uc778\ud558\uc2dc\uaca0\uc2b5\ub2c8\uae4c?")}
+1431|                 {processing ? "처리 중..." : pendingAction === "APPROVE" ? (doc?.documentType === "POWER_OUTAGE" && (doc?.currentApprovalOrder === 1 || doc?.currentApprovalOrder === 2) ? "\u2713 \uc11c\uba85 \uc644\ub8cc" : "\u2713 \uc2b9\uc778 \uc644\ub8cc") : "반려 완료"}
+1447|           isFirstStep={doc.documentType !== "SAFETY_WORK_PERMIT" || !(doc.currentApprovalOrder && doc.currentApprovalOrder >= 1)}
+1452|               const isFirst = !(doc.currentApprovalOrder && doc.currentApprovalOrder >= 1);
+
+===== SCAN: pendingDesignation =====
+ 901|   const [pendingDesignation, setPendingDesignation] = useState<string | null>(null);
+1064|       if (data.action === "NEED_FINAL_APPROVER") { setPendingDesignation("FINAL_APPROVER"); setIsMyTurn(false); setShowFinalApprover(true); }
+1065|       else if (data.action === "NEED_PLAN_APPROVER") { setPendingDesignation("PLAN_APPROVER"); setIsMyTurn(false); setConfinedNextAction("PLAN_APPROVER"); setShowConfinedNextModal(true); }
+1067|       else if (data.action === "NEED_FINAL_CONFIRMER") { setPendingDesignation("FINAL_CONFIRMER"); setIsMyTurn(false); setConfinedNextAction("FINAL_CONFIRMER"); setShowConfinedNextModal(true); }
+1068|       else if (data.action === "NEED_FINAL_CONFIRMER_POWER") { setPendingDesignation("POWER"); setIsMyTurn(false); setShowPowerNextModal(true); }
+1438|       {!isMyTurn && pendingDesignation && (
+1440|           <button onClick={() => { if (pendingDesignation === "FINAL_APPROVER") setShowFinalApprover(true); else if (pendingDesignation === "PLAN_APPROVER") { setConfinedNextAction("PLAN_APPROVER"); setShowConfinedNextModal(true); } else if (pendingDesignation === "FINAL_CONFIRMER") { setConfinedNextAction("FINAL_CONFIRMER"); setShowConfinedNextModal(true); } else if (pendingDesignation === "POWER") setShowPowerNextModal(true); }} className="w-full py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#2563eb" }}>{"\ub2e4\uc74c \uacb0\uc7ac\uc790 \uc9c0\uc815"}</button>
+
+===== SCAN: status =====
+   9|   id: string; taskId: string; documentType: DocumentType; status: string;
+  29|   APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료" },
+  53|   if (doc.status === "IN_REVIEW" && doc.currentApprovalOrder === 2) return "IN_REVIEW_FINAL";
+  54|   return doc.status;
+ 210| function StepIcon({ type, status }: { type: "submit" | "review" | "approve"; status: "done" | "active" | "pending" | "rejected" }) {
+ 216|     approve: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={c.stroke} strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>{status === "done" && <polyline points="9 12 11 14 15 10" strokeWidth="2.5"/>}{status === "rejected" && <><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></>}</svg>,
+ 220|       <div className="w-12 h-12 rounded-full flex items-center justify-center shadow-sm" style={{ backgroundColor: c.bg, boxShadow: status === "active" ? `0 0 0 3px ${c.bg}33` : undefined }}>{icons[type]}</div>
+ 221|       {status === "active" && <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />}
+ 226|   const isSubmitted = doc.status !== "DRAFT";
+ 230|     if (line.stepStatus === "APPROVED") return "done";
+ 238|   let steps: Array<{ icon: React.ReactNode; label: string; name: string; comment?: string; actedAt?: string; signatureData?: string; status: string }>;
+ 247|       { icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />, label: "신청자", name: writerName, signatureData: isSubmitted ? applicantSignature : undefined, status: isSubmitted ? "done" : "active" },
+ 261|       { icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />, label: "신청자", name: writerName, signatureData: isSubmitted ? applicantSignature : undefined, status: isSubmitted ? "done" : "active" },
+ 270|       { icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />, label: "신청자", name: writerName, signatureData: isSubmitted ? applicantSignature : undefined, status: isSubmitted ? "done" : "active" },
+ 271|       ...(line1 ? [{ icon: <StepIcon type={doc.documentType === "SAFETY_WORK_PERMIT" ? "approve" : "review"} status={getStepStatus(line1)} />, label: roleLabels[1] ?? "(계획확인)허가자", name: line1.approverName ?? "", comment: line1.comment, actedAt: line1.actedAt, signatureData: line1.signatureData, status: getStepStatus(line1) }] : []),
+ 272|       ...(line2 ? [{ icon: <StepIcon type="approve" status={getStepStatus(line2)} />, label: line2.approvalRole === "FINAL_APPROVER" ? finalLabel : (roleLabels[2] ?? "(이행확인)확인자"), name: line2.approverName ?? "", comment: line2.comment, actedAt: line2.actedAt, signatureData: line2.signatureData, status: getStepStatus(line2) }] : []),
+ 290|           <div key={i} className={`flex items-start gap-3 p-2.5 rounded-xl ${step.status === "done" ? "bg-green-50" : step.status === "active" ? "bg-amber-50" : step.status === "rejected" ? "bg-red-50" : "bg-gray-50"}`}>
+ 291|             <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${step.status === "done" ? "bg-green-500" : step.status === "active" ? "bg-amber-400 animate-pulse" : step.status === "rejected" ? "bg-red-500" : "bg-gray-300"}`} />
+ 295|                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${step.status === "done" ? "bg-green-100 text-green-600" : step.status === "active" ? "bg-amber-100 text-amber-600" : step.status === "rejected" ? "bg-red-100 text-red-600" : "bg-gray-100 text-gray-400"}`}>
+ 296|                   {step.status === "done" ? "완료" : step.status === "active" ? "진행중" : step.status === "rejected" ? "반려" : "대기"}
+ 406|       if (!res.ok) { const data = await res.json().catch(() => ({})); alert(`PDF 생성 실패: ${data.error || res.statusText}`); return; }
+ 592|       {(isForm2 || isForm4) && fd.specialMeasures && doc.currentApprovalOrder !== 1 && doc.status !== "SUBMITTED" && <div className="bg-white rounded-2xl p-4 shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-2">특별조치 필요사항</h3><p className="text-sm text-gray-800">{fd.specialMeasures as string}</p></div>}
+ 594|       {(fd.signatureData || approvalLines.some(l => l.signatureData && l.stepStatus === "APPROVED")) && (
+ 604|             {approvalLines.filter(l => l.stepStatus === "APPROVED" && l.signatureData).map(line => {
+ 731|               const isDanger = status === "danger";
+ 744|                           : status === "ok"
+ 752|                     {status === "ok" && (
+ 759|                   {status === "ok" && (
+1070|       else if (data.action === "APPROVED") { alert("최종 승인이 완료됩니다."); router.push("/approvals"); }
+1086|   const canCancel = doc.status !== "DRAFT" && (isOwner || isStaff);
+1087|   const isApproved = doc.status === "APPROVED";
+1299|             {(doc.documentType === "CONFINED_SPACE" || doc.documentType === "POWER_OUTAGE") && fd.specialMeasures && doc.currentApprovalOrder !== 1 && doc.status !== "SUBMITTED" && (
+
+===== SCAN: approvals/order/signature =====
+  17|   actedAt?: string; comment?: string; signatureData?: string;
+ 225| function ApprovalFlow({ doc, approvalLines, writerName, applicantSignature }: { doc: DocumentDetail; approvalLines: ApprovalLine[]; writerName: string; applicantSignature?: string }) {
+ 238|   let steps: Array<{ icon: React.ReactNode; label: string; name: string; comment?: string; actedAt?: string; signatureData?: string; status: string }>;
+ 240|     const lineMap = Object.fromEntries(approvalLines.map(l => [l.approvalOrder, l]));
+ 244|       return { icon: <StepIcon type={type} status={status} />, label, name: line?.approverName ?? name, comment: line?.comment, actedAt: line?.actedAt, signatureData: line?.signatureData, status };
+ 247|       { icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />, label: "신청자", name: writerName, signatureData: isSubmitted ? applicantSignature : undefined, status: isSubmitted ? "done" : "active" },
+ 254|     const lineMap = Object.fromEntries(approvalLines.map(l => [l.approvalOrder, l]));
+ 258|       return { icon: <StepIcon type={type} status={status} />, label, name: line?.approverName ?? name, comment: line?.comment, actedAt: line?.actedAt, signatureData: line?.signatureData, status };
+ 261|       { icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />, label: "신청자", name: writerName, signatureData: isSubmitted ? applicantSignature : undefined, status: isSubmitted ? "done" : "active" },
+ 267|     const line1 = approvalLines.find(l => l.approvalOrder === 1);
+ 268|     const line2 = approvalLines.find(l => l.approvalOrder === 2);
+ 270|       { icon: <StepIcon type="submit" status={isSubmitted ? "done" : "active"} />, label: "신청자", name: writerName, signatureData: isSubmitted ? applicantSignature : undefined, status: isSubmitted ? "done" : "active" },
+ 271|       ...(line1 ? [{ icon: <StepIcon type={doc.documentType === "SAFETY_WORK_PERMIT" ? "approve" : "review"} status={getStepStatus(line1)} />, label: roleLabels[1] ?? "(계획확인)허가자", name: line1.approverName ?? "", comment: line1.comment, actedAt: line1.actedAt, signatureData: line1.signatureData, status: getStepStatus(line1) }] : []),
+ 272|       ...(line2 ? [{ icon: <StepIcon type="approve" status={getStepStatus(line2)} />, label: line2.approvalRole === "FINAL_APPROVER" ? finalLabel : (roleLabels[2] ?? "(이행확인)확인자"), name: line2.approverName ?? "", comment: line2.comment, actedAt: line2.actedAt, signatureData: line2.signatureData, status: getStepStatus(line2) }] : []),
+ 300|               {step.signatureData && <div className="mt-1.5 border border-gray-200 rounded-lg overflow-hidden bg-white inline-block"><img src={step.signatureData} alt="서명" className="h-10 object-contain px-2" /></div>}
+ 432| function DocumentContent({ doc, fd, approvalLines }: { doc: DocumentDetail; fd: Record<string, unknown>; approvalLines: ApprovalLine[]; activeTab?: string | undefined }) {
+ 594|       {(fd.signatureData || approvalLines.some(l => l.signatureData && l.stepStatus === "APPROVED")) && (
+ 598|             {typeof fd.signatureData === "string" && fd.signatureData && (
+ 601|                 <div className="flex items-center"><span className="text-xs text-gray-400 px-3 py-2 w-24 border-r border-gray-200 shrink-0">(서명)</span><div className="px-3 py-2"><img src={fd.signatureData as string} alt="신청자 서명" className="h-12 object-contain" /></div></div>
+ 604|             {approvalLines.filter(l => l.stepStatus === "APPROVED" && l.signatureData).map(line => {
+ 611|                   <div className="flex items-center"><span className="text-xs text-gray-400 px-3 py-2 w-24 border-r border-gray-200 shrink-0">(서명)</span><div className="px-3 py-2"><img src={line.signatureData!} alt={`${roleLabel} 서명`} className="h-12 object-contain" /></div></div>
+ 895|   const [approvalLines, setApprovalLines] = useState<ApprovalLine[]>([]);
+ 971|       const lines = linesData.approvalLines ?? [];
+1050|       const signatureData = canvas ? canvas.toDataURL("image/png") : null;
+1059|         body: JSON.stringify({ action: pendingAction, comment: pendingOpinion || null, reviewResult: pendingResult || null, signatureData, inspectionItems: inspectionItemsRef.current.length > 0 ? inspectionItemsRef.current : undefined, ...extraBody }),
+1066|       else if (data.action === "NEED_MEASUREMENT") { alert("(계획확인) 서명이 완료됩니다."); router.push("/approvals"); }
+1069|       else if (data.action === "NEED_INSPECTION_WRITER") { alert("점검확인작성자를 지정해주세요."); router.push("/approvals"); }
+1070|       else if (data.action === "APPROVED") { alert("최종 승인이 완료됩니다."); router.push("/approvals"); }
+1071|       else { alert("처리됩니다."); router.push("/approvals"); }
+1251|         <Link href="/approvals" className="flex items-center gap-1 text-gray-400 text-sm mb-2">
+1279|             <DocumentContent doc={doc} fd={fd} approvalLines={approvalLines} activeTab={activeTab} />
+1298|             <ApprovalFlow doc={doc} approvalLines={approvalLines} writerName={(fd.applicantName as string) || writerName} applicantSignature={(fd.signatureData as string) || undefined} />
+1323|                   body: JSON.stringify({ action: "APPROVE", signatureData: null, gasMeasureRows: gasRows }),
+1332|                   router.push("/approvals");
+1457|             router.push("/approvals");
+1484|             router.push("/approvals");
+
+===== SCAN: session/myId =====
+ 988|         const myId = meData.user?.id;
+ 989|         setMyUserId(myId); setMyRole(meData.user?.role ?? ""); setWriterName(meData.user?.name ?? "");
+ 990|         setIsMyTurn(docObj.currentApproverUserId === myId);

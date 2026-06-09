@@ -988,6 +988,21 @@ export default function ApprovalDetailPage() {
         const myId = meData.user?.id;
         setMyUserId(myId); setMyRole(meData.user?.role ?? ""); setWriterName(meData.user?.name ?? "");
         setIsMyTurn(docObj.currentApproverUserId === myId);
+        // recover stranded doc: signed but next approver not designated.
+        // IN_REVIEW + no current approver + I signed the current order -> re-show designation button.
+        if (docObj.status === "IN_REVIEW" && !docObj.currentApproverUserId) {
+          const ord = docObj.currentApprovalOrder ?? 0;
+          const myLine = lines.find((l: ApprovalLine) => l.approvalOrder === ord);
+          if (myLine && myLine.approverUserId === myId && myLine.stepStatus === "APPROVED") {
+            const t = docObj.documentType;
+            let act: string | null = null;
+            if (t === "CONFINED_SPACE" && ord === 1) act = "PLAN_APPROVER";
+            else if (t === "CONFINED_SPACE" && ord === 3) act = "FINAL_CONFIRMER";
+            else if (t === "POWER_OUTAGE" && ord === 2) act = "POWER";
+            else if (ord === 1 && t !== "CONFINED_SPACE" && t !== "POWER_OUTAGE") act = "FINAL_APPROVER";
+            if (act) setPendingDesignation(act);
+          }
+        }
       }
     } catch (e: unknown) { setError(e instanceof Error ? e.message : "오류가 발생했습니다."); }
     finally { setLoading(false); }

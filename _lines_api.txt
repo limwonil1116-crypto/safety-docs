@@ -1,0 +1,193 @@
+total 192
+   1| ﻿import { NextRequest, NextResponse } from "next/server";
+   2| import { auth } from "@/auth";
+   3| import { db } from "@/db";
+   4| import { documents, documentApprovalLines, documentSignatures, notifications } from "@/db/schema";
+   5| import { eq } from "drizzle-orm";
+   6| 
+   7| // GET - 결재선 조회 (서명 포함)
+   8| export async function GET(
+   9|   req: NextRequest,
+  10|   { params }: { params: Promise<{ documentId: string }> }
+  11| ) {
+  12|   try {
+  13|     const session = await auth();
+  14|     if (!session?.user) {
+  15|       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+  16|     }
+  17|     const { documentId } = await params;
+  18|     const { users } = await import("@/db/schema");
+  19|     const lines = await db
+  20|       .select({
+  21|         id: documentApprovalLines.id,
+  22|         documentId: documentApprovalLines.documentId,
+  23|         approverUserId: documentApprovalLines.approverUserId,
+  24|         approvalOrder: documentApprovalLines.approvalOrder,
+  25|         approvalRole: documentApprovalLines.approvalRole,
+  26|         stepStatus: documentApprovalLines.stepStatus,
+  27|         actedAt: documentApprovalLines.actedAt,
+  28|         comment: documentApprovalLines.comment,
+  29|         signatureId: documentApprovalLines.signatureId,
+  30|         approverName: users.name,
+  31|         approverOrg: users.organization,
+  32|       })
+  33|       .from(documentApprovalLines)
+  34|       .leftJoin(users, eq(documentApprovalLines.approverUserId, users.id))
+  35|       .where(eq(documentApprovalLines.documentId, documentId))
+  36|       .orderBy(documentApprovalLines.approvalOrder);
+  37|     const signatures = await db
+  38|       .select({ id: documentSignatures.id, approvalLineId: documentSignatures.approvalLineId, signatureData: documentSignatures.signatureData })
+  39|       .from(documentSignatures)
+  40|       .where(eq(documentSignatures.documentId, documentId));
+  41|     const sigMap: Record<string, string> = {};
+  42|     signatures.forEach((s: { approvalLineId: string; signatureData: string }) => {
+  43|       if (s.approvalLineId && s.signatureData) sigMap[s.approvalLineId] = s.signatureData;
+  44|     });
+  45|     const enrichedLines = lines.map((line: typeof lines[0]) => ({ ...line, signatureData: sigMap[line.id] ?? null }));
+  46|     return NextResponse.json({ approvalLines: enrichedLines });
+  47|   } catch (error) {
+  48|     console.error("[GET approval-lines]", error);
+  49|     return NextResponse.json({ error: "오류가 발생했습니다." }, { status: 500 });
+  50|   }
+  51| }
+  52| 
+  53| // POST - 결재선 지정 + 제출
+  54| export async function POST(
+  55|   req: NextRequest,
+  56|   { params }: { params: Promise<{ documentId: string }> }
+  57| ) {
+  58|   try {
+  59|     const session = await auth();
+  60|     if (!session?.user) {
+  61|       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+  62|     }
+  63|     const { documentId } = await params;
+  64|     const body = await req.json();
+  65|     const { reviewerUserId, monitorUserId, measurerUserId, inspectionWriterUserId, formDataJson, signatureData } = body;
+  66|     // 밀폐공간: monitorUserId(감시인) 필수, 일반: reviewerUserId 필수
+  67|     const [doc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+  68|     if (!doc || doc.deletedAt) {
+  69|       return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
+  70|     }
+  71|     if (!["DRAFT", "REJECTED"].includes(doc.status)) {
+  72|       return NextResponse.json({ error: "제출할 수 없는 상태입니다." }, { status: 400 });
+  73|     }
+  74|     const isConfinedSpace = doc.documentType === "CONFINED_SPACE";
+  75|     const isPowerOutage = doc.documentType === "POWER_OUTAGE";
+  76|     // 밀폐공간: body에 monitorUserId 없으면 formData에서 가져오기
+  77|     const fdMonitorId = isConfinedSpace ? ((doc.formDataJson as any)?.monitorUserId || monitorUserId) : null;
+  78|     const step1UserId = isConfinedSpace ? fdMonitorId : reviewerUserId;
+  79|     if (!step1UserId) {
+  80|       return NextResponse.json({ error: isConfinedSpace ? "밀폐공간 작업허가서에 감시인이 지정되지 않았습니다." : "결재자를 지정해주세요." }, { status: 400 });
+  81|     }
+  82|     // 기존 결재선 삭제
+  83|     await db.delete(documentApprovalLines).where(eq(documentApprovalLines.documentId, documentId));
+  84|     // 1단계 결재선 생성
+  85|     const [newLine] = await db.insert(documentApprovalLines).values({
+  86|       documentId,
+  87|       approverUserId: step1UserId,
+  88|       approvalOrder: 1,
+  89|       approvalRole: "REVIEWER",
+  90|       stepStatus: "WAITING",
+  91|       signatureRequired: true,
+  92|     }).returning();
+  93|     // 신청인 서명 저장
+  94|     if (signatureData && newLine) {
+  95|       await db.insert(documentSignatures).values({
+  96|         documentId,
+  97|         approvalLineId: newLine.id,
+  98|         signerUserId: session.user.id,
+  99|         signatureData,
+ 100|       }).catch(() => {});
+ 101|     }
+ 102|     // 밀폐공간: 측정담당자도 formData에 저장
+ 103|     const updatedFormData: Record<string, unknown> = {
+ 104|       ...(doc.formDataJson as object),
+ 105|       ...(formDataJson ?? {}),
+ 106|       signatureData: signatureData ?? null,
+ 107|     };
+ 108|     if (isConfinedSpace && measurerUserId) {
+ 109|       updatedFormData.measurerUserId = measurerUserId;
+ 110|     }
+ 111|     if (isPowerOutage && inspectionWriterUserId) {
+ 112|       updatedFormData.inspectionWriterUserId = inspectionWriterUserId;
+ 113|     }
+ 114|     await db.update(documents).set({
+ 115|       status: "SUBMITTED",
+ 116|       formDataJson: updatedFormData,
+ 117|       lastUpdatedBy: session.user.id,
+ 118|       submittedAt: new Date(),
+ 119|       currentApprovalOrder: 1,
+ 120|       currentApproverUserId: step1UserId,
+ 121|       updatedAt: new Date(),
+ 122|     }).where(eq(documents.id, documentId));
+ 123|     // 결재자에게 알림
+ 124|     await db.insert(notifications).values({
+ 125|       userId: step1UserId,
+ 126|       type: "MY_TURN",
+ 127|       title: isConfinedSpace ? "밀폐공간 작업허가 - 감시인 서명 요청" : "결재 요청",
+ 128|       body: `${session.user.name}이 결재를 요청했습니다.`,
+ 129|       targetDocumentId: documentId,
+ 130|       isRead: false,
+ 131|     });
+ 132|     return NextResponse.json({ success: true });
+ 133|   } catch (error) {
+ 134|     console.error("[POST approval-lines]", error);
+ 135|     return NextResponse.json({ error: "오류가 발생했습니다." }, { status: 500 });
+ 136|   }
+ 137| }
+ 138| 
+ 139| // PATCH - 최종허가자 지정
+ 140| export async function PATCH(
+ 141|   req: NextRequest,
+ 142|   { params }: { params: Promise<{ documentId: string }> }
+ 143| ) {
+ 144|   try {
+ 145|     const session = await auth();
+ 146|     if (!session?.user) {
+ 147|       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+ 148|     }
+ 149|     const { documentId } = await params;
+ 150|     const body = await req.json();
+ 151|     const { finalApproverUserId, nextApproverUserId, nextOrder, nextRole, nextTitle } = body;
+ 152|     const targetUserId = finalApproverUserId ?? nextApproverUserId;
+ 153|     if (!targetUserId) {
+ 154|       return NextResponse.json({ error: "다음 결재자를 지정해주세요." }, { status: 400 });
+ 155|     }
+ 156|     const [doc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+ 157|     if (!doc) {
+ 158|       return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
+ 159|     }
+ 160|     const order = nextOrder ?? 2;
+ 161|     const role = nextRole ?? "FINAL_APPROVER";
+ 162|     // 다음 단계 결재선 생성
+ 163|     await db.insert(documentApprovalLines).values({
+ 164|       documentId,
+ 165|       approverUserId: targetUserId,
+ 166|       approvalOrder: order,
+ 167|       approvalRole: role as "REVIEWER" | "FINAL_APPROVER",
+ 168|       stepStatus: "WAITING",
+ 169|       signatureRequired: true,
+ 170|     });
+ 171|     // 문서 상태 업데이트
+ 172|     await db.update(documents).set({
+ 173|       status: "IN_REVIEW",
+ 174|       currentApprovalOrder: order,
+ 175|       currentApproverUserId: targetUserId,
+ 176|       updatedAt: new Date(),
+ 177|     }).where(eq(documents.id, documentId));
+ 178|     // 다음 결재자에게 알림
+ 179|     await db.insert(notifications).values({
+ 180|       userId: targetUserId,
+ 181|       type: "MY_TURN",
+ 182|       title: nextTitle ?? "결재 요청",
+ 183|       body: "결재를 요청합니다.",
+ 184|       targetDocumentId: documentId,
+ 185|       isRead: false,
+ 186|     });
+ 187|     return NextResponse.json({ success: true });
+ 188|   } catch (error) {
+ 189|     console.error("[PATCH approval-lines]", error);
+ 190|     return NextResponse.json({ error: "오류가 발생했습니다." }, { status: 500 });
+ 191|   }
+ 192| }
