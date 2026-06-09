@@ -1,6 +1,55 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 
+const DT_CANON = ["\ucd94\ub77d","\uc804\ub3c4","\ucda9\ub3cc","\ud611\ucc29","\ub099\ud558","\ubd95\uad34","\uac10\uc804","\ud3ed\ubc1c","\ud654\uc7ac","\uc9c8\uc2dd","\uc720\ud574\ubb3c\uc811\ucd09","\uc775\uc0ac","\uae30\ud0c0"];
+const DT_ALIAS: Record<string, string> = {
+  "\ub099\uc0c1": "\ucd94\ub77d", "\ub5a8\uc5b4\uc9d0": "\ucd94\ub77d", "\ucd94\ub099": "\ucd94\ub77d",
+  "\ub07c\uc784": "\ud611\ucc29", "\ud611\uc0ed": "\ud611\ucc29",
+  "\ub118\uc5b4\uc9d0": "\uc804\ub3c4",
+  "\ubd80\ub52a\ud798": "\ucda9\ub3cc",
+  "\ub9de\uc74c": "\ub099\ud558", "\ube44\ub798": "\ub099\ud558", "\ub099\ud558\ube44\ub798": "\ub099\ud558",
+  "\ubb34\ub108\uc9d0": "\ubd95\uad34", "\ub3c4\uad34": "\ubd95\uad34", "\ubd95\uad34\ub3c4\uad34": "\ubd95\uad34",
+  "\ube60\uc9d0": "\uc775\uc0ac", "\uc775\uc218": "\uc775\uc0ac",
+  "\ud30c\uc5f4": "\ud3ed\ubc1c", "\ud3ed\ubc1c\ud30c\uc5f4": "\ud3ed\ubc1c",
+  "\uc0b0\uc18c\uacb0\ud54d": "\uc9c8\uc2dd",
+  "\uc911\ub3c5": "\uc720\ud574\ubb3c\uc811\ucd09", "\uc720\ud574\ubb3c\uc9c8\uc811\ucd09": "\uc720\ud574\ubb3c\uc811\ucd09",
+};
+function _dtNorm(s: string): string {
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c === 32 || c === 9 || c === 47 || c === 0xb7 || c === 0x318d || c === 0x30fb) continue;
+    out += s[i];
+  }
+  return out;
+}
+function _dtLev(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  const dp: number[] = [];
+  for (let j = 0; j <= n; j++) dp[j] = j;
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const tmp = dp[j];
+      dp[j] = Math.min(dp[j] + 1, dp[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = tmp;
+    }
+  }
+  return dp[n];
+}
+function fixDisaster(raw: any): string {
+  const s = _dtNorm(String(raw || ""));
+  if (!s) return "\uae30\ud0c0";
+  if (DT_CANON.indexOf(s) !== -1) return s;
+  if (DT_ALIAS[s]) return DT_ALIAS[s];
+  let best = "\uae30\ud0c0", bestD = 99;
+  for (const c of DT_CANON) {
+    const d = _dtLev(s, c);
+    if (d < bestD) { bestD = d; best = c; }
+  }
+  return bestD <= 1 ? best : "\uae30\ud0c0";
+}
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
@@ -23,9 +72,9 @@ export async function POST(req: NextRequest) {
       "",
       "응답 형식: 아래 JSON 배열 형식으로만 출력하십시오.",
       "코드블록(\`\`\`)이나 추가 텍스트 없이 JSON만 출력하십시오.",
-      '[{"riskFactor":"위험요소1","improvement":"개선대책1","disasterType":"낙상"},{"riskFactor":"위험요소2","improvement":"개선대책2","disasterType":"협샭"},{"riskFactor":"위험요소3","improvement":"개선대책3","disasterType":"감전"}]',
+      '[{"riskFactor":"위험요소1","improvement":"개선대책1","disasterType":"\ucd94\ub77d"},{"riskFactor":"위험요소2","improvement":"개선대책2","disasterType":"\ud611\ucc29"},{"riskFactor":"위험요소3","improvement":"개선대책3","disasterType":"감전"}]',
       "",
-      "disasterType은 낙상/추낙/협샭/감전/화재/익수/질식 중 하나.",
+      "disasterType\uc740 \ucd94\ub77d/\uc804\ub3c4/\ucda9\ub3cc/\ud611\ucc29/\ub099\ud558/\ubd95\uad34/\uac10\uc804/\ud3ed\ubc1c/\ud654\uc7ac/\uc9c8\uc2dd/\uc720\ud574\ubb3c\uc811\ucd09/\uc775\uc0ac/\uae30\ud0c0 \uc911 \ud558\ub098\uc758 \uc815\ud655\ud55c \ub2e8\uc5b4\ub85c\ub9cc \uc791\uc131.",
       "riskFactor는 20자 내, improvement는 30자 내로 작성.",
     ].join("\n");
 
@@ -77,7 +126,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "AI가 올바른 형식으로 응답하지 않았습니다. 다시 시도해주세요." }, { status: 500 });
     }
 
-    return NextResponse.json({ rows });
+    const fixedRows = (rows as any[]).map((r: any) => ({
+      ...r,
+      disasterType: fixDisaster(r?.disasterType),
+    }));
+
+    return NextResponse.json({ rows: fixedRows });
   } catch (error) {
     console.error("[POST /api/ai/risk-rows]", error);
     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });

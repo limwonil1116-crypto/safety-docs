@@ -1,0 +1,86 @@
+total 85 lines
+   1| import { NextRequest, NextResponse } from "next/server";
+   2| import { auth } from "@/auth";
+   3| 
+   4| export async function POST(req: NextRequest) {
+   5|   try {
+   6|     const session = await auth();
+   7|     if (!session?.user) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+   8| 
+   9|     const { workContent, workLocation, riskItems, checkedFactors } = await req.json();
+  10| 
+  11|     const riskStr = Array.isArray(riskItems) && riskItems.length > 0 ? riskItems.join(", ") : "없음";
+  12|     const factorStr = Array.isArray(checkedFactors) && checkedFactors.length > 0 ? checkedFactors.join(", ") : "없음";
+  13| 
+  14|     const prompt = [
+  15|       "당신은 한국농어초공사 안전관리 전문가입니다.",
+  16|       "아래 작업 정보를 분석하여 위험요소, 개선대책, 재해형태를 3개 작성하십시오.",
+  17|       "",
+  18|       "[작업 정보]",
+  19|       "- 작업내용: " + (workContent || "미입력"),
+  20|       "- 작업장소: " + (workLocation || "미입력"),
+  21|       "- 위험공종: " + riskStr,
+  22|       "- 예상위험요소: " + factorStr,
+  23|       "",
+  24|       "응답 형식: 아래 JSON 배열 형식으로만 출력하십시오.",
+  25|       "코드블록(\`\`\`)이나 추가 텍스트 없이 JSON만 출력하십시오.",
+  26|       '[{"riskFactor":"위험요소1","improvement":"개선대책1","disasterType":"낙상"},{"riskFactor":"위험요소2","improvement":"개선대책2","disasterType":"협샭"},{"riskFactor":"위험요소3","improvement":"개선대책3","disasterType":"감전"}]',
+  27|       "",
+  28|       "disasterType은 낙상/추낙/협샭/감전/화재/익수/질식 중 하나.",
+  29|       "riskFactor는 20자 내, improvement는 30자 내로 작성.",
+  30|     ].join("\n");
+  31| 
+  32|     const apiKey = process.env.GEMINI_API_KEY;
+  33|     if (!apiKey) return NextResponse.json({ error: "Gemini API 키가 없습니다." }, { status: 500 });
+  34| 
+  35|     const response = await fetch(
+  36|       "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey,
+  37|       {
+  38|         method: "POST",
+  39|         headers: { "Content-Type": "application/json" },
+  40|         body: JSON.stringify({
+  41|           contents: [{ parts: [{ text: prompt }] }],
+  42|           generationConfig: { maxOutputTokens: 4096, temperature: 0.2 },
+  43|         }),
+  44|       }
+  45|     );
+  46| 
+  47|     if (!response.ok) {
+  48|       const err = await response.json();
+  49|       return NextResponse.json({ error: err.error?.message || "Gemini 오류" }, { status: 500 });
+  50|     }
+  51| 
+  52|     const data = await response.json();
+  53|     const parts = data.candidates?.[0]?.content?.parts || [];
+  54|     const rawText = parts.map((p: any) => p.text || "").join("").trim();
+  55| 
+  56|     // 서버에서 직접 파싱하여 검증
+  57|     const cleaned = rawText.replace(/```json|```/g, "").trim();
+  58|     
+  59|     // JSON 배열 추출 - 여러 패턴 시도
+  60|     let rows: any[] | null = null;
+  61|     
+  62|     // 1차: 전체 텍스트를 JSON으로 파싱 시도
+  63|     try { rows = JSON.parse(cleaned); } catch {}
+  64|     
+  65|     // 2차: [ ] 사이 추출 후 파싱
+  66|     if (!Array.isArray(rows)) {
+  67|       const start = cleaned.indexOf("[");
+  68|       const end = cleaned.lastIndexOf("]");
+  69|       if (start !== -1 && end !== -1 && end > start) {
+  70|         try { rows = JSON.parse(cleaned.slice(start, end + 1)); } catch {}
+  71|       }
+  72|     }
+  73| 
+  74|     // 로직 유효성 검사
+  75|     if (!Array.isArray(rows) || rows.length === 0) {
+  76|       console.error("Gemini rawText:", rawText);
+  77|       return NextResponse.json({ error: "AI가 올바른 형식으로 응답하지 않았습니다. 다시 시도해주세요." }, { status: 500 });
+  78|     }
+  79| 
+  80|     return NextResponse.json({ rows });
+  81|   } catch (error) {
+  82|     console.error("[POST /api/ai/risk-rows]", error);
+  83|     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+  84|   }
+  85| }
