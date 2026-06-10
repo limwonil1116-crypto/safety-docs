@@ -874,6 +874,51 @@ function AiSpecialMeasuresButton({ doc, onGenerated, label = "AI 특별조치 �
   );
 }
 
+function AiMeasuresFromRiskButton({ doc, onGenerated, label = "AI \ud2b9\ubcc4\uc870\uce58 \ucd08\uc548 \uc0dd\uc131" }: {
+  doc: DocumentDetail;
+  onGenerated: (v: string) => void;
+  label?: string;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const handleGenerate = async () => {
+    setLoading(true); setError("");
+    try {
+      const fd = (doc.formDataJson ?? {}) as any;
+      const res = await fetch("/api/ai/risk-rows", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workContent: fd.workContents || fd.workContent || "",
+          workLocation: fd.facilityAddress || fd.facilityLocation || fd.workLocation || fd.workPosition || "",
+          riskItems: [],
+          checkedFactors: [],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "AI \uc0dd\uc131 \uc624\ub958");
+      const rows = Array.isArray(data.rows) ? data.rows : [];
+      const text = rows
+        .map((r: any) => String(r.improvement || r.riskFactor || "").trim())
+        .filter((s: string) => s !== "")
+        .map((s: string) => "- " + s)
+        .join("\n");
+      if (!text) throw new Error("AI \uc751\ub2f5\uc774 \ube44\uc5b4\uc788\uc2b5\ub2c8\ub2e4.");
+      onGenerated(text);
+    } catch (e: unknown) { setError(e instanceof Error ? e.message : "\uc624\ub958\uac00 \ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4."); }
+    finally { setLoading(false); }
+  };
+  return (
+    <div>
+      <button onClick={handleGenerate} disabled={loading}
+        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-50"
+        style={{ background: loading ? "#6b7280" : "linear-gradient(135deg, #7c3aed, #2563eb)" }}>
+        {loading ? "AI \ucd08\uc548 \uc0dd\uc131 \uc911..." : `\u2728 ${label}`}
+      </button>
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+    </div>
+  );
+}
+
 function SpecialMeasuresInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => { if (ref.current && ref.current.value !== value) ref.current.value = value; }, [value]);
@@ -1123,7 +1168,7 @@ export default function ApprovalDetailPage() {
           {confinedOrder === 2 && (
             <div className="space-y-2">
               <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">특별조치 필요사항을 입력 후 서명해주세요.</p>
-              <AiSpecialMeasuresButton doc={doc} onGenerated={setSpecialMeasuresInput} />
+              <AiMeasuresFromRiskButton doc={doc} onGenerated={setSpecialMeasuresInput} />
               <SpecialMeasuresInput value={specialMeasuresInput} onChange={setSpecialMeasuresInput} />
             </div>
           )}
@@ -1168,7 +1213,7 @@ export default function ApprovalDetailPage() {
           {powerOrder === 1 && (
             <div className="space-y-2">
               <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">특별조치 필요사항을 입력하고 서명하세요.</p>
-              <AiSpecialMeasuresButton doc={doc} onGenerated={setSpecialMeasuresInput} />
+              <AiMeasuresFromRiskButton doc={doc} onGenerated={setSpecialMeasuresInput} />
               <SpecialMeasuresInput value={specialMeasuresInput} onChange={setSpecialMeasuresInput} />
             </div>
           )}
