@@ -1,0 +1,48 @@
+total 1550
+
+=== grep: button components ===
+ 842| function AiSpecialMeasuresButton({ doc, onGenerated, label = "AI 특별조치 초안 생성" }: {
+ 852|       const res = await fetch("/api/ai/special-measures", {
+ 877| function AiMeasuresFromRiskButton({ doc, onGenerated, label = "AI \ud2b9\ubcc4\uc870\uce58 \ucd08\uc548 \uc0dd\uc131" }: {
+ 888|       const res = await fetch("/api/ai/risk-rows", {
+1171|               <AiMeasuresFromRiskButton doc={doc} onGenerated={setSpecialMeasuresInput} />
+1216|               <AiMeasuresFromRiskButton doc={doc} onGenerated={setSpecialMeasuresInput} />
+1257|               <AiSpecialMeasuresButton doc={doc} onGenerated={(v) => {
+
+=== handleGenerate region (849-864 approx) ===
+--- at 849 ---
+ 849|   const handleGenerate = async () => {
+ 850|     setLoading(true); setError("");
+ 851|     try {
+ 852|       const res = await fetch("/api/ai/special-measures", {
+ 853|         method: "POST", headers: { "Content-Type": "application/json" },
+ 854|         // 검토의견용은 항상 specialMeasures 텍스트 반환하도록 타입 고정
+ 855|         body: JSON.stringify({ documentType: "REVIEW_OPINION", formData: doc.formDataJson, originalType: doc.documentType }),
+ 856|       });
+ 857|       const data = await res.json();
+ 858|       if (!res.ok) throw new Error(data.error || "AI 생성 오류");
+ 859|       const result = data.specialMeasures || data.riskFactors || data.text || "";
+ 860|       if (!result) throw new Error("AI 응답이 비어있습니다.");
+ 861|       onGenerated(result);
+ 862|     } catch (e: unknown) { setError(e instanceof Error ? e.message : "오류가 발생했습니다."); }
+ 863|     finally { setLoading(false); }
+ 864|   };
+ 865|   return (
+--- at 884 ---
+ 884|   const handleGenerate = async () => {
+ 885|     setLoading(true); setError("");
+ 886|     try {
+ 887|       const fd = (doc.formDataJson ?? {}) as any;
+ 888|       const res = await fetch("/api/ai/risk-rows", {
+ 889|         method: "POST", headers: { "Content-Type": "application/json" },
+ 890|         body: JSON.stringify({
+ 891|           workContent: fd.workContents || fd.workContent || "",
+ 892|           workLocation: fd.facilityAddress || fd.facilityLocation || fd.workLocation || fd.workPosition || "",
+ 893|           riskItems: [],
+ 894|           checkedFactors: [],
+ 895|         }),
+ 896|       });
+ 897|       const data = await res.json();
+ 898|       if (!res.ok) throw new Error(data.error || "AI \uc0dd\uc131 \uc624\ub958");
+ 899|       const rows = Array.isArray(data.rows) ? data.rows : [];
+ 900|       const text = rows
