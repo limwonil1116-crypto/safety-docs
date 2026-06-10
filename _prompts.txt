@@ -1,0 +1,369 @@
+
+########## \app\api\ai\risk-rows\route.ts ##########
+total 139
+   1| import { NextRequest, NextResponse } from "next/server";
+   2| import { auth } from "@/auth";
+   3| 
+   4| const DT_CANON = ["\ucd94\ub77d","\uc804\ub3c4","\ucda9\ub3cc","\ud611\ucc29","\ub099\ud558","\ubd95\uad34","\uac10\uc804","\ud3ed\ubc1c","\ud654\uc7ac","\uc9c8\uc2dd","\uc720\ud574\ubb3c\uc811\ucd09","\uc775\uc0ac","\uae30\ud0c0"];
+   5| const DT_ALIAS: Record<string, string> = {
+   6|   "\ub099\uc0c1": "\ucd94\ub77d", "\ub5a8\uc5b4\uc9d0": "\ucd94\ub77d", "\ucd94\ub099": "\ucd94\ub77d",
+   7|   "\ub07c\uc784": "\ud611\ucc29", "\ud611\uc0ed": "\ud611\ucc29",
+   8|   "\ub118\uc5b4\uc9d0": "\uc804\ub3c4",
+   9|   "\ubd80\ub52a\ud798": "\ucda9\ub3cc",
+  10|   "\ub9de\uc74c": "\ub099\ud558", "\ube44\ub798": "\ub099\ud558", "\ub099\ud558\ube44\ub798": "\ub099\ud558",
+  11|   "\ubb34\ub108\uc9d0": "\ubd95\uad34", "\ub3c4\uad34": "\ubd95\uad34", "\ubd95\uad34\ub3c4\uad34": "\ubd95\uad34",
+  12|   "\ube60\uc9d0": "\uc775\uc0ac", "\uc775\uc218": "\uc775\uc0ac",
+  13|   "\ud30c\uc5f4": "\ud3ed\ubc1c", "\ud3ed\ubc1c\ud30c\uc5f4": "\ud3ed\ubc1c",
+  14|   "\uc0b0\uc18c\uacb0\ud54d": "\uc9c8\uc2dd",
+  15|   "\uc911\ub3c5": "\uc720\ud574\ubb3c\uc811\ucd09", "\uc720\ud574\ubb3c\uc9c8\uc811\ucd09": "\uc720\ud574\ubb3c\uc811\ucd09",
+  16| };
+  17| function _dtNorm(s: string): string {
+  18|   let out = "";
+  19|   for (let i = 0; i < s.length; i++) {
+  20|     const c = s.charCodeAt(i);
+  21|     if (c === 32 || c === 9 || c === 47 || c === 0xb7 || c === 0x318d || c === 0x30fb) continue;
+  22|     out += s[i];
+  23|   }
+  24|   return out;
+  25| }
+  26| function _dtLev(a: string, b: string): number {
+  27|   const m = a.length, n = b.length;
+  28|   const dp: number[] = [];
+  29|   for (let j = 0; j <= n; j++) dp[j] = j;
+  30|   for (let i = 1; i <= m; i++) {
+  31|     let prev = dp[0];
+  32|     dp[0] = i;
+  33|     for (let j = 1; j <= n; j++) {
+  34|       const tmp = dp[j];
+  35|       dp[j] = Math.min(dp[j] + 1, dp[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+  36|       prev = tmp;
+  37|     }
+  38|   }
+  39|   return dp[n];
+  40| }
+  41| function fixDisaster(raw: any): string {
+  42|   const s = _dtNorm(String(raw || ""));
+  43|   if (!s) return "\uae30\ud0c0";
+  44|   if (DT_CANON.indexOf(s) !== -1) return s;
+  45|   if (DT_ALIAS[s]) return DT_ALIAS[s];
+  46|   let best = "\uae30\ud0c0", bestD = 99;
+  47|   for (const c of DT_CANON) {
+  48|     const d = _dtLev(s, c);
+  49|     if (d < bestD) { bestD = d; best = c; }
+  50|   }
+  51|   return bestD <= 1 ? best : "\uae30\ud0c0";
+  52| }
+  53| export async function POST(req: NextRequest) {
+  54|   try {
+  55|     const session = await auth();
+  56|     if (!session?.user) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+  57| 
+  58|     const { workContent, workLocation, riskItems, checkedFactors } = await req.json();
+  59| 
+  60|     const riskStr = Array.isArray(riskItems) && riskItems.length > 0 ? riskItems.join(", ") : "없음";
+  61|     const factorStr = Array.isArray(checkedFactors) && checkedFactors.length > 0 ? checkedFactors.join(", ") : "없음";
+  62| 
+  63|     const prompt = [
+  64|       "당신은 한국농어초공사 안전관리 전문가입니다.",
+  65|       "아래 작업 정보를 분석하여 위험요소, 개선대책, 재해형태를 3개 작성하십시오.",
+  66|       "",
+  67|       "[작업 정보]",
+  68|       "- 작업내용: " + (workContent || "미입력"),
+  69|       "- 작업장소: " + (workLocation || "미입력"),
+  70|       "- 위험공종: " + riskStr,
+  71|       "- 예상위험요소: " + factorStr,
+  72|       "",
+  73|       "응답 형식: 아래 JSON 배열 형식으로만 출력하십시오.",
+  74|       "코드블록(\`\`\`)이나 추가 텍스트 없이 JSON만 출력하십시오.",
+  75|       '[{"riskFactor":"위험요소1","improvement":"개선대책1","disasterType":"\ucd94\ub77d"},{"riskFactor":"위험요소2","improvement":"개선대책2","disasterType":"\ud611\ucc29"},{"riskFactor":"위험요소3","improvement":"개선대책3","disasterType":"감전"}]',
+  76|       "",
+  77|       "disasterType\uc740 \ucd94\ub77d/\uc804\ub3c4/\ucda9\ub3cc/\ud611\ucc29/\ub099\ud558/\ubd95\uad34/\uac10\uc804/\ud3ed\ubc1c/\ud654\uc7ac/\uc9c8\uc2dd/\uc720\ud574\ubb3c\uc811\ucd09/\uc775\uc0ac/\uae30\ud0c0 \uc911 \ud558\ub098\uc758 \uc815\ud655\ud55c \ub2e8\uc5b4\ub85c\ub9cc \uc791\uc131.",
+  78|       "riskFactor는 20자 내, improvement는 30자 내로 작성.",
+  79|     ].join("\n");
+  80| 
+  81|     const apiKey = process.env.GEMINI_API_KEY;
+  82|     if (!apiKey) return NextResponse.json({ error: "Gemini API 키가 없습니다." }, { status: 500 });
+  83| 
+  84|     const response = await fetch(
+  85|       "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey,
+  86|       {
+  87|         method: "POST",
+  88|         headers: { "Content-Type": "application/json" },
+  89|         body: JSON.stringify({
+  90|           contents: [{ parts: [{ text: prompt }] }],
+  91|           generationConfig: { maxOutputTokens: 4096, temperature: 0.2, thinkingConfig: { thinkingBudget: 0 } },
+  92|         }),
+  93|       }
+  94|     );
+  95| 
+  96|     if (!response.ok) {
+  97|       const err = await response.json();
+  98|       return NextResponse.json({ error: err.error?.message || "Gemini 오류" }, { status: 500 });
+  99|     }
+ 100| 
+ 101|     const data = await response.json();
+ 102|     const parts = data.candidates?.[0]?.content?.parts || [];
+ 103|     const rawText = parts.map((p: any) => p.text || "").join("").trim();
+ 104| 
+ 105|     // 서버에서 직접 파싱하여 검증
+ 106|     const cleaned = rawText.replace(/```json|```/g, "").trim();
+ 107|     
+ 108|     // JSON 배열 추출 - 여러 패턴 시도
+ 109|     let rows: any[] | null = null;
+ 110|     
+ 111|     // 1차: 전체 텍스트를 JSON으로 파싱 시도
+ 112|     try { rows = JSON.parse(cleaned); } catch {}
+ 113|     
+ 114|     // 2차: [ ] 사이 추출 후 파싱
+ 115|     if (!Array.isArray(rows)) {
+ 116|       const start = cleaned.indexOf("[");
+ 117|       const end = cleaned.lastIndexOf("]");
+ 118|       if (start !== -1 && end !== -1 && end > start) {
+ 119|         try { rows = JSON.parse(cleaned.slice(start, end + 1)); } catch {}
+ 120|       }
+ 121|     }
+ 122| 
+ 123|     // 로직 유효성 검사
+ 124|     if (!Array.isArray(rows) || rows.length === 0) {
+ 125|       console.error("Gemini rawText:", rawText);
+ 126|       return NextResponse.json({ error: "AI가 올바른 형식으로 응답하지 않았습니다. 다시 시도해주세요." }, { status: 500 });
+ 127|     }
+ 128| 
+ 129|     const fixedRows = (rows as any[]).map((r: any) => ({
+ 130|       ...r,
+ 131|       disasterType: fixDisaster(r?.disasterType),
+ 132|     }));
+ 133| 
+ 134|     return NextResponse.json({ rows: fixedRows });
+ 135|   } catch (error) {
+ 136|     console.error("[POST /api/ai/risk-rows]", error);
+ 137|     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+ 138|   }
+ 139| }
+
+########## \app\api\ai\special-measures\route.ts ##########
+total 145
+   1| import { NextRequest, NextResponse } from "next/server";
+   2| import { auth } from "@/auth";
+   3| 
+   4| export async function POST(req: NextRequest) {
+   5|   try {
+   6|     const session = await auth();
+   7|     if (!session?.user) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+   8| 
+   9|     const body = await req.json();
+  10|     const { documentType, formData } = body;
+  11|     const fd = formData ?? {};
+  12| 
+  13|     const apiKey = process.env.GEMINI_API_KEY;
+  14|     if (!apiKey) return NextResponse.json({ error: "Gemini API 키가 없습니다." }, { status: 500 });
+  15| 
+  16|     const taskName = fd.taskName || fd.serviceName || fd.projectName || "";
+  17|     const workLocation = fd.facilityLocation || fd.facilityAddress || fd.workLocation || "";
+  18|     const workContent = fd.workContents || fd.workContent || "";
+  19|     const workPosition = fd.workPosition || "";
+  20| 
+  21|     const typeLabel: Record<string, string> = {
+  22|       SAFETY_WORK_PERMIT: "안전작업허가서",
+  23|       CONFINED_SPACE: "밀폐공간작업허가서",
+  24|       HOLIDAY_WORK: "휴일작업신고서",
+  25|       POWER_OUTAGE: "정전작업허가서",
+  26|     };
+  27| 
+  28|     const callGemini = async (prompt: string, maxTokens = 1000) => {
+  29|       const response = await fetch(
+  30|         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey,
+  31|         {
+  32|           method: "POST",
+  33|           headers: { "Content-Type": "application/json" },
+  34|           body: JSON.stringify({
+  35|             contents: [{ parts: [{ text: prompt }] }],
+  36|             generationConfig: { maxOutputTokens: maxTokens, temperature: 0.4, thinkingConfig: { thinkingBudget: 0 } },
+  37|           }),
+  38|         }
+  39|       );
+  40|       const data = await response.json();
+  41|       const cand = data.candidates?.[0];
+  42|       const text = ((cand?.content?.parts || []).map((p: any) => p.text || "").join("") as string).trim();
+  43|       if (!text) {
+  44|         const fr = cand?.finishReason || data?.promptFeedback?.blockReason || "EMPTY";
+  45|         throw new Error("Gemini empty response (" + fr + ")");
+  46|       }
+  47|       return text;
+  48|     };
+  49| 
+  50|     // 검토의견 초안 (검토 단계)
+  51|     const originalType = (body as any).originalType || documentType;
+  52|     if (documentType === "REVIEW_OPINION") {
+  53|       const docLabel = typeLabel[originalType] || "안전서류";
+  54|       // formData에서 위험요소/안전조치 정보 추출
+  55|       const riskHighPlace = fd.riskHighPlace ? "고소작업(2m이상)" : "";
+  56|       const riskWater = fd.riskWaterWork ? "수상·수변작업" : "";
+  57|       const riskConfined = fd.riskConfinedSpace ? "밀폐공간작업" : "";
+  58|       const riskFire = fd.riskFireWork ? "화기작업" : "";
+  59|       const riskPower = fd.riskPowerOutage ? "정전작업" : "";
+  60|       const riskList = [riskHighPlace,riskWater,riskConfined,riskFire,riskPower].filter(Boolean).join(", ") || "미입력";
+  61|       const safetyChecks = Array.isArray(fd.safetyChecks)
+  62|         ? (fd.safetyChecks as any[]).filter((c:any) => c.applicable === "해당").map((c:any) => c.label?.replace(/^[\u25cf\u2605]/,"")||"").join(", ")
+  63|         : "";
+  64|       const participants = fd.participants || fd.workContent || "";
+  65|       const prompt = `당신은 한국농어얄공사 안전관리 용역감독원입니다.
+  66| ${docLabel} 신청서를 검토하고 구체적인 안전조치 검토의견 초안을 작성해주세요.
+  67| 
+  68| [작업 정보]
+  69| - 용역명: ${taskName || "미입력"}
+  70| - 작업내용: ${workContent || "미입력"}
+  71| - 작업위치: ${workLocation || "미입력"}
+  72| - 위험공종: ${riskList}
+  73| - 안전조치 해당항목: ${safetyChecks || "미입력"}
+  74| 
+  75| 작성 요령:
+  76| 1. 각 위험공종별 위험요인과 안전조치의 적정성을 평가하는 구체적 텍스트
+  77| 2. 위험성평가 대체의 적정성 평가 포함
+  78| 3. 안전조치 해당항목에 대한 현장 실행 권고사항 서술
+  79| 4. 산업안전보건법 등 법적근거 포함
+  80| 5. "- "로 시작하는 문장으로 7개 이상 작성
+  81| 6. 마크다운 없이 순수 텍스트, 한국어 수식어체
+  82| 7. 각 항목은 2~3문장으로 작성하여 충분한 분량 유지`;
+  83|       const specialMeasures = await callGemini(prompt, 5000);
+  84|       return NextResponse.json({ specialMeasures });
+  85|     }
+  86| 
+  87|     // 휴일작업 - 위험요소/개선대유
+  88|     if (documentType === "HOLIDAY_WORK") {
+  89|       const prompt = `당신은 한국 건설현장 안전관리 전문가입니다.
+  90| 다음 휴일작업에 대해 위험요소 3가지와 개선대유 3가지를 작성하세요.
+  91| 
+  92| [작업 정보]
+  93| - 용역명: ${taskName}
+  94| - 작업위치: ${workPosition} ${workLocation}
+  95| - 작업공종: ${workContent}
+  96| 
+  97| 반드시 JSON만 응답 (다른 텍스트 없이):
+  98| {"riskFactors":"1. 위험요소1\n2. 위험요소2\n3. 위험요소3","improvementMeasures":"1. 개선대유\n2. 개선대유\n3. 개선대유"}`;
+  99|       const text = await callGemini(prompt, 800);
+ 100|       try {
+ 101|         const clean = text.replace(/```json|```/g, "").trim();
+ 102|         const start = clean.indexOf("{");
+ 103|         const end = clean.lastIndexOf("}");
+ 104|         const parsed = JSON.parse(clean.slice(start, end + 1));
+ 105|         return NextResponse.json({ riskFactors: parsed.riskFactors || "", improvementMeasures: parsed.improvementMeasures || "" });
+ 106|       } catch {
+ 107|         return NextResponse.json({ riskFactors: text, improvementMeasures: "" });
+ 108|       }
+ 109|     }
+ 110| 
+ 111|     // 기타 문서타입 - 특별조치사항
+ 112|     const riskItems: string[] = [];
+ 113|     if (fd.riskHighPlace) riskItems.push("고소작업(2m이상)" + (fd.riskHighPlaceDetail ? ": " + fd.riskHighPlaceDetail : ""));
+ 114|     if (fd.riskWaterWork) riskItems.push("수상·수변작업" + (fd.riskWaterWorkDetail ? ": " + fd.riskWaterWorkDetail : ""));
+ 115|     if (fd.riskConfinedSpace) riskItems.push("밀폐공간작업" + (fd.riskConfinedSpaceDetail ? ": " + fd.riskConfinedSpaceDetail : ""));
+ 116|     if (fd.riskPowerOutage) riskItems.push("정전작업" + (fd.riskPowerOutageDetail ? ": " + fd.riskPowerOutageDetail : ""));
+ 117|     if (fd.riskFireWork) riskItems.push("화기작업" + (fd.riskFireWorkDetail ? ": " + fd.riskFireWorkDetail : ""));
+ 118|     const factorMap: Record<string, string> = {
+ 119|       factorNarrowAccess: "진출입로 협소", factorSlippery: "미끄러짐(이끼, 습기)",
+ 120|       factorSteepSlope: "급경사면", factorWaterHazard: "파랑·유수·수심",
+ 121|       factorRockfall: "낙석·토사붕괴", factorNoRailing: "난간 미설치",
+ 122|       factorLadderNoGuard: "사다리·방호울 미설치", factorSuffocation: "질식·화재·폭발",
+ 123|       factorElectricFire: "감전·전기불꽃 화재", factorSparkFire: "스파크 화염 화재",
+ 124|     };
+ 125|     const checkedFactors = Object.entries(factorMap).filter(([k]) => fd[k]).map(([,v]) => v);
+ 126|     const docLabel = typeLabel[documentType] || "안전서류";
+ 127|     const prompt = `당신은 한국 건설현장 안전관리 전문가입니다.
+ 128| ${docLabel} 특별조치 필요사항을 작성해주세요.
+ 129| 
+ 130| [작업 정보]
+ 131| - 용역명: ${taskName}
+ 132| - 작업위치: ${workLocation}
+ 133| - 작업내용: ${workContent}
+ 134| - 위험공종: ${riskItems.join(", ") || "없음"}
+ 135| - 위험요소: ${checkedFactors.join(", ") || "없음"}
+ 136| 
+ 137| 조건: 구체적 안전조치 5~8개, "- "로 시작, 한국어로 작성`;
+ 138| 
+ 139|     const specialMeasures = await callGemini(prompt, 1000);
+ 140|     return NextResponse.json({ specialMeasures });
+ 141|   } catch (error) {
+ 142|     console.error("[POST /api/ai/special-measures]", error);
+ 143|     return NextResponse.json({ error: `AI 오류: ${error instanceof Error ? error.message : String(error)}` }, { status: 500 });
+ 144|   }
+ 145| }
+
+########## \app\api\ai\tbm-risk\route.ts ##########
+total 76
+   1| import { NextRequest, NextResponse } from "next/server";
+   2| import { auth } from "@/auth";
+   3| 
+   4| export async function POST(req: NextRequest) {
+   5|   try {
+   6|     const session = await auth();
+   7|     if (!session?.user) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+   8| 
+   9|     const { workToday, workAddress, facilityName, riskType, reportDate } = await req.json();
+  10| 
+  11|     const lines = [
+  12|       "당신은 한국농어초공사 건설현장 안전관리 전문가입니다.",
+  13|       "다음 정보를 바탕으로 TBM 위험요인과 안전대책을 작성해주세요.",
+  14|       "",
+  15|       "- 작업일자: " + (reportDate || "오늘"),
+  16|       "- 시설물명: " + (facilityName || "미입력"),
+  17|       "- 작업내용: " + (workToday || "미입력"),
+  18|       "- 작업장소: " + (workAddress || "미입력"),
+  19|       "- 위험공종: " + (riskType || "해당없음"),
+  20|       "",
+  21|       "반드시 아래 JSON 형식으로만 응답하세요. 마크다운, 설명 없이 JSON만:",
+  22|       "{",
+  23|       '  "riskFactor1": "구체적 위험요인 1",',
+  24|       '  "riskMeasure1": "대책 1",',
+  25|       '  "riskFactor2": "구체적 위험요인 2",',
+  26|       '  "riskMeasure2": "대책 2",',
+  27|       '  "riskFactor3": "구체적 위험요인 3",',
+  28|       '  "riskMeasure3": "대책 3",',
+  29|       '  "mainRiskFactor": "오늘 가장 중요한 위험요인",',
+  30|       '  "mainRiskMeasure": "중점 대책",',
+  31|       '  "riskElement1": "잔재위험요소 1",',
+  32|       '  "riskElement2": "잔재위험요소 2",',
+  33|       '  "riskElement3": "잔재위험요소 3"',
+  34|       "}",
+  35|     ];
+  36|     const prompt = lines.join("\n");
+  37| 
+  38|     const apiKey = process.env.GEMINI_API_KEY;
+  39|     if (!apiKey) return NextResponse.json({ error: "GEMINI_API_KEY가 없습니다." }, { status: 500 });
+  40| 
+  41|     const res = await fetch(
+  42|       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+  43|       {
+  44|         method: "POST",
+  45|         headers: { "Content-Type": "application/json" },
+  46|         body: JSON.stringify({
+  47|           contents: [{ parts: [{ text: prompt }] }],
+  48|           generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+  49|         }),
+  50|       }
+  51|     );
+  52| 
+  53|     if (!res.ok) {
+  54|       const err = await res.json();
+  55|       console.error("Gemini error:", err);
+  56|       return NextResponse.json({ error: "AI API 오류: " + JSON.stringify(err) }, { status: 500 });
+  57|     }
+  58| 
+  59|     const data = await res.json();
+  60|     const parts = data.candidates?.[0]?.content?.parts || [];
+  61|     const fullText = parts.map((p: any) => p.text || "").join("");
+  62| 
+  63|     const jsonStart = fullText.indexOf("{");
+  64|     const jsonEnd = fullText.lastIndexOf("}");
+  65|     if (jsonStart === -1 || jsonEnd === -1) {
+  66|       console.error("No JSON found:", fullText.substring(0, 300));
+  67|       return NextResponse.json({ error: "AI 응답 파싱 오류" }, { status: 500 });
+  68|     }
+  69| 
+  70|     const result = JSON.parse(fullText.substring(jsonStart, jsonEnd + 1));
+  71|     return NextResponse.json({ result });
+  72|   } catch (e) {
+  73|     console.error("TBM AI error:", e);
+  74|     return NextResponse.json({ error: "오류가 발생했습니다." }, { status: 500 });
+  75|   }
+  76| }

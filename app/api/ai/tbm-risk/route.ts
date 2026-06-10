@@ -9,8 +9,8 @@ export async function POST(req: NextRequest) {
     const { workToday, workAddress, facilityName, riskType, reportDate } = await req.json();
 
     const lines = [
-      "당신은 한국농어초공사 건설현장 안전관리 전문가입니다.",
-      "다음 정보를 바탕으로 TBM 위험요인과 안전대책을 작성해주세요.",
+      "당신은 \ud55c\uad6d\ub18d\uc5b4\ucd0c\uacf5\uc0ac 건설현장 안전관리 전문가입니다.",
+      "\ub2e4\uc74c \uc815\ubcf4\ub97c \uba74\ubc00\ud788 \ubd84\uc11d\ud558\uc5ec, \uc0b0\uc5c5\uc548\uc804\ubcf4\uac74\uae30\uc900\uc5d0 \uad00\ud55c \uaddc\uce59 \ub4f1 \uad00\ub828 \uae30\uc900\uc5d0 \ubd80\ud569\ud558\ub294 TBM \uc704\ud5d8\uc694\uc778\uacfc \uc548\uc804\ub300\ucc45\uc744 \uc791\uc131\ud574\uc8fc\uc138\uc694.",
       "",
       "- 작업일자: " + (reportDate || "오늘"),
       "- 시설물명: " + (facilityName || "미입력"),

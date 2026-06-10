@@ -61,8 +61,8 @@ export async function POST(req: NextRequest) {
     const factorStr = Array.isArray(checkedFactors) && checkedFactors.length > 0 ? checkedFactors.join(", ") : "없음";
 
     const prompt = [
-      "당신은 한국농어초공사 안전관리 전문가입니다.",
-      "아래 작업 정보를 분석하여 위험요소, 개선대책, 재해형태를 3개 작성하십시오.",
+      "당신은 \ud55c\uad6d\ub18d\uc5b4\ucd0c\uacf5\uc0ac 안전관리 전문가입니다.",
+      "\uc81c\ucd9c\ub41c \uc791\uc5c5 \uc815\ubcf4\ub97c \uba74\ubc00\ud788 \ubd84\uc11d\ud558\uace0, \uc0b0\uc5c5\uc548\uc804\ubcf4\uac74\uae30\uc900\uc5d0 \uad00\ud55c \uaddc\uce59 \ub4f1 \uad00\ub828 \uae30\uc900\uc5d0 \ubd80\ud569\ud558\ub3c4\ub85d \uc704\ud5d8\uc694\uc18c, \uac1c\uc120\ub300\ucc45, \uc7ac\ud574\ud615\ud0dc\ub97c 3\uac1c \uc791\uc131\ud558\uc2ed\uc2dc\uc624.",
       "",
       "[작업 정보]",
       "- 작업내용: " + (workContent || "미입력"),

@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
         ? (fd.safetyChecks as any[]).filter((c:any) => c.applicable === "해당").map((c:any) => c.label?.replace(/^[\u25cf\u2605]/,"")||"").join(", ")
         : "";
       const participants = fd.participants || fd.workContent || "";
-      const prompt = `당신은 한국농어얄공사 안전관리 용역감독원입니다.
+      const prompt = `당신은 \ud55c\uad6d\ub18d\uc5b4\ucd0c\uacf5\uc0ac 안전관리 용역감독원입니다.
 ${docLabel} 신청서를 검토하고 구체적인 안전조치 검토의견 초안을 작성해주세요.
 
 [작업 정보]
@@ -72,14 +72,15 @@ ${docLabel} 신청서를 검토하고 구체적인 안전조치 검토의견 초
 - 위험공종: ${riskList}
 - 안전조치 해당항목: ${safetyChecks || "미입력"}
 
-작성 요령:
-1. 각 위험공종별 위험요인과 안전조치의 적정성을 평가하는 구체적 텍스트
-2. 위험성평가 대체의 적정성 평가 포함
-3. 안전조치 해당항목에 대한 현장 실행 권고사항 서술
-4. 산업안전보건법 등 법적근거 포함
-5. "- "로 시작하는 문장으로 7개 이상 작성
-6. 마크다운 없이 순수 텍스트, 한국어 수식어체
-7. 각 항목은 2~3문장으로 작성하여 충분한 분량 유지`;
+\uc791\uc131 \uc694\ub839:
+1. \uc81c\ucd9c\ub41c \uc791\uc5c5 \uc815\ubcf4\ub97c \uba74\ubc00\ud788 \ubd84\uc11d\ud558\uace0, \uc774 \ubb38\uc11c\uac00 ${docLabel}(\ubc95\uc815\uc11c\ub958)\uc784\uc744 \uace0\ub824\ud558\uc5ec \uadf8 \ubaa9\uc801\uc5d0 \ubd80\ud569\ud558\uac8c \uc791\uc131
+2. \uac01 \uc704\ud5d8\uacf5\uc885\ubcc4 \uc704\ud5d8\uc694\uc778\uacfc \uc548\uc804\uc870\uce58\uc758 \uc801\uc815\uc131\uc744 \uad6c\uccb4\uc801\uc73c\ub85c \ud3c9\uac00
+3. \uc704\ud5d8\uc131\ud3c9\uac00 \ub300\uccb4\uc758 \uc801\uc815\uc131 \ud3c9\uac00 \ud3ec\ud568
+4. \uc548\uc804\uc870\uce58 \ud574\ub2f9\ud56d\ubaa9\uc5d0 \ub300\ud55c \ud604\uc7a5 \uc2e4\ud589 \uad8c\uace0\uc0ac\ud56d \uc11c\uc220
+5. \uc0b0\uc5c5\uc548\uc804\ubcf4\uac74\ubc95 \ubc0f \uc0b0\uc5c5\uc548\uc804\ubcf4\uac74\uae30\uc900\uc5d0 \uad00\ud55c \uaddc\uce59 \ub4f1 \uad00\ub828 \ubc95\ub839\uc744 \uadfc\uac70\ub85c \uc81c\uc2dc\ud558\ub418, \uc815\ud655\ud788 \uc544\ub294 \uacbd\uc6b0\uc5d0\ub9cc \uc870\ubb38 \ubc88\ud638\ub97c \uc778\uc6a9\ud558\uace0 \ubd88\ud655\uc2e4\ud558\uba74 \uaddc\uce59\u00b7\uae30\uc900 \ubd84\uc57c\ub85c\ub9cc \uc5b8\uae09\ud558\uba70 \uc870\ubb38 \ubc88\ud638\ub97c \uc784\uc758\ub85c \ub9cc\ub4e4\uc9c0 \ub9d0 \uac83
+6. "- "\ub85c \uc2dc\uc791\ud558\ub294 \ubb38\uc7a5\uc73c\ub85c 7\uac1c \uc774\uc0c1 \uc791\uc131
+7. \ub9c8\ud06c\ub2e4\uc6b4 \uc5c6\uc774 \uc21c\uc218 \ud14d\uc2a4\ud2b8, \ud55c\uad6d\uc5b4 \uc11c\uc220\uccb4
+8. \uac01 \ud56d\ubaa9\uc740 2~3\ubb38\uc7a5\uc73c\ub85c \uc791\uc131\ud558\uc5ec \ucda9\ubd84\ud55c \ubd84\ub7c9 \uc720\uc9c0`;
       const specialMeasures = await callGemini(prompt, 5000);
       return NextResponse.json({ specialMeasures });
     }
@@ -87,7 +88,7 @@ ${docLabel} 신청서를 검토하고 구체적인 안전조치 검토의견 초
     // 휴일작업 - 위험요소/개선대유
     if (documentType === "HOLIDAY_WORK") {
       const prompt = `당신은 한국 건설현장 안전관리 전문가입니다.
-다음 휴일작업에 대해 위험요소 3가지와 개선대유 3가지를 작성하세요.
+\ub2e4\uc74c \ud734\uc77c\uc791\uc5c5\uc758 \uc81c\ucd9c \uc815\ubcf4\ub97c \ubd84\uc11d\ud558\uc5ec, \uc0b0\uc5c5\uc548\uc804\ubcf4\uac74\uae30\uc900\uc5d0 \uad00\ud55c \uaddc\uce59 \ub4f1 \uad00\ub828 \uae30\uc900\uc5d0 \ubd80\ud569\ud558\ub294 \uc704\ud5d8\uc694\uc18c 3\uac00\uc9c0\uc640 \uac1c\uc120\ub300\ucc45 3\uac00\uc9c0\ub97c \uc791\uc131\ud558\uc138\uc694.
 
 [작업 정보]
 - 용역명: ${taskName}
@@ -125,7 +126,7 @@ ${docLabel} 신청서를 검토하고 구체적인 안전조치 검토의견 초
     const checkedFactors = Object.entries(factorMap).filter(([k]) => fd[k]).map(([,v]) => v);
     const docLabel = typeLabel[documentType] || "안전서류";
     const prompt = `당신은 한국 건설현장 안전관리 전문가입니다.
-${docLabel} 특별조치 필요사항을 작성해주세요.
+\uc81c\ucd9c\ub41c \uc791\uc5c5 \uc815\ubcf4\ub97c \uba74\ubc00\ud788 \ubd84\uc11d\ud558\uace0, \uc774 \ubb38\uc11c\uac00 ${docLabel}(\ubc95\uc815\uc11c\ub958)\uc784\uc744 \uace0\ub824\ud558\uc5ec \ud2b9\ubcc4\uc870\uce58 \ud544\uc694\uc0ac\ud56d\uc744 \uc791\uc131\ud574\uc8fc\uc138\uc694.
 
 [작업 정보]
 - 용역명: ${taskName}
@@ -134,7 +135,7 @@ ${docLabel} 특별조치 필요사항을 작성해주세요.
 - 위험공종: ${riskItems.join(", ") || "없음"}
 - 위험요소: ${checkedFactors.join(", ") || "없음"}
 
-조건: 구체적 안전조치 5~8개, "- "로 시작, 한국어로 작성`;
+\uc870\uac74: \uc0b0\uc5c5\uc548\uc804\ubcf4\uac74\ubc95 \ubc0f \uc0b0\uc5c5\uc548\uc804\ubcf4\uac74\uae30\uc900\uc5d0 \uad00\ud55c \uaddc\uce59 \ub4f1 \uad00\ub828 \ubc95\ub839\uc744 \uadfc\uac70\ub85c \ud55c \uad6c\uccb4\uc801 \uc548\uc804\uc870\uce58 5~8\uac1c, "- "\ub85c \uc2dc\uc791, \ud55c\uad6d\uc5b4\ub85c \uc791\uc131. \uc815\ud655\ud788 \uc544\ub294 \uacbd\uc6b0\uc5d0\ub9cc \uc870\ubb38 \ubc88\ud638\ub97c \uc778\uc6a9\ud558\uace0, \ubd88\ud655\uc2e4\ud558\uba74 \uaddc\uce59\u00b7\uae30\uc900 \ubd84\uc57c\ub85c\ub9cc \uc5b8\uae09\ud558\uba70 \uc870\ubb38 \ubc88\ud638\ub97c \uc784\uc758\ub85c \ub9cc\ub4e4\uc9c0 \ub9d0 \uac83.`;
 
     const specialMeasures = await callGemini(prompt, 1000);
     return NextResponse.json({ specialMeasures });
