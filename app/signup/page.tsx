@@ -11,6 +11,7 @@ export default function SignupPage() {
   const [form, setForm] = useState({
     name: "",
     organization: "",
+    position: "",
     contractorName: "",
     email: "",
     password: "",
@@ -67,6 +68,7 @@ export default function SignupPage() {
         body: JSON.stringify({
           name: form.name,
           organization: finalOrg,
+          position: form.position,
           email: form.email,
           password: form.password,
           role: form.role,
@@ -151,6 +153,13 @@ export default function SignupPage() {
               <input type="tel" value={form.phone}
                 onChange={e => handleChange("phone", e.target.value)}
                 placeholder="010-0000-0000" className={inputClass} />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">직책</label>
+              <input type="text" value={form.position}
+                onChange={e => handleChange("position", e.target.value)}
+                placeholder="예) 부장, 감시인, 작업자" className={inputClass} />
             </div>
 
             <div>

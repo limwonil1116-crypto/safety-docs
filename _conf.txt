@@ -1,0 +1,224 @@
+total 1056
+
+=== function/component signatures ===
+  48| function CB({ checked, size = 9 }: { checked: boolean; size?: number }) {
+  56| function Footer({ documentId, createdAt }: { documentId: string; createdAt: string }) {
+  65| function fmtDateTime(dateStr?: string, timeStr?: string): string {
+  79| function buildPeriod(fd: Record<string, any>): string {
+  87| function isCoordinate(val: string): boolean {
+  91| function getWorkLocation(fd: Record<string, any>, workAddress?: string | null): string {
+ 105| function ApplicantRow({ applicantCompany, applicantTitle, applicantName, signatureData, labelWidth = 55 }: {
+ 131| function ApproverRow({ roleLabel, deptLabel, name, signatureData, borderBottom = true }: {
+ 157| function ApproverSection({ entries }: { entries: Array<{ roleLabel: string; deptLabel?: string; name?: string; signatureData?: string }> }) {
+ 169| export function AttachmentPagesPDF({ riskAssessFiles, safetyCheckPhotos, safetyCheckDocs, documentId, createdAt }: {
+ 257| export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+ 503| export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+ 637| export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+ 749| export function PowerOutagePDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+ 852| export function TbmReportPDF({ report }: { report: Record<string, any> }) {
+
+=== ApplicantRow (105-130) ===
+ 105| function ApplicantRow({ applicantCompany, applicantTitle, applicantName, signatureData, labelWidth = 55 }: {
+ 106|   applicantCompany?: string; applicantTitle?: string; applicantName?: string;
+ 107|   signatureData?: string; labelWidth?: number;
+ 108| }) {
+ 109|   return (
+ 110|     <View style={[S.tr, { alignItems: "stretch", minHeight: 36 }]}>
+ 111|       <Text style={[S.il, { width: labelWidth }]}>신  청  인</Text>
+ 112|       <View style={{ flex: 1.5, borderRight: "0.5px solid " + C.border, padding: "4 4", justifyContent: "center" }}>
+ 113|         <Text style={{ fontSize: 9 }}>{`(업체명) ${applicantCompany || ""}`}</Text>
+ 114|       </View>
+ 115|       <View style={{ flex: 1, borderRight: "0.5px solid " + C.border, padding: "4 4", justifyContent: "center" }}>
+ 116|         <Text style={{ fontSize: 9 }}>{`(직책) ${applicantTitle || ""}`}</Text>
+ 117|       </View>
+ 118|       <View style={{ flex: 1, borderRight: "0.5px solid " + C.border, padding: "4 4", justifyContent: "center" }}>
+ 119|         <Text style={{ fontSize: 9 }}>{`(성명) ${applicantName || ""}`}</Text>
+ 120|       </View>
+ 121|       <View style={{ width: 95, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "4 4", gap: 4 }}>
+ 122|         <Text style={{ fontSize: 8, color: "#888" }}>(서명)</Text>
+ 123|         {signatureData
+ 124|           ? <Image src={signatureData} style={{ width: 60, height: 22, objectFit: "contain" }} />
+ 125|           : <View style={{ width: 60, height: 20, border: "0.5px dashed #ccc" }} />}
+ 126|       </View>
+ 127|     </View>
+ 128|   );
+ 129| }
+ 130| 
+
+=== ApproverSection (157-168) ===
+ 157| function ApproverSection({ entries }: { entries: Array<{ roleLabel: string; deptLabel?: string; name?: string; signatureData?: string }> }) {
+ 158|   return (
+ 159|     <View style={{ border: "0.8px solid " + C.border, marginTop: 6 }}>
+ 160|       {entries.map((e, i) => (
+ 161|         <ApproverRow key={i} roleLabel={e.roleLabel} deptLabel={e.deptLabel} name={e.name} signatureData={e.signatureData} borderBottom={i < entries.length - 1} />
+ 162|       ))}
+ 163|     </View>
+ 164|   );
+ 165| }
+ 166| 
+ 167| // ✅ 2번: 첨부파일 페이지들 (위험성평가표, 개선대책 사진/문서)
+ 168| // renderToBuffer는 Document 컴포넌트를 직접 받으므로 Document로 감싸서 반환
+
+=== ApproverRow (131-156) ===
+ 131| function ApproverRow({ roleLabel, deptLabel, name, signatureData, borderBottom = true }: {
+ 132|   roleLabel: string; deptLabel?: string; name?: string; signatureData?: string; borderBottom?: boolean;
+ 133| }) {
+ 134|   return (
+ 135|     <View style={{ flexDirection: "row", alignItems: "stretch", borderBottom: borderBottom ? "0.5px solid " + C.border : "none", minHeight: 36 }}>
+ 136|       <View style={{ width: 78, padding: "4 5", backgroundColor: C.labelBg, borderRight: "0.5px solid " + C.border, justifyContent: "center" }}>
+ 137|         <Text style={{ fontSize: 9, fontWeight: "bold", color: C.navy }}>{roleLabel}</Text>
+ 138|       </View>
+ 139|       <View style={{ flex: 2, borderRight: "0.5px solid " + C.border, padding: "4 5", justifyContent: "center" }}>
+ 140|         <Text style={{ fontSize: 8.5, color: "#555" }}>
+ 141|           {deptLabel || "(부서) 한국농어촌공사   (직책) 용역관리자"}
+ 142|         </Text>
+ 143|       </View>
+ 144|       <View style={{ width: 85, padding: "4 5", borderRight: "0.5px solid " + C.border, justifyContent: "center" }}>
+ 145|         <Text style={{ fontSize: 9.5 }}>{`(성명) ${name || ""}`}</Text>
+ 146|       </View>
+ 147|       <View style={{ width: 105, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "4 4", gap: 4 }}>
+ 148|         <Text style={{ fontSize: 8, color: "#888" }}>(서명)</Text>
+ 149|         {signatureData
+ 150|           ? <Image src={signatureData} style={{ width: 75, height: 22, objectFit: "contain" }} />
+ 151|           : <View style={{ width: 75, height: 20, border: "0.5px dashed #ccc" }} />}
+ 152|       </View>
+ 153|     </View>
+ 154|   );
+ 155| }
+ 156| 
+
+=== ConfinedSpacePDF (503-636) ===
+ 503| export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+ 504|   formData: Record<string, any>;
+ 505|   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+ 506|   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
+ 507|   workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
+ 508| }) {
+ 509|   const checks: Array<{ label: string; applicable: string; result: string }> = fd.safetyChecks ?? [];
+ 510|   const gasMeasureRows: Array<any> = fd.gasMeasureRows ?? [
+ 511|     { time: "전", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
+ 512|     { time: "중", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
+ 513|     { time: "후", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
+ 514|   ];
+ 515|   const a1 = approvalLines.find(l => l.approvalOrder === 1);
+ 516|   const a2 = approvalLines.find(l => l.approvalOrder === 2);
+ 517|   const periodText = buildPeriod(fd);
+ 518|   const workLocationText = getWorkLocation(fd, workAddress);
+ 519| 
+ 520|   const formatGasSubstances = (row: any) => {
+ 521|     const parts: string[] = [];
+ 522|     if (row.o2)  parts.push(`O₂: ${row.o2}%`);
+ 523|     if (row.co2) parts.push(`CO₂: ${row.co2}%`);
+ 524|     if (row.h2s) parts.push(`H₂S: ${row.h2s}ppm`);
+ 525|     if (row.co)  parts.push(`CO: ${row.co}ppm`);
+ 526|     if (row.ex)  parts.push(`EX: ${row.ex}%`);
+ 527|     if (row.substances) parts.push(row.substances);
+ 528|     return parts.join("  ");
+ 529|   };
+ 530| 
+ 531|   return (
+ 532|     <Document>
+ 533|       <Page size="A4" style={S.page}>
+ 534|         <View style={S.titleBox}>
+ 535|           <Text style={S.titleMain}>밀폐공간 작업 허가서<Text style={{ fontSize: 13, fontWeight: "normal" }}>(용역업체용)</Text></Text>
+ 536|         </View>
+ 537|         <View style={S.table}>
+ 538|           <ApplicantRow applicantCompany={fd.applicantCompany} applicantTitle={fd.applicantTitle} applicantName={fd.applicantName} signatureData={applicantSignature} labelWidth={100} />
+ 539|           {[
+ 540|             { label: "용 역 명",    val: taskName || fd.serviceName || "" },
+ 541|             { label: "작업수행기간", val: periodText },
+ 542|             { label: "작업장소",     val: workLocationText },
+ 543|             { label: "작업내용",     val: fd.workContent || "" },
+ 544|             { label: "출입자 명단", val: fd.entryList || "" },
+ 545|           ].map((row, i, arr) => (
+ 546|             <View key={i} style={i === arr.length - 1 ? S.trLast : S.tr}>
+ 547|               <Text style={[S.il, { width: 100 }]}>{row.label}</Text>
+ 548|               <Text style={[S.iv, { borderRight: 0, minHeight: 16 }]}>{row.val}</Text>
+ 549|             </View>
+ 550|           ))}
+ 551|         </View>
+ 552|         <Text style={{ fontSize: 9, textAlign: "center", marginBottom: 3 }}>위 공간에서의 작업을 다음의 조건에서만 허함.</Text>
+ 553| 
+ 554|         <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "3 6", marginBottom: 1 }}>
+ 555|           <View style={{ flexDirection: "row", alignItems: "center" }}>
+ 556|             <Text style={{ fontSize: 10, fontWeight: "bold" }}>1. 화기작업 허가필요유무 :   </Text>
+ 557|             <CB checked={fd.needFireWork === "필요"} /><Text style={{ fontSize: 10, marginRight: 14 }}> 필요   </Text>
+ 558|             <CB checked={fd.needFireWork === "불필요"} /><Text style={{ fontSize: 10 }}> 불필요</Text>
+ 559|           </View>
+ 560|         </View>
+ 561| 
+ 562|         <View style={{ backgroundColor: C.greenBg, border: "0.8px solid " + C.border, padding: "3 6", marginBottom: 3 }}>
+ 563|           <View style={{ flexDirection: "row", alignItems: "center" }}>
+ 564|             <Text style={{ fontSize: 10, fontWeight: "bold" }}>2. 내연기관(양수기) 또는 갈탄 등의 사용여부 :   </Text>
+ 565|             <CB checked={fd.useInternalEngine === "사용"} /><Text style={{ fontSize: 10, marginRight: 14 }}> 사용   </Text>
+ 566|             <CB checked={fd.useInternalEngine === "미사용"} /><Text style={{ fontSize: 10 }}> 미사용</Text>
+ 567|           </View>
+ 568|         </View>
+ 569| 
+ 570|         <Text style={S.secHeader}>3. 안전조치 요구사항</Text>
+ 571|         <View style={S.table}>
+ 572|           <View style={S.tr}>
+ 573|             <Text style={[S.th, { flex: 4 }]}>확인항목</Text>
+ 574|             <Text style={[S.th, { flex: 1, textAlign: "center" }]}>해당여부</Text>
+ 575|             <Text style={[S.th, { flex: 2, borderRight: 0, textAlign: "center" }]}>확인결과</Text>
+ 576|           </View>
+ 577|           {checks.map((item, idx) => {
+ 578|             const isBold = item.label?.startsWith("●") || item.label?.startsWith("★");
+ 579|             const displayLabel = item.label?.replace(/^[●★]/, "") || item.label;
+ 580|             const applicable = item.applicable || "해당없음";
+ 581|             const result = item.result || (applicable === "해당" ? "조치완료" : "해당없음");
+ 582|             return (
+ 583|               <View key={idx} style={idx === checks.length - 1 ? S.trLast : S.tr}>
+ 584|                 <Text style={[S.td, { flex: 4, minHeight: 14, fontWeight: isBold ? "bold" : "normal", backgroundColor: isBold ? "#eef4fb" : C.white }]}>
+ 585|                   {isBold ? `●${displayLabel}` : `○${displayLabel}`}
+ 586|                 </Text>
+ 587|                 <Text style={[S.tdc, { flex: 1, minHeight: 14, fontSize: 8, backgroundColor: applicable === "해당" ? "#dce6f0" : C.white }]}>
+ 588|                   {applicable}
+ 589|                 </Text>
+ 590|                 <Text style={[S.tdc, { flex: 2, borderRight: 0, minHeight: 14, fontSize: 8, backgroundColor: applicable === "해당" ? "#ebf3e8" : C.white }]}>
+ 591|                   {result}
+ 592|                 </Text>
+ 593|               </View>
+ 594|             );
+ 595|           })}
+ 596|         </View>
+ 597| 
+ 598|         <Text style={S.secHeader}>4. 산소 및 유해가스 농도 측정결과</Text>
+ 599|         <View style={S.table}>
+ 600|           <View style={{ flexDirection: "row", borderBottom: "0.5px solid " + C.border, backgroundColor: C.labelBg }}>
+ 601|             <Text style={[S.th, { width: 52, textAlign: "center" }]}>측정시간</Text>
+ 602|             <Text style={[S.th, { flex: 3 }]}>측정물질명 및 농도</Text>
+ 603|             <Text style={[S.th, { flex: 1.2 }]}>측정자</Text>
+ 604|             <Text style={[S.th, { flex: 0.5, textAlign: "center" }]}>입장(명)</Text>
+ 605|             <Text style={[S.th, { flex: 0.5, borderRight: 0, textAlign: "center" }]}>퇴장(명)</Text>
+ 606|           </View>
+ 607|           {(() => { const _vr = gasMeasureRows.filter((r: any) => r && (r.o2 || r.co2 || r.h2s || r.co || r.ex)); const _rows = _vr.length > 0 ? _vr : gasMeasureRows; return _rows.map((row: any, idx: number) => (
+ 608|             <View key={idx} style={{ flexDirection: "row", borderBottom: idx === _rows.length - 1 ? 0 : "0.5px solid " + C.border, minHeight: 26 }}>
+ 609|               <View style={{ width: 52, borderRight: "0.5px solid " + C.border, padding: "3 3", alignItems: "center", justifyContent: "center" }}>
+ 610|                 <Text style={{ fontSize: 9, fontWeight: "bold" }}>{row.time}</Text>
+ 611|                 <Text style={{ fontSize: 8 }}>{row.hour || "  "}시 {row.minute || "  "}분</Text>
+ 612|               </View>
+ 613|               <Text style={[S.td, { flex: 3, minHeight: 26, fontSize: 8 }]}>{formatGasSubstances(row)}</Text>
+ 614|               <Text style={[S.td, { flex: 1.2, minHeight: 26, fontSize: 8 }]}>{row.measurer || ""}</Text>
+ 615|               <Text style={{ flex: 0.5, fontSize: 8, textAlign: "center", padding: "3 2", borderRight: "0.5px solid " + C.border }}>{row.entryCount || ""}</Text>
+ 616|               <Text style={{ flex: 0.5, fontSize: 8, textAlign: "center", padding: "3 2" }}>{row.exitCount || ""}</Text>
+ 617|             </View>
+ 618|           )); })()}
+ 619|         </View>
+ 620| 
+ 621|         <Text style={S.secHeader}>5. 특별조치 필요사항</Text>
+ 622|         <View style={[S.table, { marginBottom: 5 }]}>
+ 623|           <Text style={[S.td, { borderRight: 0, minHeight: 20 }]}>{fd.specialMeasures || ""}</Text>
+ 624|         </View>
+ 625| 
+ 626|         <ApproverSection entries={[
+ 627|           { roleLabel: "(계획확인) 허가자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a1?.approverName, signatureData: a1?.signatureData },
+ 628|           { roleLabel: "(이행확인) 확인자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a2?.approverName, signatureData: a2?.signatureData },
+ 629|         ]} />
+ 630|         <Footer documentId={documentId} createdAt={createdAt} />
+ 631|       </Page>
+ 632|     </Document>
+ 633|   );
+ 634| }
+ 635| 
+ 636| // ===== 붙임3: 휴일작업신청서 =====

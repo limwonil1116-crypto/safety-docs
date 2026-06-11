@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
         id: users.id,
         name: users.name,
         organization: users.organization,
+        position: users.position,
         email: users.email,
         role: users.role,
         employeeNo: users.employeeNo,
@@ -43,10 +44,11 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
     }
     const body = await req.json();
-    const { name, organization, phone } = body;
+    const { name, organization, position, phone } = body;
     const updateData: Record<string, string> = {};
     if (name?.trim())         updateData["name"]         = name.trim();
     if (organization !== undefined) updateData["organization"] = organization ?? "";
+    if (position !== undefined) updateData["position"] = position ?? "";
     if (phone !== undefined)  updateData["phone"]        = phone ?? "";
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: "수정할 내용이 없습니다." }, { status: 400 });

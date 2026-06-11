@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react";
 
 interface UserInfo {
   id: string; name: string; email: string;
-  organization?: string; role: string; employeeNo?: string; phone?: string;
+  organization?: string; position?: string; role: string; employeeNo?: string; phone?: string;
 }
 interface MyDocStat {
   total: number; draft: number; inProgress: number; approved: number; rejected: number;
@@ -36,7 +36,7 @@ export default function MyPage() {
   const [stats, setStats] = useState<MyDocStat | null>(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
-  const [form, setForm] = useState({ name: "", organization: "", phone: "" });
+  const [form, setForm] = useState({ name: "", organization: "", position: "", phone: "" });
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([]);
@@ -58,7 +58,7 @@ export default function MyPage() {
       const meData = await meRes.json();
       if (meRes.ok && meData.user) {
         setUser(meData.user);
-        setForm({ name: meData.user.name ?? "", organization: meData.user.organization ?? "", phone: meData.user.phone ?? "" });
+        setForm({ name: meData.user.name ?? "", organization: meData.user.organization ?? "", position: meData.user.position ?? "", phone: meData.user.phone ?? "" });
       }
       if (docsRes.ok) {
         const d = await docsRes.json();
@@ -216,7 +216,7 @@ export default function MyPage() {
               </button>
             ) : (
               <div className="flex gap-2">
-                <button onClick={() => { setEditMode(false); setForm({ name: user?.name??"", organization: user?.organization??"", phone: user?.phone??"" }); }} className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 text-gray-500">취소</button>
+                <button onClick={() => { setEditMode(false); setForm({ name: user?.name??"", organization: user?.organization??"", position: user?.position??"", phone: user?.phone??"" }); }} className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 text-gray-500">취소</button>
                 <button onClick={handleSave} disabled={saving} className="text-xs px-3 py-1.5 rounded-xl text-white font-medium disabled:opacity-50" style={{ background: "#2563eb" }}>{saving?"저장 중...":"저장"}</button>
               </div>
             )}
@@ -227,12 +227,14 @@ export default function MyPage() {
               <>
                 <div><label className="text-xs text-gray-500 mb-1 block">이름</label><input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
                 <div><label className="text-xs text-gray-500 mb-1 block">소속</label><input value={form.organization} onChange={e=>setForm(p=>({...p,organization:e.target.value}))} className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
+                <div><label className="text-xs text-gray-500 mb-1 block">직책</label><input value={form.position} onChange={e=>setForm(p=>({...p,position:e.target.value}))} className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
                 <div><label className="text-xs text-gray-500 mb-1 block">연락처</label><input value={form.phone} onChange={e=>setForm(p=>({...p,phone:e.target.value}))} placeholder="010-0000-0000" className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
               </>
             ) : (
               <>
                 <InfoRow label="이름" value={user?.name} />
                 <InfoRow label="소속" value={user?.organization} />
+                <InfoRow label="직책" value={user?.position} />
                 <InfoRow label="이메일" value={user?.email} />
                 <InfoRow label="연락처" value={user?.phone} />
                 {user?.employeeNo && <InfoRow label="사번" value={user.employeeNo} />}

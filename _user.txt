@@ -1,0 +1,275 @@
+
+===== schema db\schema.ts : users table =====
+ 129| export const users = pgTable("users", {
+ 130|   id: uuid("id").primaryKey().defaultRandom(),
+ 131|   name: varchar("name", { length: 100 }).notNull(),
+ 132|   organization: varchar("organization", { length: 150 }),
+ 133|   email: varchar("email", { length: 255 }).notNull().unique(),
+ 134|   passwordHash: text("password_hash"),
+ 135|   role: userRoleEnum("role").notNull().default("CONTRACTOR"),
+ 136|   status: userStatusEnum("status").notNull().default("PENDING"),
+ 137|   phone: varchar("phone", { length: 30 }),
+ 138|   employeeNo: varchar("employee_no", { length: 50 }),
+ 139|   provider: authProviderEnum("provider").default("local"),
+ 140|   providerUserId: varchar("provider_user_id", { length: 191 }),
+ 141|   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
+ 142|   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+ 143|   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+ 144|   deletedAt: timestamp("deleted_at", { withTimezone: true }),
+ 145| });
+--- schema field grep ---
+ 132|   organization: varchar("organization", { length: 150 }),
+ 391|   title: varchar("title", { length: 200 }).notNull(),
+ 443|   contractorName: varchar("contractor_name", { length: 200 }),
+
+===== signup page (\app\signup\page.tsx) total 186 =====
+   1| "use client";
+   2| 
+   3| import { useState } from "react";
+   4| import { useRouter } from "next/navigation";
+   5| import Link from "next/link";
+   6| 
+   7| export default function SignupPage() {
+   8|   const router = useRouter();
+   9|   const [loading, setLoading] = useState(false);
+  10|   const [error, setError] = useState("");
+  11|   const [form, setForm] = useState({
+  12|     name: "",
+  13|     organization: "",
+  14|     contractorName: "",
+  15|     email: "",
+  16|     password: "",
+  17|     passwordConfirm: "",
+  18|     role: "CONTRACTOR",
+  19|     phone: "",
+  20|   });
+  21| 
+  22|   const handleChange = (key: string, value: string) => {
+  23|     setForm((prev) => ({ ...prev, [key]: value }));
+  24|   };
+  25| 
+  26|   const handleOrgChange = (value: string) => {
+  27|     setForm(prev => ({
+  28|       ...prev,
+  29|       organization: value === "용역업체" ? "" : value,
+  30|       contractorName: value === "용역업체" ? prev.contractorName : "",
+  31|     }));
+  32|   };
+  33| 
+  34|   const orgType = form.organization === "한국농어촌공사" ? "한국농어촌공사"
+  35|     : form.contractorName !== "" || form.organization === "" && form.contractorName === "" ? "용역업체"
+  36|     : "한국농어촌공사";
+  37| 
+  38|   // 소속기관 드롭다운 현재 선택값
+  39|   const selectedOrg = form.organization === "한국농어촌공사" ? "한국농어촌공사" : "용역업체";
+  40| 
+  41|   const handleSubmit = async (e: React.FormEvent) => {
+  42|     e.preventDefault();
+  43|     setError("");
+  44| 
+  45|     if (form.password !== form.passwordConfirm) {
+  46|       setError("비밀번호가 일치하지 않습니다.");
+  47|       return;
+  48|     }
+  49|     if (form.password.length < 8) {
+  50|       setError("비밀번호는 8자 이상이어야 합니다.");
+  51|       return;
+  52|     }
+  53|     if (!form.organization && !form.contractorName) {
+  54|       setError("소속기관을 선택해주세요.");
+  55|       return;
+  56|     }
+  57| 
+  58|     const finalOrg = form.organization === "한국농어촌공사"
+  59|       ? "한국농어촌공사"
+  60|       : form.contractorName;
+  61| 
+  62|     setLoading(true);
+  63|     try {
+  64|       const res = await fetch("/api/auth/signup", {
+  65|         method: "POST",
+  66|         headers: { "Content-Type": "application/json" },
+  67|         body: JSON.stringify({
+  68|           name: form.name,
+  69|           organization: finalOrg,
+  70|           email: form.email,
+  71|           password: form.password,
+  72|           role: form.role,
+  73|           phone: form.phone,
+  74|         }),
+  75|       });
+  76|       const data = await res.json();
+  77|       if (!res.ok) { setError(data.error || "회원가입에 실패했습니다."); return; }
+  78|       router.push("/login?signup=success");
+  79|     } catch {
+  80|       setError("회원가입 처리 중 오류가 발생했습니다.");
+  81|     } finally {
+  82|       setLoading(false);
+  83|     }
+  84|   };
+  85| 
+  86|   const inputClass = "w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500";
+  87| 
+  88|   return (
+  89|     <div className="min-h-screen flex items-center justify-center p-4"
+  90|       style={{ background: "linear-gradient(160deg, #dbeafe 0%, #eff6ff 50%, #dbeafe 100%)" }}>
+  91|       <div className="w-full max-w-sm">
+  92|         <div className="bg-white rounded-3xl shadow-lg p-8">
+  93|           <div className="flex flex-col items-center mb-6">
+  94|             <div className="w-14 h-14 rounded-full flex items-center justify-center mb-3"
+  95|               style={{ background: "linear-gradient(135deg, #dbeafe, #bfdbfe)" }}>
+  96|               <svg width="28" height="28" viewBox="0 0 24 24" fill="#2563eb">
+  97|                 <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/>
+  98|               </svg>
+  99|             </div>
+ 100|             <h1 className="text-xl font-bold text-gray-900">회원가입</h1>
+ 101|             <p className="text-sm text-gray-500 mt-1">안전관리 시스템</p>
+ 102|           </div>
+ 103| 
+ 104|           <form onSubmit={handleSubmit} className="space-y-3">
+ 105|             {error && (
+ 106|               <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl border border-red-100">
+ 107|                 {error}
+ 108|               </div>
+ 109|             )}
+ 110| 
+ 111|             <div>
+ 112|               <label className="block text-xs font-medium text-gray-700 mb-1">이름 <span className="text-red-500">*</span></label>
+ 113|               <input type="text" value={form.name}
+ 114|                 onChange={e => handleChange("name", e.target.value)}
+ 115|                 placeholder="홍길동" required className={inputClass} />
+ 116|             </div>
+ 117| 
+ 118|             <div>
+ 119|               <label className="block text-xs font-medium text-gray-700 mb-1">소속기관 <span className="text-red-500">*</span></label>
+ 120|               <select
+ 121|                 value={selectedOrg}
+ 122|                 onChange={e => {
+ 123|                   if (e.target.value === "한국농어촌공사") {
+ 124|                     setForm(prev => ({ ...prev, organization: "한국농어촌공사", contractorName: "" }));
+ 125|                   } else {
+ 126|                     setForm(prev => ({ ...prev, organization: "", contractorName: "" }));
+ 127|                   }
+ 128|                 }}
+ 129|                 className={inputClass}>
+ 130|                 <option value="">선택해주세요</option>
+ 131|                 <option value="한국농어촌공사">한국농어촌공사</option>
+ 132|                 <option value="용역업체">용역업체</option>
+ 133|               </select>
+ 134|               {selectedOrg === "용역업체" && (
+ 135|                 <input type="text" value={form.contractorName}
+ 136|                   onChange={e => setForm(prev => ({ ...prev, contractorName: e.target.value }))}
+ 137|                   placeholder="업체명을 입력해주세요" required
+ 138|                   className={inputClass + " mt-2"} />
+ 139|               )}
+ 140|             </div>
+ 141| 
+ 142|             <div>
+ 143|               <label className="block text-xs font-medium text-gray-700 mb-1">이메일 <span className="text-red-500">*</span></label>
+ 144|               <input type="email" value={form.email}
+ 145|                 onChange={e => handleChange("email", e.target.value)}
+ 146|                 placeholder="example@email.com" required className={inputClass} />
+ 147|             </div>
+ 148| 
+ 149|             <div>
+ 150|               <label className="block text-xs font-medium text-gray-700 mb-1">전화번호</label>
+ 151|               <input type="tel" value={form.phone}
+ 152|                 onChange={e => handleChange("phone", e.target.value)}
+ 153|                 placeholder="010-0000-0000" className={inputClass} />
+ 154|             </div>
+ 155| 
+ 156|             <div>
+ 157|               <label className="block text-xs font-medium text-gray-700 mb-1">비밀번호 <span className="text-red-500">*</span></label>
+ 158|               <input type="password" value={form.password}
+ 159|                 onChange={e => handleChange("password", e.target.value)}
+ 160|                 placeholder="8자 이상" required className={inputClass} />
+ 161|             </div>
+ 162| 
+ 163|             <div>
+ 164|               <label className="block text-xs font-medium text-gray-700 mb-1">비밀번호 확인 <span className="text-red-500">*</span></label>
+ 165|               <input type="password" value={form.passwordConfirm}
+ 166|                 onChange={e => handleChange("passwordConfirm", e.target.value)}
+ 167|                 placeholder="비밀번호 재입력" required className={inputClass} />
+ 168|             </div>
+ 169| 
+ 170|             <button type="submit" disabled={loading}
+ 171|               className="w-full py-3 rounded-xl text-white font-medium text-sm disabled:opacity-60 mt-2"
+ 172|               style={{ background: "#2563eb" }}>
+ 173|               {loading ? "처리 중..." : "회원가입"}
+ 174|             </button>
+ 175|           </form>
+ 176| 
+ 177|           <div className="text-center mt-4">
+ 178|             <Link href="/login" className="text-sm text-gray-500 hover:text-blue-600">
+ 179|               이미 계정이 있으신가요? <span className="text-blue-600 font-medium">로그인</span>
+ 180|             </Link>
+ 181|           </div>
+ 182|         </div>
+ 183|       </div>
+ 184|     </div>
+ 185|   );
+ 186| }
+
+===== users/me route (\app\api\users\me\route.ts) total 62 =====
+   1| import { NextRequest, NextResponse } from "next/server";
+   2| import { auth } from "@/auth";
+   3| import { db } from "@/db";
+   4| import { users } from "@/db/schema";
+   5| import { sql } from "drizzle-orm";
+   6| 
+   7| // GET /api/users/me - 현재 로그인 사용자 정보
+   8| export async function GET(req: NextRequest) {
+   9|   try {
+  10|     const session = await auth();
+  11|     if (!session?.user) {
+  12|       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+  13|     }
+  14| 
+  15|     const [user] = await db
+  16|       .select({
+  17|         id: users.id,
+  18|         name: users.name,
+  19|         organization: users.organization,
+  20|         email: users.email,
+  21|         role: users.role,
+  22|         employeeNo: users.employeeNo,
+  23|       })
+  24|       .from(users)
+  25|       .where(sql`${users.id} = ${session.user.id}::uuid`)
+  26|       .limit(1);
+  27| 
+  28|     if (!user) {
+  29|       return NextResponse.json({ error: "사용자를 찾을 수 없습니다." }, { status: 404 });
+  30|     }
+  31| 
+  32|     return NextResponse.json({ user });
+  33|   } catch (error) {
+  34|     console.error("[GET /api/users/me]", error);
+  35|     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+  36|   }
+  37| }
+  38| // PATCH /api/users/me - 현재 사용자 정보 수정
+  39| export async function PATCH(req: NextRequest) {
+  40|   try {
+  41|     const session = await auth();
+  42|     if (!session?.user) {
+  43|       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+  44|     }
+  45|     const body = await req.json();
+  46|     const { name, organization, phone } = body;
+  47|     const updateData: Record<string, string> = {};
+  48|     if (name?.trim())         updateData["name"]         = name.trim();
+  49|     if (organization !== undefined) updateData["organization"] = organization ?? "";
+  50|     if (phone !== undefined)  updateData["phone"]        = phone ?? "";
+  51|     if (Object.keys(updateData).length === 0) {
+  52|       return NextResponse.json({ error: "수정할 내용이 없습니다." }, { status: 400 });
+  53|     }
+  54|     await db.update(users)
+  55|       .set({ ...updateData, updatedAt: new Date() })
+  56|       .where(sql`${users.id} = ${session.user.id}::uuid`);
+  57|     return NextResponse.json({ success: true });
+  58|   } catch (error) {
+  59|     console.error("[PATCH /api/users/me]", error);
+  60|     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+  61|   }
+  62| }

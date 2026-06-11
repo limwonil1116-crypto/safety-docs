@@ -1,0 +1,459 @@
+
+===== signup API (\app\api\auth\signup\route.ts) total 63 =====
+   1| import { NextRequest, NextResponse } from "next/server";
+   2| import { db } from "@/db";
+   3| import { users } from "@/db/schema";
+   4| import { eq } from "drizzle-orm";
+   5| import bcrypt from "bcryptjs";
+   6| 
+   7| export async function POST(req: NextRequest) {
+   8|   try {
+   9|     const body = await req.json();
+  10|     const { name, organization, email, password, role, phone } = body;
+  11| 
+  12|     if (!name || !email || !password) {
+  13|       return NextResponse.json(
+  14|         { error: "이름, 이메일, 비밀번호는 필수입니다." },
+  15|         { status: 400 }
+  16|       );
+  17|     }
+  18| 
+  19|     // 이메일 중복 확인
+  20|     const existing = await db
+  21|       .select()
+  22|       .from(users)
+  23|       .where(eq(users.email, email))
+  24|       .limit(1);
+  25| 
+  26|     if (existing.length > 0) {
+  27|       return NextResponse.json(
+  28|         { error: "이미 사용 중인 이메일입니다." },
+  29|         { status: 409 }
+  30|       );
+  31|     }
+  32| 
+  33|     // 비밀번호 해시
+  34|     const passwordHash = await bcrypt.hash(password, 12);
+  35| 
+  36|     // 사용자 생성
+  37|     const [user] = await db
+  38|       .insert(users)
+  39|       .values({
+  40|         name,
+  41|         organization,
+  42|         email,
+  43|         passwordHash,
+  44|         role: role || "CONTRACTOR",
+  45|         status: "ACTIVE",
+  46|         phone,
+  47|       })
+  48|       .returning({
+  49|         id: users.id,
+  50|         name: users.name,
+  51|         email: users.email,
+  52|         role: users.role,
+  53|       });
+  54| 
+  55|     return NextResponse.json({ user }, { status: 201 });
+  56|   } catch (error) {
+  57|     console.error("회원가입 오류:", error);
+  58|     return NextResponse.json(
+  59|       { error: "회원가입 처리 중 오류가 발생했습니다." },
+  60|       { status: 500 }
+  61|     );
+  62|   }
+  63| }
+
+===== grep: profile edit (users/me PATCH, organization input) =====
+\app\(main)\approvals\[documentId]\page.tsx:1041|       const meRes = await fetch("/api/users/me");
+\app\(main)\mypage\page.tsx:54|         fetch("/api/users/me"),
+\app\(main)\mypage\page.tsx:144|       const res = await fetch("/api/users/me", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+\app\(main)\mypage\page.tsx:229|                 <div><label className="text-xs text-gray-500 mb-1 block">소속</label><input value={form.organization} onChange={e=>setForm(p=>({...p,organization:e.target.value}))} className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
+\app\(main)\mypage\page.tsx:235|                 <InfoRow label="소속" value={user?.organization} />
+\app\api\users\me\route.ts:7| // GET /api/users/me - 현재 로그인 사용자 정보
+\app\api\users\me\route.ts:34|     console.error("[GET /api/users/me]", error);
+\app\api\users\me\route.ts:38| // PATCH /api/users/me - 현재 사용자 정보 수정
+\app\api\users\me\route.ts:59|     console.error("[PATCH /api/users/me]", error);
+
+===== mypage (\app\(main)\mypage\page.tsx) total 381 =====
+   1| "use client";
+   2| 
+   3| import { useState, useEffect, useCallback, useRef } from "react";
+   4| import { useRouter } from "next/navigation";
+   5| import { signOut } from "next-auth/react";
+   6| 
+   7| interface UserInfo {
+   8|   id: string; name: string; email: string;
+   9|   organization?: string; role: string; employeeNo?: string; phone?: string;
+  10| }
+  11| interface MyDocStat {
+  12|   total: number; draft: number; inProgress: number; approved: number; rejected: number;
+  13| }
+  14| interface PendingDoc {
+  15|   id: string; documentType: string; taskName: string;
+  16|   currentApprovalOrder: number; createdByName: string;
+  17| }
+  18| 
+  19| const ROLE_LABEL: Record<string, { label: string; color: string; bg: string }> = {
+  20|   CONTRACTOR:    { label: "수급업체",   color: "#2563eb", bg: "#eff6ff" },
+  21|   REVIEWER:      { label: "검토자",     color: "#d97706", bg: "#fffbeb" },
+  22|   FINAL_APPROVER:{ label: "최종허가자", color: "#16a34a", bg: "#f0fdf4" },
+  23|   ADMIN:         { label: "관리자",     color: "#7c3aed", bg: "#f5f3ff" },
+  24| };
+  25| 
+  26| const DOC_LABEL: Record<string, string> = {
+  27|   SAFETY_WORK_PERMIT: "안전작업허가서",
+  28|   CONFINED_SPACE: "밀폐공간작업허가서",
+  29|   HOLIDAY_WORK: "휴일작업신청서",
+  30|   POWER_OUTAGE: "정전작업허가서",
+  31| };
+  32| 
+  33| export default function MyPage() {
+  34|   const router = useRouter();
+  35|   const [user, setUser] = useState<UserInfo | null>(null);
+  36|   const [stats, setStats] = useState<MyDocStat | null>(null);
+  37|   const [loading, setLoading] = useState(true);
+  38|   const [editMode, setEditMode] = useState(false);
+  39|   const [form, setForm] = useState({ name: "", organization: "", phone: "" });
+  40|   const [saving, setSaving] = useState(false);
+  41|   const [saveMsg, setSaveMsg] = useState("");
+  42|   const [pendingDocs, setPendingDocs] = useState<PendingDoc[]>([]);
+  43|   const [showBulkModal, setShowBulkModal] = useState(false);
+  44|   const [bulkSigning, setBulkSigning] = useState(false);
+  45|   const [bulkDone, setBulkDone] = useState(false);
+  46|   const [bulkResults, setBulkResults] = useState<{id:string;name:string;ok:boolean}[]>([]);
+  47|   const canvasRef = useRef<HTMLCanvasElement>(null);
+  48|   const isDrawing = useRef(false);
+  49| 
+  50|   const fetchData = useCallback(async () => {
+  51|     setLoading(true);
+  52|     try {
+  53|       const [meRes, docsRes, appRes] = await Promise.all([
+  54|         fetch("/api/users/me"),
+  55|         fetch("/api/documents?mine=true"),
+  56|         fetch("/api/approvals"),
+  57|       ]);
+  58|       const meData = await meRes.json();
+  59|       if (meRes.ok && meData.user) {
+  60|         setUser(meData.user);
+  61|         setForm({ name: meData.user.name ?? "", organization: meData.user.organization ?? "", phone: meData.user.phone ?? "" });
+  62|       }
+  63|       if (docsRes.ok) {
+  64|         const d = await docsRes.json();
+  65|         const docs = d.documents ?? [];
+  66|         setStats({
+  67|           total: docs.length,
+  68|           draft: docs.filter((x: any) => x.status === "DRAFT").length,
+  69|           inProgress: docs.filter((x: any) => ["SUBMITTED","IN_REVIEW"].includes(x.status)).length,
+  70|           approved: docs.filter((x: any) => x.status === "APPROVED").length,
+  71|           rejected: docs.filter((x: any) => x.status === "REJECTED").length,
+  72|         });
+  73|       }
+  74|       if (appRes.ok) {
+  75|         const appData = await appRes.json();
+  76|         const myTurn = (appData.documents ?? []).filter((x: any) => x.is_my_turn);
+  77|         setPendingDocs(myTurn.map((x: any) => ({
+  78|           id: x.id,
+  79|           documentType: x.document_type,
+  80|           taskName: x.task_name || "미입력",
+  81|           currentApprovalOrder: x.current_approval_order,
+  82|           createdByName: x.created_by_name || "",
+  83|         })));
+  84|       }
+  85|     } catch (e) { console.error(e); }
+  86|     finally { setLoading(false); }
+  87|   }, []);
+  88| 
+  89|   useEffect(() => { fetchData(); }, [fetchData]);
+  90| 
+  91|   useEffect(() => {
+  92|     if (!showBulkModal) return;
+  93|     setTimeout(() => {
+  94|       const c = canvasRef.current; if (!c) return;
+  95|       const ctx = c.getContext("2d"); if (!ctx) return;
+  96|       ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height);
+  97|       ctx.strokeStyle = "#1e3a5f"; ctx.lineWidth = 2.5; ctx.lineCap = "round";
+  98|     }, 100);
+  99|   }, [showBulkModal]);
+ 100| 
+ 101|   const getPos = (e: any, c: HTMLCanvasElement) => {
+ 102|     const r = c.getBoundingClientRect();
+ 103|     if (e.touches) return { x:(e.touches[0].clientX-r.left)*(c.width/r.width), y:(e.touches[0].clientY-r.top)*(c.height/r.height) };
+ 104|     return { x:(e.clientX-r.left)*(c.width/r.width), y:(e.clientY-r.top)*(c.height/r.height) };
+ 105|   };
+ 106|   const startDraw = (e: any) => { e.preventDefault(); isDrawing.current=true; const c=canvasRef.current!; const ctx=c.getContext("2d")!; const p=getPos(e,c); ctx.beginPath(); ctx.moveTo(p.x,p.y); };
+ 107|   const draw = (e: any) => { if(!isDrawing.current)return; e.preventDefault(); const c=canvasRef.current!; const ctx=c.getContext("2d")!; const p=getPos(e,c); ctx.lineTo(p.x,p.y); ctx.stroke(); };
+ 108|   const endDraw = () => { isDrawing.current=false; };
+ 109|   const clearCanvas = () => { const c=canvasRef.current!; const ctx=c.getContext("2d")!; ctx.fillStyle="#fff"; ctx.fillRect(0,0,c.width,c.height); };
+ 110|   const isCanvasEmpty = () => {
+ 111|     const c = canvasRef.current; if (!c) return true;
+ 112|     const ctx = c.getContext("2d")!;
+ 113|     const data = ctx.getImageData(0,0,c.width,c.height).data;
+ 114|     for (let i=0;i<data.length;i+=4) { if (data[i]<250||data[i+1]<250||data[i+2]<250) return false; }
+ 115|     return true;
+ 116|   };
+ 117| 
+ 118|   const handleBulkApprove = async () => {
+ 119|     if (isCanvasEmpty()) { alert("서명을 입력해주세요."); return; }
+ 120|     const signatureData = canvasRef.current!.toDataURL("image/png");
+ 121|     setBulkSigning(true);
+ 122|     const results: {id:string;name:string;ok:boolean}[] = [];
+ 123|     for (const doc of pendingDocs) {
+ 124|       try {
+ 125|         const res = await fetch(`/api/documents/${doc.id}/approve`, {
+ 126|           method: "POST",
+ 127|           headers: { "Content-Type": "application/json" },
+ 128|           body: JSON.stringify({ action: "APPROVE", signatureData, comment: "" }),
+ 129|         });
+ 130|         results.push({ id: doc.id, name: doc.taskName, ok: res.ok });
+ 131|       } catch {
+ 132|         results.push({ id: doc.id, name: doc.taskName, ok: false });
+ 133|       }
+ 134|     }
+ 135|     setBulkResults(results);
+ 136|     setBulkSigning(false);
+ 137|     setBulkDone(true);
+ 138|     fetchData();
+ 139|   };
+ 140| 
+ 141|   const handleSave = async () => {
+ 142|     setSaving(true); setSaveMsg("");
+ 143|     try {
+ 144|       const res = await fetch("/api/users/me", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+ 145|       const data = await res.json();
+ 146|       if (!res.ok) throw new Error(data.error || "저장 실패");
+ 147|       setUser(prev => prev ? { ...prev, ...form } : prev);
+ 148|       setEditMode(false); setSaveMsg("저장됐습니다.");
+ 149|       setTimeout(() => setSaveMsg(""), 2000);
+ 150|     } catch (e) { setSaveMsg(e instanceof Error ? e.message : "저장에 실패했습니다."); }
+ 151|     finally { setSaving(false); }
+ 152|   };
+ 153| 
+ 154|   const handleLogout = async () => {
+ 155|     if (!confirm("로그아웃 하시겠습니까?")) return;
+ 156|     await signOut({ callbackUrl: "/login" });
+ 157|   };
+ 158| 
+ 159|   const roleInfo = user ? (ROLE_LABEL[user.role] ?? { label: user.role, color: "#6b7280", bg: "#f9fafb" }) : null;
+ 160| 
+ 161|   if (loading) return (
+ 162|     <div className="p-4 space-y-4">
+ 163|       {[1,2,3].map(i => (<div key={i} className="bg-white rounded-2xl p-4 animate-pulse"><div className="h-4 bg-gray-200 rounded w-1/3 mb-3" /><div className="h-10 bg-gray-100 rounded w-full" /></div>))}
+ 164|     </div>
+ 165|   );
+ 166| 
+ 167|   return (
+ 168|     <div className="p-4 pb-28 space-y-4">
+ 169|       <div className="flex items-center justify-between">
+ 170|         <div><h1 className="text-lg font-bold text-gray-900">마이페이지</h1><p className="text-xs text-gray-400 mt-0.5">내 정보 및 활동 현황</p></div>
+ 171|         {saveMsg && <span className={`text-xs px-3 py-1.5 rounded-full font-medium ${saveMsg.includes("실패")||saveMsg.includes("오류")?"bg-red-100 text-red-600":"bg-green-100 text-green-600"}`}>{saveMsg}</span>}
+ 172|       </div>
+ 173| 
+ 174|       {/* 일괄결재 바너 */}
+ 175|       {pendingDocs.length > 0 && (
+ 176|         <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-4 shadow-lg">
+ 177|           <div className="flex items-center justify-between mb-3">
+ 178|             <div>
+ 179|               <p className="text-white font-bold text-sm">내 결재 차례</p>
+ 180|               <p className="text-blue-200 text-xs mt-0.5">{pendingDocs.length}건의 결재가 대기 중입니다</p>
+ 181|             </div>
+ 182|             <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center">
+ 183|               <span className="text-2xl font-bold text-white">{pendingDocs.length}</span>
+ 184|             </div>
+ 185|           </div>
+ 186|           <div className="space-y-1.5 mb-3">
+ 187|             {pendingDocs.slice(0,3).map(doc => (
+ 188|               <div key={doc.id} className="flex items-center gap-2 bg-white/15 rounded-xl px-3 py-2">
+ 189|                 <div className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+ 190|                 <span className="text-white text-xs flex-1 truncate">{doc.taskName}</span>
+ 191|                 <span className="text-blue-200 text-[10px]">{DOC_LABEL[doc.documentType]||doc.documentType}</span>
+ 192|               </div>
+ 193|             ))}
+ 194|             {pendingDocs.length > 3 && <p className="text-blue-200 text-xs text-center">+{pendingDocs.length-3}건 더</p>}
+ 195|           </div>
+ 196|           <button onClick={() => { setShowBulkModal(true); setBulkDone(false); setBulkResults([]); }}
+ 197|             className="w-full py-3 bg-white rounded-xl text-blue-600 font-bold text-sm shadow-sm flex items-center justify-center gap-2">
+ 198|             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+ 199|             서명 후 일괄 결재
+ 200|           </button>
+ 201|         </div>
+ 202|       )}
+ 203| 
+ 204|       {/* 프로필 */}
+ 205|       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+ 206|         <div className="h-16" style={{ background: "linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)" }} />
+ 207|         <div className="px-4 pb-4">
+ 208|           <div className="flex items-end justify-between -mt-8 mb-3">
+ 209|             <div className="w-16 h-16 rounded-2xl border-4 border-white shadow-md flex items-center justify-center text-2xl font-bold text-white" style={{ background: "linear-gradient(135deg, #2563eb, #1e3a5f)" }}>
+ 210|               {user?.name?.[0] ?? "?"}
+ 211|             </div>
+ 212|             {!editMode ? (
+ 213|               <button onClick={() => setEditMode(true)} className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 font-medium">
+ 214|                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+ 215|                 편집
+ 216|               </button>
+ 217|             ) : (
+ 218|               <div className="flex gap-2">
+ 219|                 <button onClick={() => { setEditMode(false); setForm({ name: user?.name??"", organization: user?.organization??"", phone: user?.phone??"" }); }} className="text-xs px-3 py-1.5 rounded-xl border border-gray-200 text-gray-500">취소</button>
+ 220|                 <button onClick={handleSave} disabled={saving} className="text-xs px-3 py-1.5 rounded-xl text-white font-medium disabled:opacity-50" style={{ background: "#2563eb" }}>{saving?"저장 중...":"저장"}</button>
+ 221|               </div>
+ 222|             )}
+ 223|           </div>
+ 224|           {roleInfo && <span className="text-xs px-2.5 py-1 rounded-full font-semibold mb-2 inline-block" style={{ color: roleInfo.color, background: roleInfo.bg }}>{roleInfo.label}</span>}
+ 225|           <div className="space-y-3 mt-2">
+ 226|             {editMode ? (
+ 227|               <>
+ 228|                 <div><label className="text-xs text-gray-500 mb-1 block">이름</label><input value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
+ 229|                 <div><label className="text-xs text-gray-500 mb-1 block">소속</label><input value={form.organization} onChange={e=>setForm(p=>({...p,organization:e.target.value}))} className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
+ 230|                 <div><label className="text-xs text-gray-500 mb-1 block">연락처</label><input value={form.phone} onChange={e=>setForm(p=>({...p,phone:e.target.value}))} placeholder="010-0000-0000" className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></div>
+ 231|               </>
+ 232|             ) : (
+ 233|               <>
+ 234|                 <InfoRow label="이름" value={user?.name} />
+ 235|                 <InfoRow label="소속" value={user?.organization} />
+ 236|                 <InfoRow label="이메일" value={user?.email} />
+ 237|                 <InfoRow label="연락처" value={user?.phone} />
+ 238|                 {user?.employeeNo && <InfoRow label="사번" value={user.employeeNo} />}
+ 239|               </>
+ 240|             )}
+ 241|           </div>
+ 242|         </div>
+ 243|       </div>
+ 244| 
+ 245|       {/* 서류 통계 */}
+ 246|       {stats && (
+ 247|         <div className="bg-white rounded-2xl p-4 shadow-sm">
+ 248|           <h3 className="text-sm font-bold text-gray-900 mb-3">내 서류 현황</h3>
+ 249|           <div className="grid grid-cols-4 gap-2">
+ 250|             {[
+ 251|               { label:"전체", value:stats.total, color:"#2563eb", bg:"#eff6ff" },
+ 252|               { label:"진행중", value:stats.inProgress, color:"#d97706", bg:"#fffbeb" },
+ 253|               { label:"승인", value:stats.approved, color:"#16a34a", bg:"#f0fdf4" },
+ 254|               { label:"반려", value:stats.rejected, color:"#dc2626", bg:"#fef2f2" },
+ 255|             ].map(item => (
+ 256|               <div key={item.label} className="rounded-xl p-2.5 text-center" style={{ background: item.bg }}>
+ 257|                 <div className="text-xl font-bold" style={{ color: item.color }}>{item.value}</div>
+ 258|                 <div className="text-xs text-gray-500 mt-0.5">{item.label}</div>
+ 259|               </div>
+ 260|             ))}
+ 261|           </div>
+ 262|         </div>
+ 263|       )}
+ 264| 
+ 265|       {/* 빠른 이동 */}
+ 266|       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+ 267|         <h3 className="text-sm font-bold text-gray-900 px-4 pt-4 pb-2">빠른 이동</h3>
+ 268|         {[
+ 269|           { label:"용역 목록", sub:"내 용역 및 서류 관리", path:"/tasks" },
+ 270|           { label:"결재 현황", sub:"결재 대기 및 완료 서류", path:"/approvals" },
+ 271|           { label:"작성중 허가서", sub:"임시저장 중인 허가서 목록", path:"/approvals?status=DRAFT" },
+ 272|           { label:"전체 현황", sub:"지도 및 캘린더 보기", path:"/overview" },
+ 273|         ].map((item, i, arr) => (
+ 274|           <button key={item.path} onClick={() => router.push(item.path)}
+ 275|             className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors ${i<arr.length-1?"border-b border-gray-50":""}`}>
+ 276|             <div className="flex-1 text-left"><div className="text-sm font-medium text-gray-900">{item.label}</div><div className="text-xs text-gray-400">{item.sub}</div></div>
+ 277|             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+ 278|           </button>
+ 279|         ))}
+ 280|       </div>
+ 281| 
+ 282|       <div className="bg-white rounded-2xl p-4 shadow-sm">
+ 283|         <h3 className="text-sm font-bold text-gray-900 mb-3">앱 정보</h3>
+ 284|         <div className="space-y-2 text-xs text-gray-500">
+ 285|           <div className="flex justify-between"><span>앱 이름</span><span className="text-gray-700 font-medium">스마트 안전관리 시스템</span></div>
+ 286|           <div className="flex justify-between"><span>운영</span><span className="text-gray-700 font-medium">한국농어었공사 안전기술본부</span></div>
+ 287|           <div className="flex justify-between"><span>버전</span><span className="text-gray-700 font-medium">1.0.0</span></div>
+ 288|         </div>
+ 289|       </div>
+ 290| 
+ 291|       <button onClick={handleLogout}
+ 292|         className="w-full py-3.5 rounded-2xl border-2 border-red-100 text-red-500 font-medium text-sm hover:bg-red-50 flex items-center justify-center gap-2">
+ 293|         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+ 294|         로그아웃
+ 295|       </button>
+ 296| 
+ 297|       {/* 일괄결재 모달 */}
+ 298|       {showBulkModal && (
+ 299|         <div className="fixed inset-0 bg-black/70 z-[200] flex items-end justify-center">
+ 300|           <div className="bg-white rounded-t-3xl w-full max-w-lg">
+ 301|             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+ 302|               <div>
+ 303|                 <p className="font-bold text-gray-900">일괄 결재 서명</p>
+ 304|                 <p className="text-xs text-gray-400 mt-0.5">{pendingDocs.length}건 서류에 서명 후 일괄 승인</p>
+ 305|               </div>
+ 306|               {!bulkSigning && !bulkDone && (
+ 307|                 <button onClick={() => setShowBulkModal(false)} className="text-gray-400">
+ 308|                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+ 309|                 </button>
+ 310|               )}
+ 311|             </div>
+ 312|             {!bulkDone ? (
+ 313|               <div className="p-5">
+ 314|                 <div className="mb-4 space-y-1.5 max-h-36 overflow-y-auto">
+ 315|                   {pendingDocs.map(doc => (
+ 316|                     <div key={doc.id} className="flex items-center gap-2 bg-blue-50 rounded-xl px-3 py-2">
+ 317|                       <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+ 318|                       <span className="text-xs text-gray-700 flex-1 truncate">{doc.taskName}</span>
+ 319|                       <span className="text-[10px] text-blue-500">{DOC_LABEL[doc.documentType]||doc.documentType}</span>
+ 320|                     </div>
+ 321|                   ))}
+ 322|                 </div>
+ 323|                 <div className="mb-3">
+ 324|                   <div className="flex items-center justify-between mb-2">
+ 325|                     <p className="text-xs font-semibold text-gray-700">서명 (아래에 서명하세요)</p>
+ 326|                     <button onClick={clearCanvas} className="text-xs text-gray-400 border border-gray-200 rounded-lg px-2 py-1">지우기</button>
+ 327|                   </div>
+ 328|                   <canvas ref={canvasRef} width={500} height={140}
+ 329|                     className="w-full border-2 border-dashed border-blue-200 rounded-2xl bg-blue-50/30 touch-none cursor-crosshair"
+ 330|                     onMouseDown={startDraw} onMouseMove={draw} onMouseUp={endDraw} onMouseLeave={endDraw}
+ 331|                     onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={endDraw} />
+ 332|                 </div>
+ 333|                 <button onClick={handleBulkApprove} disabled={bulkSigning}
+ 334|                   className="w-full py-3.5 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+ 335|                   style={{ background: bulkSigning?"#6b7280":"linear-gradient(135deg,#1e3a5f,#2563eb)" }}>
+ 336|                   {bulkSigning
+ 337|                     ? <><svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>결재 중...</>
+ 338|                     : <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>{pendingDocs.length}건 일괄 승인</>
+ 339|                   }
+ 340|                 </button>
+ 341|               </div>
+ 342|             ) : (
+ 343|               <div className="p-5">
+ 344|                 <div className="text-center mb-4">
+ 345|                   <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
+ 346|                     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+ 347|                   </div>
+ 348|                   <p className="font-bold text-gray-900">일괄 결재 완료!</p>
+ 349|                   <p className="text-xs text-gray-400 mt-1">{bulkResults.filter(r=>r.ok).length}/{bulkResults.length}건 성공</p>
+ 350|                 </div>
+ 351|                 <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
+ 352|                   {bulkResults.map(r => (
+ 353|                     <div key={r.id} className={`flex items-center gap-2 rounded-xl px-3 py-2 ${r.ok?"bg-green-50":"bg-red-50"}`}>
+ 354|                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={r.ok?"#16a34a":"#dc2626"} strokeWidth="2">
+ 355|                         {r.ok?<polyline points="20 6 9 17 4 12"/>:<><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>}
+ 356|                       </svg>
+ 357|                       <span className="text-xs text-gray-700 flex-1 truncate">{r.name}</span>
+ 358|                       <span className={`text-[10px] font-medium ${r.ok?"text-green-600":"text-red-500"}`}>{r.ok?"승인":"실패"}</span>
+ 359|                     </div>
+ 360|                   ))}
+ 361|                 </div>
+ 362|                 <button onClick={() => { setShowBulkModal(false); setBulkDone(false); }}
+ 363|                   className="w-full py-3 rounded-2xl bg-blue-600 text-white font-bold text-sm">닫기</button>
+ 364|               </div>
+ 365|             )}
+ 366|           </div>
+ 367|         </div>
+ 368|       )}
+ 369|     </div>
+ 370|   );
+ 371| }
+ 372| 
+ 373| function InfoRow({ label, value }: { label: string; value?: string | null }) {
+ 374|   if (!value) return null;
+ 375|   return (
+ 376|     <div className="flex items-center gap-3">
+ 377|       <span className="text-xs text-gray-400 w-14 shrink-0">{label}</span>
+ 378|       <span className="text-sm text-gray-900 font-medium flex-1">{value}</span>
+ 379|     </div>
+ 380|   );
+ 381| }

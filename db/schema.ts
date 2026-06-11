@@ -130,6 +130,7 @@ export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 100 }).notNull(),
   organization: varchar("organization", { length: 150 }),
+  position: varchar("position", { length: 100 }),
   email: varchar("email", { length: 255 }).notNull().unique(),
   passwordHash: text("password_hash"),
   role: userRoleEnum("role").notNull().default("CONTRACTOR"),

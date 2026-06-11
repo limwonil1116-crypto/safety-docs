@@ -29,8 +29,8 @@
   604|             <Text style={[S.th, { flex: 0.5, textAlign: "center" }]}>입장(명)</Text>
   605|             <Text style={[S.th, { flex: 0.5, borderRight: 0, textAlign: "center" }]}>퇴장(명)</Text>
   606|           </View>
-  607|           {gasMeasureRows.map((row, idx) => (
-  608|             <View key={idx} style={{ flexDirection: "row", borderBottom: idx === gasMeasureRows.length - 1 ? 0 : "0.5px solid " + C.border, minHeight: 26 }}>
+  607|           {(() => { const _vr = gasMeasureRows.filter((r: any) => r && (r.o2 || r.co2 || r.h2s || r.co || r.ex)); const _rows = _vr.length > 0 ? _vr : gasMeasureRows; return _rows.map((row: any, idx: number) => (
+  608|             <View key={idx} style={{ flexDirection: "row", borderBottom: idx === _rows.length - 1 ? 0 : "0.5px solid " + C.border, minHeight: 26 }}>
   609|               <View style={{ width: 52, borderRight: "0.5px solid " + C.border, padding: "3 3", alignItems: "center", justifyContent: "center" }}>
   610|                 <Text style={{ fontSize: 9, fontWeight: "bold" }}>{row.time}</Text>
   611|                 <Text style={{ fontSize: 8 }}>{row.hour || "  "}시 {row.minute || "  "}분</Text>
@@ -40,7 +40,7 @@
   615|               <Text style={{ flex: 0.5, fontSize: 8, textAlign: "center", padding: "3 2", borderRight: "0.5px solid " + C.border }}>{row.entryCount || ""}</Text>
   616|               <Text style={{ flex: 0.5, fontSize: 8, textAlign: "center", padding: "3 2" }}>{row.exitCount || ""}</Text>
   617|             </View>
-  618|           ))}
+  618|           )); })()}
   619|         </View>
   620| 
   621|         <Text style={S.secHeader}>5. 특별조치 필요사항</Text>
@@ -74,12 +74,12 @@
   649|   return (
   650|     <Document>
   651|       <Page size="A4" style={S.page}>
-  652|         <View style={S.titleBox}><Text style={S.titleMain}>안전관리 휴일작업 신청서</Text></View>
+  652|         <View style={S.titleBox}><Text style={S.titleMain}>{"\uc6a9\uc5ed\ud604\uc7a5 \ud734\uc77c\uc791\uc5c5 \uc2e0\uccad\uc11c"}</Text></View>
   653|         <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
   654|           <Text style={{ fontSize: 10.5 }}>{`작업일시: ${periodText}`}</Text>
   655|           <Text style={{ fontSize: 10 }}>{`신고일시: ${fd.requestDate || ""}`}</Text>
   656|         </View>
-  657|         <Text style={[S.secHeader, { marginTop: 4 }]}>1. 용역 개요</Text>
+  657|         <Text style={[S.secHeader, { marginTop: 2 }]}>1. 용역 개요</Text>
   658|         <View style={S.table}>
   659|           <View style={S.tr}><Text style={[S.il, { width: 58 }]}>용역명</Text><Text style={[S.iv, { borderRight: 0 }]}>{taskName || fd.serviceName || ""}</Text></View>
   660|           <View style={S.trLast}>
@@ -116,9 +116,9 @@
   691|           </View>
   692|           {participants.map((p, idx) => (
   693|             <View key={idx} style={idx === participants.length - 1 ? S.trLast : S.tr}>
-  694|               <Text style={[S.td, { flex: 2, minHeight: 24 }]}>{p.role || ""}</Text>
-  695|               <Text style={[S.td, { flex: 2, minHeight: 24 }]}>{p.name || ""}</Text>
-  696|               <Text style={[S.td, { flex: 2, borderRight: 0, minHeight: 24 }]}>{p.phone || ""}</Text>
+  694|               <Text style={[S.td, { flex: 2, minHeight: 16 }]}>{p.role || ""}</Text>
+  695|               <Text style={[S.td, { flex: 2, minHeight: 16 }]}>{p.name || ""}</Text>
+  696|               <Text style={[S.td, { flex: 2, borderRight: 0, minHeight: 16 }]}>{p.phone || ""}</Text>
   697|             </View>
   698|           ))}
   699|         </View>
@@ -129,14 +129,14 @@
   704|             <Text style={[S.th, { flex: 1, borderRight: 0 }]}>조치결과</Text>
   705|           </View>
   706|           <View style={S.trLast}>
-  707|             <Text style={[S.td, { flex: 1, minHeight: 50 }]}>{fd.reviewOpinion || ""}</Text>
-  708|             <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 50 }]}>{fd.reviewResult || ""}</Text>
+  707|             <Text style={[S.td, { flex: 1, minHeight: 30 }]}>{fd.reviewOpinion || ""}</Text>
+  708|             <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 30 }]}>{fd.reviewResult || ""}</Text>
   709|           </View>
   710|         </View>
   711|         <Text style={{ fontSize: 10, textAlign: "center", marginVertical: 4 }}>위와 같이 휴일작업을 신청하오니 검토하여 승인하여 주시기 바랍니다.</Text>
   712|         <View style={{ border: "0.8px solid " + C.border, marginBottom: 3 }}>
   713|           {/* 신청자 행 */}
-  714|           <View style={{ flexDirection: "row", alignItems: "center", padding: "4 6", minHeight: 36 }}>
+  714|           <View style={{ flexDirection: "row", alignItems: "center", padding: "3 6", minHeight: 26 }}>
   715|             <Text style={{ fontSize: 9, width: 55, color: C.black }}>신청자</Text>
   716|             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${fd.applicantOrg || ""}  (안전보건관리책임자) ${fd.applicantName || ""}`}</Text>
   717|             <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>

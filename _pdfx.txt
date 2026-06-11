@@ -1,0 +1,663 @@
+===== repo grep (KO labels + field candidates) =====
+\lib\pdf\generator.ts:5| import { SafetyWorkPermitPDF, ConfinedSpacePDF, HolidayWorkPDF, PowerOutagePDF, AttachmentPagesPDF } from "./templates";
+\lib\pdf\generator.ts:34|   isSelf?: boolean; // 자체진단 여부
+\lib\pdf\generator.ts:40|     createdAt, taskName, applicantSignature, workAddress, isSelf,
+\lib\pdf\generator.ts:46|     CONFINED_SPACE:     "밀폐공간작업허가서",
+\lib\pdf\generator.ts:70|     isSelf: isSelf ?? false,
+\lib\pdf\generator.ts:76|     case "CONFINED_SPACE": mainElement = React.createElement(ConfinedSpacePDF,    commonProps); break;
+\lib\pdf\templates.tsx:35|   footer: { position: "absolute", bottom: 6, left: 12, right: 12, borderTop: "0.5px solid #aaa", paddingTop: 3, flexDirection: "row", justifyContent: "space-between" },
+\lib\pdf\templates.tsx:116|         <Text style={{ fontSize: 9 }}>{`(직책) ${applicantTitle || ""}`}</Text>
+\lib\pdf\templates.tsx:141|           {deptLabel || "(부서) 한국농어촌공사   (직책) 용역관리자"}
+\lib\pdf\templates.tsx:257| export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+\lib\pdf\templates.tsx:261|   workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
+\lib\pdf\templates.tsx:284|     footer: { position: "absolute", bottom: 4, left: 8, right: 8, borderTop: "0.5px solid #aaa", paddingTop: 2, flexDirection: "row", justifyContent: "space-between" },
+\lib\pdf\templates.tsx:291|     { key: "riskConfinedSpace", label: "밀폐공간(복통 포함)작업" },
+\lib\pdf\templates.tsx:310|   if (fd.riskConfinedSpace && fd.riskConfinedSpaceDetail) relatedWorkByType.push({ typeName: "밀폐공간", details: [fd.riskConfinedSpaceDetail as string] });
+\lib\pdf\templates.tsx:330|   const deptLabel = isSelf ? "안전기술본부" : "안전기술본부";
+\lib\pdf\templates.tsx:331|   const titleLabel = isSelf ? "부장" : "용역감독원";
+\lib\pdf\templates.tsx:360|               <Text style={{ fontSize: 8 }}>{`(직책) ${fd.applicantTitle || ""}`}</Text>
+\lib\pdf\templates.tsx:448|         {/* 3. 용역감독 검토내용 */}
+\lib\pdf\templates.tsx:449|         <Text style={P.secHeader}>3. 용역감독 검토내용</Text>
+\lib\pdf\templates.tsx:459|           {/* 계획확인허가자 */}
+\lib\pdf\templates.tsx:461|             <Text style={[P.il, { width: 80 }]}>(계획확인)허가자</Text>
+\lib\pdf\templates.tsx:463|               <Text style={{ fontSize: 7.5, color: "#555" }}>{`(부서) ${deptLabel}   (직책) ${titleLabel}`}</Text>
+\lib\pdf\templates.tsx:475|           {/* 이행확인자 */}
+\lib\pdf\templates.tsx:477|             <Text style={[P.il, { width: 80 }]}>(이행확인)확인자</Text>
+\lib\pdf\templates.tsx:479|               <Text style={{ fontSize: 7.5, color: "#555" }}>{`(부서) ${deptLabel}   (직책) ${titleLabel}`}</Text>
+\lib\pdf\templates.tsx:503| export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+\lib\pdf\templates.tsx:507|   workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
+\lib\pdf\templates.tsx:535|           <Text style={S.titleMain}>밀폐공간 작업 허가서<Text style={{ fontSize: 13, fontWeight: "normal" }}>(용역업체용)</Text></Text>
+\lib\pdf\templates.tsx:627|           { roleLabel: "(계획확인) 허가자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a1?.approverName, signatureData: a1?.signatureData },
+\lib\pdf\templates.tsx:628|           { roleLabel: "(이행확인) 확인자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a2?.approverName, signatureData: a2?.signatureData },
+\lib\pdf\templates.tsx:637| export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+\lib\pdf\templates.tsx:641|   workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
+\lib\pdf\templates.tsx:657|         <Text style={[S.secHeader, { marginTop: 2 }]}>1. 용역 개요</Text>
+\lib\pdf\templates.tsx:659|           <View style={S.tr}><Text style={[S.il, { width: 58 }]}>용역명</Text><Text style={[S.iv, { borderRight: 0 }]}>{taskName || fd.serviceName || ""}</Text></View>
+\lib\pdf\templates.tsx:663|             <Text style={[S.il, { width: 55 }]}>용역기간</Text>
+\lib\pdf\templates.tsx:700|         <Text style={S.secHeader}>3. 용역감독 검토내용</Text>
+\lib\pdf\templates.tsx:725|             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${a1?.approverOrg || ""}  (용역감독원) ${a1?.approverName || ""}`}</Text>
+\lib\pdf\templates.tsx:749| export function PowerOutagePDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+\lib\pdf\templates.tsx:753|   workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
+\lib\pdf\templates.tsx:772|             <Text style={{ fontSize: 13, fontWeight: "normal" }}>{"(용역업체용)"}</Text>
+\lib\pdf\templates.tsx:794|             <CB checked={fd.needConfinedSpace === "필요"} /><Text style={{ fontSize: 10, marginRight: 14 }}> 필요   </Text>
+\lib\pdf\templates.tsx:795|             <CB checked={fd.needConfinedSpace === "불필요"} /><Text style={{ fontSize: 10 }}> 불필요</Text>
+\lib\pdf\templates.tsx:842|           { roleLabel: "(계획확인) 허가자", name: a1?.approverName, signatureData: a1?.signatureData },
+\lib\pdf\templates.tsx:843|           { roleLabel: "(이행확인) 확인자", name: a2?.approverName, signatureData: a2?.signatureData },
+\lib\pdf\templates.tsx:865|     footer: { position: "absolute", bottom: 6, left: 10, right: 10, borderTop: "0.5px solid #aaa", paddingTop: 2, flexDirection: "row", justifyContent: "space-between" },
+\app\(main)\approvals\page.tsx:14|   task_division?: string;
+\app\(main)\approvals\page.tsx:24|   try { return JSON.parse(desc || "{}").division || ""; } catch { return ""; }
+\app\(main)\approvals\page.tsx:48|   { key: "CONFINED_SPACE",     label: "밀폐공간작업허가서" },
+\app\(main)\approvals\page.tsx:60|   const isConfined = doc.document_type === "CONFINED_SPACE";
+\app\(main)\approvals\page.tsx:112|         <StepDot s={s2} label="계획확인" type="shield" />
+\app\(main)\approvals\page.tsx:116|         <StepDot s={s4} label="이행확인" type="shield" />
+\app\(main)\approvals\page.tsx:135|         <StepDot s={sp1} label="계획확인" type="shield" />
+\app\(main)\approvals\page.tsx:139|         <StepDot s={sp3} label="이행확인" type="shield" />
+\app\(main)\approvals\page.tsx:161|       <StepDot s={step2} label={isSafetyPermit ? "계획확인" : "검토"} type="search" />
+\app\(main)\approvals\page.tsx:163|       <StepDot s={step3} label={isSafetyPermit ? "이행확인" : "허가"} type="shield" />
+\app\(main)\approvals\page.tsx:178|   const [divisionFilter, setDivisionFilter] = useState("ALL");
+\app\(main)\approvals\page.tsx:216|   const divisionList = ["ALL", ...Array.from(new Set(
+\app\(main)\approvals\page.tsx:228|     if (divisionFilter !== "ALL") {
+\app\(main)\approvals\page.tsx:229|       if (getDivision(doc.task_description) !== divisionFilter) return false;
+\app\(main)\approvals\page.tsx:260|         {/* 유형 필터 (전체/용역/자체진단) + 반 드롭다운 */}
+\app\(main)\approvals\page.tsx:274|               {f === "ALL" ? "전체" : f === "CONTRACTOR" ? "[용역]" : "[자체진단]"}
+\app\(main)\approvals\page.tsx:277|           {/* 반 드롭다운: 용역 또는 자체진단 선택시에만 표시 */}
+\app\(main)\approvals\page.tsx:278|           {categoryFilter !== "ALL" && divisionList.length > 1 && (
+\app\(main)\approvals\page.tsx:280|               value={divisionFilter}
+\app\(main)\approvals\page.tsx:283|               {divisionList.map(d => (
+\app\(main)\approvals\page.tsx:321|             placeholder="용역명, 업체명으로 검색하세요"
+\app\(main)\approvals\page.tsx:368|                       작성 중 - 용역 페이지에서 이어서 작성
+\app\(main)\approvals\page.tsx:381|                         {getTaskCategory(doc.task_description) === "SELF" ? "[자체진단]" : "[용역]"}
+\app\(main)\approvals\[documentId]\page.tsx:34|   SAFETY_WORK_PERMIT: { 1: "(계획확인)허가자", 2: "(이행확인)확인자", 3: "(이행확인)확인자" },
+\app\(main)\approvals\[documentId]\page.tsx:35|   CONFINED_SPACE:     { 1: "감시인", 2: "(계획확인)허가자", 3: "측정담당자", 4: "(이행확인)확인자" },
+\app\(main)\approvals\[documentId]\page.tsx:37|   POWER_OUTAGE:       { 1: "(계획확인)허가자", 2: "(이행확인)확인자" },
+\app\(main)\approvals\[documentId]\page.tsx:39| const CONFINED_STEP_DESC: Record<number, string> = {
+\app\(main)\approvals\[documentId]\page.tsx:41|   2: "특별조치 입력 및 (계획확인) 허가자 서명",
+\app\(main)\approvals\[documentId]\page.tsx:43|   4: "(이행확인) 확인자 최종 서명",
+\app\(main)\approvals\[documentId]\page.tsx:46|   SAFETY_WORK_PERMIT: "(이행확인)확인자",
+\app\(main)\approvals\[documentId]\page.tsx:47|   CONFINED_SPACE:     "(이행확인)확인자",
+\app\(main)\approvals\[documentId]\page.tsx:49|   POWER_OUTAGE:       "(이행확인)확인자",
+\app\(main)\approvals\[documentId]\page.tsx:75|         new window.kakao.maps.Marker({ position: center, map });
+\app\(main)\approvals\[documentId]\page.tsx:227|   const isConfined = doc.documentType === "CONFINED_SPACE";
+\app\(main)\approvals\[documentId]\page.tsx:249|       mkStep(2, "(계획확인)허가자", "approve", ""),
+\app\(main)\approvals\[documentId]\page.tsx:251|       mkStep(4, "(이행확인)확인자", "approve", ""),
+\app\(main)\approvals\[documentId]\page.tsx:262|       mkStepP(1, "계획확인허가자", "approve", ""),
+\app\(main)\approvals\[documentId]\page.tsx:264|       mkStepP(3, "이행확인확인자", "approve", ""),
+\app\(main)\approvals\[documentId]\page.tsx:271|       ...(line1 ? [{ icon: <StepIcon type={doc.documentType === "SAFETY_WORK_PERMIT" ? "approve" : "review"} status={getStepStatus(line1)} />, label: roleLabels[1] ?? "(계획확인)허가자", name: line1.approverName ?? "", comment: line1.comment, actedAt: line1.actedAt, signatureData: line1.signatureData, status: getStepStatus(line1) }] : []),
+\app\(main)\approvals\[documentId]\page.tsx:272|       ...(line2 ? [{ icon: <StepIcon type="approve" status={getStepStatus(line2)} />, label: line2.approvalRole === "FINAL_APPROVER" ? finalLabel : (roleLabels[2] ?? "(이행확인)확인자"), name: line2.approverName ?? "", comment: line2.comment, actedAt: line2.actedAt, signatureData: line2.signatureData, status: getStepStatus(line2) }] : []),
+\app\(main)\approvals\[documentId]\page.tsx:315|   const label = action === "PLAN_APPROVER" ? "(계획확인) 허가자" : "(이행확인) 확인자";
+\app\(main)\approvals\[documentId]\page.tsx:317|   const nextTitle = action === "PLAN_APPROVER" ? "밀폐공간 작업허가 - (계획확인) 허가자 서명 요청" : "밀폐공간 작업허가 - (이행확인) 최종 확인 요청";
+\app\(main)\approvals\[documentId]\page.tsx:360|     ? (isFirstStep ? "(계획확인)허가자" : "(이행확인)확인자")
+\app\(main)\approvals\[documentId]\page.tsx:379|         <div className="hidden rounded-xl p-3 mb-4 text-xs text-amber-700">{isFirstStep && documentType === "SAFETY_WORK_PERMIT" ? "신청서가 제출되었습니다. (계획확인)허가자를 지정해주세요." : ""}</div>
+\app\(main)\approvals\[documentId]\page.tsx:442|     fd.riskConfinedSpace && `밀폐공간${fd.riskConfinedSpaceDetail ? ": " + fd.riskConfinedSpaceDetail : ""}`,
+\app\(main)\approvals\[documentId]\page.tsx:454|   const isForm2 = doc.documentType === "CONFINED_SPACE";
+\app\(main)\approvals\[documentId]\page.tsx:465|           <Field label="용역명" value={(fd.projectName ?? fd.serviceName) as string} />
+\app\(main)\approvals\[documentId]\page.tsx:467|           <Field label="직책" value={fd.applicantTitle as string} />
+\app\(main)\approvals\[documentId]\page.tsx:470|           {isForm3 && (fd.contractPeriodStart || fd.contractPeriodEnd) && <Field label="용역기간" value={`${fd.contractPeriodStart || ""} ~ ${fd.contractPeriodEnd || ""}`} />}
+\app\(main)\approvals\[documentId]\page.tsx:490|           {isForm4 && <Field label="밀폐공간작업" value={fd.needConfinedSpace as string} />}
+\app\(main)\approvals\[documentId]\page.tsx:605|               const roleLabel = doc.documentType === "CONFINED_SPACE"
+\app\(main)\approvals\[documentId]\page.tsx:606|                 ? (line.approvalOrder === 2 ? "(계획확인)허가자" : line.approvalOrder === 4 ? "(이행확인)확인자" : ROLE_LABELS["CONFINED_SPACE"]?.[line.approvalOrder] ?? `${line.approvalOrder}단계`)
+\app\(main)\approvals\[documentId]\page.tsx:1055|             if (t === "CONFINED_SPACE" && ord === 1) act = "PLAN_APPROVER";
+\app\(main)\approvals\[documentId]\page.tsx:1056|             else if (t === "CONFINED_SPACE" && ord === 3) act = "FINAL_CONFIRMER";
+\app\(main)\approvals\[documentId]\page.tsx:1058|             else if (ord === 1 && t !== "CONFINED_SPACE" && t !== "POWER_OUTAGE") act = "FINAL_APPROVER";
+\app\(main)\approvals\[documentId]\page.tsx:1072|       document.body.style.position = "fixed"; document.body.style.top = `-${scrollY}px`;
+\app\(main)\approvals\[documentId]\page.tsx:1075|         document.body.style.position = ""; document.body.style.top = "";
+\app\(main)\approvals\[documentId]\page.tsx:1123|       const isConfinedSpace = doc?.documentType === "CONFINED_SPACE";
+\app\(main)\approvals\[documentId]\page.tsx:1125|       if (isConfinedSpace && confinedOrder === 2 && specialMeasuresInput) extraBody.specialMeasures = specialMeasuresInput;
+\app\(main)\approvals\[documentId]\page.tsx:1127|       if (isConfinedSpace && confinedOrder === 3) extraBody.gasMeasureRows = gasMeasureRef.current.length > 0 ? gasMeasureRef.current : (gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput.map((r: any) => ({ ...r, measurer: r.measurer || (fd.measurerName as string) || "" })) : DEFAULT_GAS_ROWS);
+\app\(main)\approvals\[documentId]\page.tsx:1137|       else if (data.action === "NEED_MEASUREMENT") { alert("(계획확인) 서명이 완료됩니다."); router.push("/approvals"); }
+\app\(main)\approvals\[documentId]\page.tsx:1159|   const isConfinedSpace = doc.documentType === "CONFINED_SPACE";
+\app\(main)\approvals\[documentId]\page.tsx:1166|     const isConfinedSpace = doc?.documentType === "CONFINED_SPACE";
+\app\(main)\approvals\[documentId]\page.tsx:1168|     if (isConfinedSpace) {
+\app\(main)\approvals\[documentId]\page.tsx:1169|       const stepDesc = CONFINED_STEP_DESC[confinedOrder] ?? "";
+\app\(main)\approvals\[documentId]\page.tsx:1222|             {powerOrder === 1 ? "계획확인허가자 - 특별조치 입력" : powerOrder === 2 ? "점검확인결과 작성자 - 점검결과 입력" : "이행확인확인자 - 최종 서명"}
+\app\(main)\approvals\[documentId]\page.tsx:1262|           {doc.currentApprovalOrder === 1 ? (doc.documentType === "SAFETY_WORK_PERMIT" ? "(계획확인) 검토의견 입력" : "검토 의견 입력") : (doc.documentType === "SAFETY_WORK_PERMIT" ? "(이행확인) 검토의견 확인" : "검토의견 확인 및 설정")}
+\app\(main)\approvals\[documentId]\page.tsx:1370|             {(doc.documentType === "CONFINED_SPACE" || doc.documentType === "POWER_OUTAGE") && fd.specialMeasures && doc.currentApprovalOrder !== 1 && doc.status !== "SUBMITTED" && (
+\app\(main)\approvals\[documentId]\page.tsx:1387|           {isConfinedSpace && confinedOrder === 3 ? (
+\app\(main)\approvals\[documentId]\page.tsx:1411|               {processing ? "취소 중..." : "📊 측정결과 제출 및 이행확인자 지정"}
+\app\(main)\approvals\[documentId]\page.tsx:1433|                 {isConfinedSpace
+\app\(main)\approvals\[documentId]\page.tsx:1434|                   ? confinedOrder === 1 ? "감시인 서명" : confinedOrder === 2 ? "(계획확인) 서명" : "(이행확인) 최종 서명"
+\app\(main)\approvals\[documentId]\page.tsx:1461|               {isConfinedSpace
+\app\(main)\approvals\[documentId]\page.tsx:1462|                 ? confinedOrder === 1 ? "감시인 서명 후 (계획확인)허가자를 지정합니다"
+\app\(main)\approvals\[documentId]\page.tsx:1463|                   : confinedOrder === 2 ? "(계획확인) 허가자 서명을 완료합니다"
+\app\(main)\approvals\[documentId]\page.tsx:1464|                   : "(이행확인) 최종 서명을 완료합니다"
+\app\(main)\approvals\[documentId]\page.tsx:1468|               {isConfinedSpace
+\app\(main)\approvals\[documentId]\page.tsx:1526|               alert(isFirst ? "(계획확인)허가자가 지정되었습니다." : "(이행확인)확인자가 지정되었습니다.");
+\app\(main)\approvals\[documentId]\page.tsx:1554|               ? "(계획확인) 허가자가 지정됩니다."
+\app\(main)\approvals\[documentId]\page.tsx:1555|               : "(이행확인) 확인자가 지정됩니다.";
+\app\(main)\dashboard\page.tsx:33|   CONFINED_SPACE:     "밀폐공간허가서",
+\app\(main)\dashboard\page.tsx:40|   CONFINED_SPACE:     { bg: "#ede9fe", text: "#6d28d9", border: "#8b5cf6" },
+\app\(main)\dashboard\page.tsx:325|       const marker = new window.kakao.maps.Marker({ position: pos, map, image: markerImage });
+\app\(main)\dashboard\page.tsx:329|       // 마커 위 용역명 라벨 - 항상 표시
+\app\(main)\dashboard\page.tsx:333|         position: pos,
+\app\(main)\dashboard\page.tsx:374|           { key: "CONFINED_SPACE",    label: "붙임2" },
+\app\(main)\dashboard\page.tsx:457|                   <th className="text-left px-3 py-2.5 text-white font-medium">용역명</th>
+\app\(main)\mypage\page.tsx:28|   CONFINED_SPACE: "밀폐공간작업허가서",
+\app\(main)\mypage\page.tsx:269|           { label:"용역 목록", sub:"내 용역 및 서류 관리", path:"/tasks" },
+\app\(main)\overview\page.tsx:36|   CONFINED_SPACE:     "밀폐공간허가서",
+\app\(main)\overview\page.tsx:43|   CONFINED_SPACE:     { bg: "#8b5cf6", text: "#ffffff", border: "#7c3aed" },
+\app\(main)\overview\page.tsx:55|   return getTaskCat(desc) === "SELF" ? "자체진단" : "용역";
+\app\(main)\overview\page.tsx:58|   return getTaskCat(desc) === "SELF" ? "[자체진단]" : "[용역]";
+\app\(main)\overview\page.tsx:86| function ConfinedSpaceMonitor({ documents }: { documents: DocumentMapItem[] }) {
+\app\(main)\overview\page.tsx:90|     d.documentType === "CONFINED_SPACE" &&
+\app\(main)\overview\page.tsx:310|       {/* 용역 선택 */}
+\app\(main)\overview\page.tsx:315|             <option value="ALL">전체 용역</option>
+\app\(main)\overview\page.tsx:400|                       position: "absolute",
+\app\(main)\overview\page.tsx:498|   const [divisionFilter, setDivisionFilter] = useState("ALL");
+\app\(main)\overview\page.tsx:503|   const divisionList = ["ALL", ...Array.from(new Set(categoryFiltered.map(d => d.taskDivision || "").filter(Boolean))).sort()];
+\app\(main)\overview\page.tsx:504|   const divisionFiltered = divisionFilter === "ALL" ? categoryFiltered : categoryFiltered.filter(d => d.taskDivision === divisionFilter);
+\app\(main)\overview\page.tsx:505|   const taskList = Array.from(new Map(divisionFiltered.map(d => [d.taskId, d.taskName])).entries());
+\app\(main)\overview\page.tsx:506|   const taskFiltered = selectedTaskId === "ALL" ? divisionFiltered : divisionFiltered.filter(d => d.taskId === selectedTaskId);
+\app\(main)\overview\page.tsx:529|             taskDivision: (() => { try { return JSON.parse(d.task?.description || "{}").division || ""; } catch { return ""; } })(),
+\app\(main)\overview\page.tsx:578|       const marker = new window.kakao.maps.Marker({ position: pos, map, image: markerImage });
+\app\(main)\overview\page.tsx:584|       const labelOverlay = new window.kakao.maps.CustomOverlay({ position: pos, content: labelContent, yAnchor: 2.7, map });
+\app\(main)\overview\page.tsx:585|       const infoContent = `<div style="padding:8px 12px;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.15);min-width:140px;font-family:sans-serif;cursor:pointer"><p style="font-size:10px;font-weight:700;color:${getCatTag(doc.taskDescription).includes("자체") ? "#1d4ed8" : "#16a34a"};margin:0 0 2px;">${getCatTag(doc.taskDescription)}</p><p style="font-size:12px;font-weight:600;color:#111;margin:0 0 2px;">${doc.taskName}</p><p style="font-size:11px;color:#666;margin:0 0 4px;">${doc.type}</p>${doc.workAddress?`<p style="font-size:10px;color:#888;margin:0 0 4px;">${doc.workAddress}</p>`:""}<p style="font-size:10px;color:#888;margin:0 0 4px;">${periodText}</p><span style="font-size:11px;padding:2px 8px;border-radius:99px;background:${pinColor}20;color:${pinColor};font-weight:500;">${STATUS_STYLE[doc.status]?.label??doc.status}</span></div>`;
+\app\(main)\overview\page.tsx:613|           { key: "CONFINED_SPACE",    label: "밀폐공간작업허가서" },
+\app\(main)\overview\page.tsx:637|             {f === "ALL" ? "전체" : f === "CONTRACTOR" ? "도급사업(용역)" : "자체진단"}
+\app\(main)\overview\page.tsx:640|         <select value={divisionFilter} onChange={e => { setDivisionFilter(e.target.value); setSelectedTaskId("ALL"); }}
+\app\(main)\overview\page.tsx:642|           {divisionList.map(d => <option key={d} value={d}>{d === "ALL" ? "전체 반" : d}</option>)}
+\app\(main)\overview\page.tsx:697|           <ConfinedSpaceMonitor documents={documents} />
+\app\(main)\overview\page.tsx:721|               <option value="ALL">전체 용역</option>
+\app\(main)\overview\page.tsx:740|                   <th className="text-left px-3 py-2.5 text-white font-medium">용역명</th>
+\app\(main)\tasks\page.tsx:11|   category?: string; division?: string;
+\app\(main)\tasks\page.tsx:18|   const isSelf = category === "SELF";
+\app\(main)\tasks\page.tsx:19|   const divisions = isSelf ? SELF_DIVISIONS.slice(1) : CONTRACTOR_DIVISIONS.slice(1);
+\app\(main)\tasks\page.tsx:20|   const [form, setForm] = useState({ name: "", contractorCompanyName: "", description: "", startDate: "", endDate: "", division: "" });
+\app\(main)\tasks\page.tsx:25|     if (!form.name.trim()) { setError(isSelf ? "지구명을 입력해주세요." : "용역명을 입력해주세요."); return; }
+\app\(main)\tasks\page.tsx:28|       const meta = JSON.stringify({ category, division: form.division });
+\app\(main)\tasks\page.tsx:46|           <h2 className="text-base font-bold text-gray-900">{isSelf ? "지구 등록" : "용역 신규 등록"}</h2>
+\app\(main)\tasks\page.tsx:53|             <label className="text-xs font-medium text-gray-700 mb-1 block">{isSelf ? "지구명" : "용역명"} *</label>
+\app\(main)\tasks\page.tsx:55|               placeholder={isSelf ? "예) 예당저수지" : "예) 예당저수지 복통 안전진단"}
+\app\(main)\tasks\page.tsx:58|           {!isSelf && (
+\app\(main)\tasks\page.tsx:66|             <label className="text-xs font-medium text-gray-700 mb-1 block">{isSelf ? "조사반" : "관리반"}</label>
+\app\(main)\tasks\page.tsx:67|             <select value={form.division} onChange={e => setForm({...form, division: e.target.value})}
+\app\(main)\tasks\page.tsx:70|               {divisions.map(d => <option key={d} value={d}>{d}</option>)}
+\app\(main)\tasks\page.tsx:89|           style={{ background: isSelf ? "#16a34a" : "#2563eb" }}>
+\app\(main)\tasks\page.tsx:90|           {loading ? "등록 중..." : isSelf ? "지구 등록" : "용역 등록"}
+\app\(main)\tasks\page.tsx:98|   const isSelf = category === "SELF";
+\app\(main)\tasks\page.tsx:99|   const divisions = isSelf ? SELF_DIVISIONS.slice(1) : CONTRACTOR_DIVISIONS.slice(1);
+\app\(main)\tasks\page.tsx:100|   const [form, setForm] = useState({ name: task.name, contractorCompanyName: task.contractorCompanyName ?? "", division: task.division ?? "" });
+\app\(main)\tasks\page.tsx:108|       const meta = JSON.stringify({ category, division: form.division });
+\app\(main)\tasks\page.tsx:133|             <label className="text-xs font-medium text-gray-700 mb-1 block">{isSelf ? "지구명" : "용역명"} *</label>
+\app\(main)\tasks\page.tsx:136|           {!isSelf && (
+\app\(main)\tasks\page.tsx:143|             <label className="text-xs font-medium text-gray-700 mb-1 block">{isSelf ? "조사반" : "관리반"}</label>
+\app\(main)\tasks\page.tsx:144|             <select value={form.division} onChange={e => setForm({...form, division: e.target.value})} className={inputClass}>
+\app\(main)\tasks\page.tsx:146|               {divisions.map(d => <option key={d} value={d}>{d}</option>)}
+\app\(main)\tasks\page.tsx:168|   const isSelf = category === "SELF";
+\app\(main)\tasks\page.tsx:169|   const divisions = isSelf ? SELF_DIVISIONS : CONTRACTOR_DIVISIONS;
+\app\(main)\tasks\page.tsx:175|   const [divisionFilter, setDivisionFilter] = useState("전체");
+\app\(main)\tasks\page.tsx:188|       // category/division 파싱
+\app\(main)\tasks\page.tsx:192|           return { ...t, category: meta.category || "CONTRACTOR", division: meta.division || "" };
+\app\(main)\tasks\page.tsx:193|         } catch { return { ...t, category: "CONTRACTOR", division: "" }; }
+\app\(main)\tasks\page.tsx:205|   // division 필터 변경 시 전체로 리셋
+\app\(main)\tasks\page.tsx:223|   const filtered = divisionFilter === "전체" ? tasks : tasks.filter(t => t.division === divisionFilter);
+\app\(main)\tasks\page.tsx:227|   const accentColor = isSelf ? "#16a34a" : "#2563eb";
+\app\(main)\tasks\page.tsx:239|           <h1 className="text-lg font-bold text-gray-900">{isSelf ? "자체진단" : "도급사업 (용역)"}</h1>
+\app\(main)\tasks\page.tsx:240|           <p className="text-sm text-gray-500">{isSelf ? "지구별 자체 안전진단" : "수급업체 용역 현황"}</p>
+\app\(main)\tasks\page.tsx:263|         {divisions.map(d => (
+\app\(main)\tasks\page.tsx:265|             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${divisionFilter === d ? "text-white" : "bg-gray-100 text-gray-600"}`}
+\app\(main)\tasks\page.tsx:266|             style={divisionFilter === d ? { background: accentColor } : {}}>
+\app\(main)\tasks\page.tsx:278|           placeholder={isSelf ? "지구명 검색" : "용역명 또는 업체명 검색"}
+\app\(main)\tasks\page.tsx:288|         <div className="text-center py-12 text-gray-400 text-sm">{search ? "검색 결과가 없습니다." : isSelf ? "등록된 지구가 없습니다." : "등록된 용역이 없습니다."}</div>
+\app\(main)\tasks\page.tsx:298|                         {task.division && (
+\app\(main)\tasks\page.tsx:300|                             style={{ background: accentColor }}>{task.division}</span>
+\app\(main)\tasks\page.tsx:302|                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 ${isSelf ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+\app\(main)\tasks\page.tsx:303|                           {isSelf ? "[자체진단]" : "[용역]"}
+\app\(main)\tasks\page.tsx:307|                       {!isSelf && task.contractorCompanyName && (
+\app\(main)\tasks\[taskId]\page.tsx:55|   { key: "CONFINED_SPACE",     label: "밀폐공간작업허가서" },
+\app\(main)\tasks\[taskId]\page.tsx:62|   { key: "CONFINED_SPACE",     label: "붙임2", desc: "밀폐공간작업허가서" },
+\app\(main)\tasks\[taskId]\page.tsx:269|           용역 목록
+\app\(main)\tasks\[taskId]\documents\[documentId]\detail\page.tsx:50|   SAFETY_WORK_PERMIT: { 1: "(계획확인)허가자", 2: "(이행확인)확인자" },
+\app\(main)\tasks\[taskId]\documents\[documentId]\detail\page.tsx:51|   CONFINED_SPACE:     { 1: "허가자",     2: "확인자" },
+\app\(main)\tasks\[taskId]\documents\[documentId]\detail\page.tsx:58|   CONFINED_SPACE:     "확인자",
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:13|   workType: string; riskFactor: string; riskLevel: string;
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:18| const DOC_TYPE_INFO: Record<string, { title: string; short: string; approverLabel: string; confirmerLabel: string }> = {
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:19|   SAFETY_WORK_PERMIT: { title: "안전작업허가서",    short: "불임윜1", approverLabel: "(계획확인)허가자", confirmerLabel: "(이행확인)확인자" },
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:20|   CONFINED_SPACE:     { title: "밀폐공간작업허가서", short: "불임윜2", approverLabel: "허가자",    confirmerLabel: "확인자" },
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:21|   HOLIDAY_WORK:       { title: "휴일작업신고서",     short: "불임윜3", approverLabel: "검토자",    confirmerLabel: "승인자" },
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:22|   POWER_OUTAGE:       { title: "정전작업허가서",     short: "불임윜4", approverLabel: "계획확인허가자",    confirmerLabel: "이행확인확인자" },
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:35|   workType: "", riskFactor: "", riskLevel: "중",
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:60|           {(["workType","riskFactor","currentMeasure","additionalMeasure"] as (keyof RiskAssessRow)[]).map((field) => {
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:61|             const placeholders: Record<string, string> = { workType: "작업내용", riskFactor: "위험인자", currentMeasure: "현재조치", additionalMeasure: "추가조치" };
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:62|             const colSpans: Record<string, string> = { workType: "col-span-2", riskFactor: "col-span-2", currentMeasure: "col-span-3", additionalMeasure: "col-span-2" };
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:183|       if (form.riskConfinedSpace) riskItems.push("밀폐공간작업");
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:649|     const marker = new window.kakao.maps.Marker({ position: center, map });
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:810|   const [step, setStep] = useState<"approver" | "sign">(documentType === "CONFINED_SPACE" ? "sign" : "approver");
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:818|   const isConfinedModal = documentType === "CONFINED_SPACE";
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:850|     if (!reviewer && !isConfinedModal) { setError(info.approverLabel + "를 선택해주세요."); return; }
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:853|       const isConfined = documentType === "CONFINED_SPACE";
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:876|           <h2 className="text-base font-bold text-gray-900">{step === "approver" ? `${info.approverLabel} \uc9c0\uc815` : "서명"}</h2>
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:881|             <div className="bg-blue-50 rounded-xl p-3 mb-4 text-xs text-blue-700">{`${info.approverLabel}에게 결재 요청이 전송됩니다.`}</div>
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:883|               <div className="text-xs text-gray-500 mb-1">{info.approverLabel} <span className="text-red-500">*</span></div>
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:905|             <button onClick={() => { if (!reviewer && !isConfinedModal) { setError(info.approverLabel + "를 선택해주세요."); return; } setError(""); setStep("sign"); }}
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:942|   riskConfinedSpace: boolean; riskConfinedSpaceDetail: string;
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:959|   riskConfinedSpace: false, riskConfinedSpaceDetail: "",
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1015|           <FormInput label="용역명">
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1020|             <FormInput label="직책"><input type="text" value={form.applicantTitle} onChange={e => onChange("applicantTitle", e.target.value)} className={inputClass} /></FormInput>
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1080|               <input type="checkbox" checked={!!form.riskConfinedSpace} onChange={e => onChange("riskConfinedSpace", e.target.checked)} className="w-4 h-4 rounded text-blue-600 border-gray-300" />
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1083|             {form.riskConfinedSpace && (
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1084|               <input type="text" value={form.riskConfinedSpaceDetail || ""} onChange={e => onChange("riskConfinedSpaceDetail", e.target.value)}
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1177| const CONFINED_CHECKS: SafetyCheckItem[] = [
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1210|   needFireWork: "", useInternalEngine: "", safetyChecks: CONFINED_CHECKS.map(c => ({ ...c })),
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1272|           <FormInput label="용역명"><input type="text" value={taskName} readOnly className="w-full px-3 py-3 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1275|             <FormInput label="직책"><input type="text" value={form.applicantTitle} onChange={e => onChange("applicantTitle", e.target.value)} className={inputClass} /></FormInput>
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1372|         <SectionHeader num={1} title="용역 개요" />
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1378|           <FormInput label="용역명" required><input type="text" value={taskName} readOnly className="w-full px-3 py-3 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1381|             <FormInput label="용역기간 시작"><input type="date" value={form.contractPeriodStart} onChange={e => onChange("contractPeriodStart", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1382|             <FormInput label="용역기간 종료"><input type="date" value={form.contractPeriodEnd} onChange={e => onChange("contractPeriodEnd", e.target.value)} className={dateInputClass} style={{ colorScheme: "light" }} /></FormInput>
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1475|   needConfinedSpace: string; needFireWork: string; safetyChecks: SafetyCheckItem[];
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1481|   needConfinedSpace: "", needFireWork: "", safetyChecks: POWER_CHECKS.map(c => ({ ...c })),
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1502|           <FormInput label="용역명"><input type="text" value={taskName} readOnly className="w-full px-3 py-3 border border-gray-100 rounded-xl text-sm bg-gray-50 text-gray-600" /></FormInput>
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1505|             <FormInput label="직책"><input type="text" value={form.applicantTitle} onChange={e => onChange("applicantTitle", e.target.value)} className={inputClass} /></FormInput>
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1524|                 <input type="radio" name="needConfinedSpace4" value={opt} checked={form.needConfinedSpace === opt} onChange={() => onChange("needConfinedSpace", opt)} className="w-4 h-4 text-blue-600" />
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1570|   if (dt === "CONFINED_SPACE")     return { ...f2 };
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1654|           else if (doc.documentType === "CONFINED_SPACE") setForm2(p => ({ ...p, ...fd } as Form2));
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1673|     else if (documentType === "CONFINED_SPACE") setForm2(p => ({ ...p, workLocation: addr }));
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1693|   const isConfinedModal = documentType === "CONFINED_SPACE";
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1737|         {documentType === "CONFINED_SPACE"     && <Form2Fields form={form2} onChange={handleChange2} {...locProps} taskName={taskName} documentId={documentId} />}
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1749|           {documentType === "CONFINED_SPACE" ? "서명하기" : `${DOC_TYPE_INFO[documentType]?.approverLabel || "\uacb0\uc7ac\uc790"} \uc9c0\uc815 \ubc0f \uc11c\uba85`}
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1757|           else if (documentType === "CONFINED_SPACE") setForm2(p => ({ ...p, ...migrated } as Form2));
+\app\(main)\tasks\[taskId]\documents\[documentId]\edit\page.tsx:1768|           measurerUserId={documentType === "CONFINED_SPACE" ? (form2.measurerUserId || undefined) : undefined}
+\app\(tbm)\layout.tsx:12|       label: "도급(용역)",
+\app\(tbm)\layout.tsx:24|       label: "자체진단",
+\app\(tbm)\tbm\page.tsx:24|   const typeParam = searchParams.get("type") as "" | "용역" | "자체진단" || "";
+\app\(tbm)\tbm\page.tsx:25|   const [taskFilter, setTaskFilter] = useState<"" | "용역" | "자체진단">(typeParam);
+\app\(tbm)\tbm\page.tsx:61|   // taskType 정규화: CONTRACTOR→용역, SELF→자체진단
+\app\(tbm)\tbm\page.tsx:64|     if (t === "CONTRACTOR" || t === "용역") return "용역";
+\app\(tbm)\tbm\page.tsx:65|     if (t === "SELF" || t === "자체진단") return "자체진단";
+\app\(tbm)\tbm\page.tsx:114|         {/* 도급사업/자체진단 탭 */}
+\app\(tbm)\tbm\page.tsx:119|           <button onClick={() => { setTaskFilter("용역"); }} className={`flex-1 py-2.5 text-sm font-semibold border-b-2 transition-colors ${taskFilter === "용역" ? "border-green-600 text-green-600" : "border-transparent text-gray-400"}`}>
+\app\(tbm)\tbm\page.tsx:120|             도급사업(용역)
+\app\(tbm)\tbm\page.tsx:122|           <button onClick={() => { setTaskFilter("자체진단"); }} className={`flex-1 py-2.5 text-sm font-semibold border-b-2 transition-colors ${taskFilter === "자체진단" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-400"}`}>
+\app\(tbm)\tbm\page.tsx:123|             자체진단
+\app\(tbm)\tbm\page.tsx:128|           {(["", "용역", "자체진단"] as const).map(f => (
+\app\(tbm)\tbm\page.tsx:130|               className={`px-4 py-1.5 rounded-full text-xs font-medium border transition-colors ${taskFilter === f ? (f === "용역" ? "bg-green-600 text-white border-green-600" : f === "자체진단" ? "bg-blue-600 text-white border-blue-600" : "bg-gray-700 text-white border-gray-700") : "bg-white text-gray-600 border-gray-300 hover:border-gray-400"}`}>
+\app\(tbm)\tbm\page.tsx:176|                       {/* ✅ 용역/자체진단 배지 앞에 표시 */}
+\app\(tbm)\tbm\page.tsx:177|                       {normalizeType(r.taskType) === "용역" && (
+\app\(tbm)\tbm\page.tsx:178|                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-bold border border-green-200">용역</span>
+\app\(tbm)\tbm\page.tsx:180|                       {normalizeType(r.taskType) === "자체진단" && (
+\app\(tbm)\tbm\page.tsx:181|                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold border border-blue-200">자체진단</span>
+\app\(tbm)\tbm\page.tsx:190|                   {/* 용역/자체진단 구분 태그 + 사업명 */}
+\app\(tbm)\tbm\page.tsx:192|                     {normalizeType(r.taskType) === "용역" && <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-green-100 text-green-700 shrink-0">[용역]</span>}
+\app\(tbm)\tbm\page.tsx:193|                     {normalizeType(r.taskType) === "자체진단" && <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-blue-100 text-blue-700 shrink-0">[자체진단]</span>}
+\app\(tbm)\tbm\new\page.tsx:9| interface TaskItem { id: string; name: string; category: string; division: string; }
+\app\(tbm)\tbm\new\page.tsx:47|     const marker = new window.kakao.maps.Marker({ position: center, map });
+\app\(tbm)\tbm\new\page.tsx:146|   const [taskCategory, setTaskCategory] = useState<"" | "용역" | "자체진단">("");
+\app\(tbm)\tbm\new\page.tsx:193|           return { ...t, category: meta.category || "CONTRACTOR", division: meta.division || "" };
+\app\(tbm)\tbm\new\page.tsx:194|         } catch { return { ...t, category: "CONTRACTOR", division: "" }; }
+\app\(tbm)\tbm\new\page.tsx:208|         if (r.taskType) setTaskCategory(r.taskType as "" | "용역" | "자체진단");
+\app\(tbm)\tbm\new\page.tsx:315|   const bandOptions = taskCategory === "용역" ? ["전체","1반","2반","3반","4반","5반"] : taskCategory === "자체진단" ? ["전체","1반","2반","3반","4반","5반","6반","7반","8반","9반","10반"] : [];
+\app\(tbm)\tbm\new\page.tsx:317|     if (taskCategory === "용역" && t.category !== "CONTRACTOR") return false;
+\app\(tbm)\tbm\new\page.tsx:318|     if (taskCategory === "자체진단" && t.category !== "SELF") return false;
+\app\(tbm)\tbm\new\page.tsx:319|     if (taskBand && taskBand !== "전체" && t.division !== taskBand) return false;
+\app\(tbm)\tbm\new\page.tsx:342|             <div><label className="block text-xs font-medium text-gray-600 mb-1.5">용역명 / 자체진단명</label>
+\app\(tbm)\tbm\new\page.tsx:344|                 <div className="flex gap-2">{(["", "용역", "자체진단"] as const).map(cat => (<button key={cat} type="button" onClick={() => { setTaskCategory(cat); setTaskBand(""); setF("taskType", cat); setF("band", ""); }} className={`flex-1 py-2 rounded-xl text-xs font-medium border-2 ${taskCategory===cat?"border-blue-500 bg-blue-50 text-blue-600":"border-gray-200 text-gray-500"}`}>{cat||"전체"}</button>))}</div>
+\app\(tbm)\tbm\new\page.tsx:351|                       if (selected) { const cat = (selected as any).category === "SELF" ? "자체진단" : "용역"; setTaskCategory(cat as "" | "용역" | "자체진단"); setF("taskType", cat); }
+\app\(tbm)\tbm\new\page.tsx:354|                       {filteredTasks.map((t: TaskItem) => <option key={t.id} value={t.name}>{(t as any).category === "SELF" ? "[자체진단] " : "[용역] "}{t.name}</option>)}
+\app\(tbm)\tbm\new\page.tsx:360|                     <input defaultValue={formRef.current.projectName} onChange={e => setF("projectName", e.target.value)} className={inputCls} placeholder="용역명 또는 자체진단명 입력" />
+\app\(tbm)\tbm\overview\page.tsx:9|   if (t === "CONTRACTOR" || t === "용역") return "용역";
+\app\(tbm)\tbm\overview\page.tsx:10|   if (t === "SELF" || t === "자체진단") return "자체진단";
+\app\(tbm)\tbm\overview\page.tsx:125|   const [taskFilter, setTaskFilter] = useState<"" | "용역" | "자체진단">("");
+\app\(tbm)\tbm\overview\page.tsx:198|       const overlay = new window.kakao.maps.CustomOverlay({ position: pos, content: div, map: mapObjRef.current, zIndex: 3 });
+\app\(tbm)\tbm\overview\page.tsx:223|         const bgColor=normalizeType(r.taskType)==="자체진단"?"#1d4ed8":"#16a34a";
+\app\(tbm)\tbm\overview\page.tsx:224|         const typeTag=normalizeType(r.taskType)==="자체진단"?"[자체] ":"[용역] ";
+\app\(tbm)\tbm\overview\page.tsx:229|         const overlay=new window.kakao.maps.CustomOverlay({position:new window.kakao.maps.LatLng(lat,lng),content:div,map:mapObjRef.current,zIndex:5});
+\app\(tbm)\tbm\overview\page.tsx:278|           {(["","용역","자체진단"] as const).map(f => (
+\app\(tbm)\tbm\overview\page.tsx:374|                 <div className="flex items-center gap-1 text-[10px] text-green-700 font-medium"><span className="w-3 h-3 rounded-full bg-green-500 inline-block"></span>용역</div>
+\app\(tbm)\tbm\overview\page.tsx:375|                 <div className="flex items-center gap-1 text-[10px] text-blue-700 font-medium"><span className="w-3 h-3 rounded-full bg-blue-600 inline-block"></span>자체진단</div>
+\app\(tbm)\tbm\overview\page.tsx:400|                     const isYongYeok = normalizeType(r.taskType) === "용역";
+\app\(tbm)\tbm\overview\page.tsx:409|                             {isYongYeok?"[용역]":"[자체]"}
+\app\(tbm)\tbm\[tbmId]\page.tsx:46|         new window.kakao.maps.Marker({ position: center, map });
+\app\api\ai\special-measures\route.ts:23|       CONFINED_SPACE: "밀폐공간작업허가서",
+\app\api\ai\special-measures\route.ts:57|       const riskConfined = fd.riskConfinedSpace ? "밀폐공간작업" : "";
+\app\api\ai\special-measures\route.ts:65|       const prompt = `당신은 \ud55c\uad6d\ub18d\uc5b4\ucd0c\uacf5\uc0ac 안전관리 용역감독원입니다.
+\app\api\ai\special-measures\route.ts:69| - 용역명: ${taskName || "미입력"}
+\app\api\ai\special-measures\route.ts:94| - 용역명: ${taskName}
+\app\api\ai\special-measures\route.ts:116|     if (fd.riskConfinedSpace) riskItems.push("밀폐공간작업" + (fd.riskConfinedSpaceDetail ? ": " + fd.riskConfinedSpaceDetail : ""));
+\app\api\ai\special-measures\route.ts:132| - 용역명: ${taskName}
+\app\api\approvals\route.ts:98|       CONFINED_SPACE: 0,
+\app\api\documents\route.ts:58|         task: { name: r.taskName ?? "용역명없음", description: r.taskDescription as string | null },
+\app\api\documents\route.ts:88|       return NextResponse.json({ error: "용역을 찾을 수 없습니다." }, { status: 404 });
+\app\api\documents\[documentId]\approval-lines\route.ts:74|     const isConfinedSpace = doc.documentType === "CONFINED_SPACE";
+\app\api\documents\[documentId]\approval-lines\route.ts:77|     const fdMonitorId = isConfinedSpace ? ((doc.formDataJson as any)?.monitorUserId || monitorUserId) : null;
+\app\api\documents\[documentId]\approval-lines\route.ts:78|     const step1UserId = isConfinedSpace ? fdMonitorId : reviewerUserId;
+\app\api\documents\[documentId]\approval-lines\route.ts:80|       return NextResponse.json({ error: isConfinedSpace ? "밀폐공간 작업허가서에 감시인이 지정되지 않았습니다." : "결재자를 지정해주세요." }, { status: 400 });
+\app\api\documents\[documentId]\approval-lines\route.ts:108|     if (isConfinedSpace && measurerUserId) {
+\app\api\documents\[documentId]\approval-lines\route.ts:127|       title: isConfinedSpace ? "밀폐공간 작업허가 - 감시인 서명 요청" : "결재 요청",
+\app\api\documents\[documentId]\approve\route.ts:51|     const isConfinedSpace = doc.documentType === "CONFINED_SPACE";
+\app\api\documents\[documentId]\approve\route.ts:90|       if (isConfinedSpace) {
+\app\api\documents\[documentId]\approve\route.ts:92|           // 2단계: 감시인 서명 완료 → (계획확인)허가자 지정 필요
+\app\api\documents\[documentId]\approve\route.ts:100|           // 3단계: (계획확인)허가자 - 특별조치 입력 + 서명 완료 → 측정담당자 차례
+\app\api\documents\[documentId]\approve\route.ts:131|           // 4단계: 측정담당자 - 측정결과 입력 완료 → (이행확인)확인자 지정 필요
+\app\api\documents\[documentId]\approve\route.ts:140|           // 5단계: (이행확인)확인자 최종 서명 → 승인완료
+\app\api\documents\[documentId]\pdf\route.ts:96|     const isSelf = (() => { try { return JSON.parse((task as any)?.description || "{}").category === "SELF"; } catch { return false; } })();
+\app\api\documents\[documentId]\pdf\route.ts:108|         taskName, applicantSignature, workAddress, attachments, isSelf,
+\app\api\documents\[documentId]\pdf\route.ts:113|           "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+\app\api\documents\[documentId]\pdf\route.ts:136|         taskName, applicantSignature, workAddress, attachments, isSelf,
+\app\api\documents\[documentId]\pdf\route.ts:153|         taskName, applicantSignature, workAddress, attachments, isSelf,
+\app\api\documents\[documentId]\pdf\route.ts:158|           "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(filename)}`,
+\app\api\tasks\route.ts:30|         // category/division은 description JSON에서 파싱해서 프론트에서 처리
+\app\api\tbm\route.ts:20|     // taskType 정규화: CONTRACTOR→용역, SELF→자체진단
+\app\api\tbm\route.ts:23|       taskType: r.taskType === "CONTRACTOR" ? "용역"
+\app\api\tbm\route.ts:24|         : r.taskType === "SELF" ? "자체진단"
+\app\api\tbm\route.ts:76|       taskType: body.taskType === "CONTRACTOR" ? "용역"
+\app\api\tbm\route.ts:77|         : body.taskType === "SELF" ? "자체진단"
+\app\api\tbm\[tbmId]\pdf\route.ts:33|         "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(filename)}`,
+\app\select\page.tsx:101|               position: "absolute",
+\app\select\page.tsx:122|               position: "absolute",
+\app\select\page.tsx:151|               label: "도급사업 (용역)", sub: "수급업체 안전작업허가서 관리",
+\app\select\page.tsx:158|               label: "자체진단", sub: "지구별 자체 안전진단 관리",
+\app\signup\page.tsx:29|       organization: value === "용역업체" ? "" : value,
+\app\signup\page.tsx:30|       contractorName: value === "용역업체" ? prev.contractorName : "",
+\app\signup\page.tsx:35|     : form.contractorName !== "" || form.organization === "" && form.contractorName === "" ? "용역업체"
+\app\signup\page.tsx:39|   const selectedOrg = form.organization === "한국농어촌공사" ? "한국농어촌공사" : "용역업체";
+\app\signup\page.tsx:132|                 <option value="용역업체">용역업체</option>
+\app\signup\page.tsx:134|               {selectedOrg === "용역업체" && (
+
+
+===== templates.tsx total 1056 ; context around KO-label hits =====
+ 129| }
+ 130| 
+ 131| function ApproverRow({ roleLabel, deptLabel, name, signatureData, borderBottom = true }: {
+ 132|   roleLabel: string; deptLabel?: string; name?: string; signatureData?: string; borderBottom?: boolean;
+ 133| }) {
+ 134|   return (
+ 135|     <View style={{ flexDirection: "row", alignItems: "stretch", borderBottom: borderBottom ? "0.5px solid " + C.border : "none", minHeight: 36 }}>
+ 136|       <View style={{ width: 78, padding: "4 5", backgroundColor: C.labelBg, borderRight: "0.5px solid " + C.border, justifyContent: "center" }}>
+ 137|         <Text style={{ fontSize: 9, fontWeight: "bold", color: C.navy }}>{roleLabel}</Text>
+ 138|       </View>
+ 139|       <View style={{ flex: 2, borderRight: "0.5px solid " + C.border, padding: "4 5", justifyContent: "center" }}>
+ 140|         <Text style={{ fontSize: 8.5, color: "#555" }}>
+ 141|           {deptLabel || "(부서) 한국농어촌공사   (직책) 용역관리자"}
+ 142|         </Text>
+ 143|       </View>
+ 144|       <View style={{ width: 85, padding: "4 5", borderRight: "0.5px solid " + C.border, justifyContent: "center" }}>
+ 145|         <Text style={{ fontSize: 9.5 }}>{`(성명) ${name || ""}`}</Text>
+ 146|       </View>
+ 147|       <View style={{ width: 105, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "4 4", gap: 4 }}>
+ 148|         <Text style={{ fontSize: 8, color: "#888" }}>(서명)</Text>
+ 149|         {signatureData
+ 150|           ? <Image src={signatureData} style={{ width: 75, height: 22, objectFit: "contain" }} />
+ 151|           : <View style={{ width: 75, height: 20, border: "0.5px dashed #ccc" }} />}
+ 152|       </View>
+ 153|     </View>
+    ----
+ 319|     { key: "factorWaterHazard",   label: "파랑·유수·수심" },
+ 320|     { key: "factorRockfall",      label: "낙석·토사붕괴" },
+ 321|     { key: "factorNoRailing",     label: "난간 미설치" },
+ 322|     { key: "factorLadderNoGuard", label: "사다리·방호울 미설치" },
+ 323|     { key: "factorSuffocation",   label: "질식·화재·폭발" },
+ 324|     { key: "factorElectricFire",  label: "감전·전기불꽃 화재" },
+ 325|     { key: "factorSparkFire",     label: "스파크, 화염에 의한 화재" },
+ 326|     { key: "factorOther",         label: `기타${fd.factorOtherDetail ? "(" + fd.factorOtherDetail + ")" : ""}` },
+ 327|   ];
+ 328|   const checkedFactors = factorItems.filter(f => !!(fd as any)[f.key]);
+ 329| 
+ 330|   const deptLabel = isSelf ? "안전기술본부" : "안전기술본부";
+ 331|   const titleLabel = isSelf ? "부장" : "용역감독원";
+ 332| 
+ 333|   return (
+ 334|     <Document>
+ 335|       <Page size="A4" style={P.page}>
+ 336|         {/* 헤더 */}
+ 337|         <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 2 }}>
+ 338|           <Text style={{ fontSize: 7, color: "#555" }}>{"신청일시 : " + (fd.requestDate || "")}</Text>
+ 339|           <Text style={{ fontSize: 7, color: "#555" }}>{"허가일시 : "}</Text>
+ 340|         </View>
+ 341| 
+ 342|         <View style={P.titleBox}>
+ 343|           <Text style={P.titleMain}>안 전 작 업 허 가 서</Text>
+    ----
+ 436|             <Text style={[P.th, { flex: 3 }]}>{"개선대책(개선대책 결과 포함)"}</Text>
+ 437|             <Text style={[P.th, { flex: 1, borderRight: 0 }]}>재해형태</Text>
+ 438|           </View>
+ 439|           {riskRows.map((row, idx) => (
+ 440|             <View key={idx} style={idx === riskRows.length - 1 ? P.trLast : P.tr}>
+ 441|               <Text style={[P.td, { flex: 3, minHeight: 18 }]}>{row.riskFactor || ""}</Text>
+ 442|               <Text style={[P.td, { flex: 3, minHeight: 18 }]}>{row.improvement || ""}</Text>
+ 443|               <Text style={[P.td, { flex: 1, borderRight: 0, minHeight: 18 }]}>{row.disasterType || ""}</Text>
+ 444|             </View>
+ 445|           ))}
+ 446|         </View>
+ 447| 
+ 448|         {/* 3. 용역감독 검토내용 */}
+ 449|         <Text style={P.secHeader}>3. 용역감독 검토내용</Text>
+ 450|         <View style={[P.table, { marginBottom: 3 }]}>
+ 451|           <View style={P.tr}>
+ 452|             <Text style={[P.th, { flex: 1 }]}>검토의견</Text>
+ 453|             <Text style={[P.th, { flex: 1, borderRight: 0 }]}>조치결과</Text>
+ 454|           </View>
+ 455|           <View style={P.tr}>
+ 456|             <Text style={[P.td, { flex: 1, minHeight: 28 }]}>{fd.reviewOpinion || ""}</Text>
+ 457|             <Text style={[P.td, { flex: 1, borderRight: 0, minHeight: 28 }]}>{fd.reviewResult || "이상없음"}</Text>
+ 458|           </View>
+ 459|           {/* 계획확인허가자 */}
+ 460|           <View style={P.tr}>
+    ----
+ 461|             <Text style={[P.il, { width: 80 }]}>(계획확인)허가자</Text>
+    ----
+ 462|             <View style={{ flex: 2, borderRight: "0.5px solid #7f9fbf", padding: "2 4", justifyContent: "center" }}>
+ 463|               <Text style={{ fontSize: 7.5, color: "#555" }}>{`(부서) ${deptLabel}   (직책) ${titleLabel}`}</Text>
+ 464|             </View>
+ 465|             <View style={{ width: 70, padding: "2 4", borderRight: "0.5px solid #7f9fbf", justifyContent: "center" }}>
+ 466|               <Text style={{ fontSize: 8 }}>{`(성명) ${a1?.approverName || ""}`}</Text>
+ 467|             </View>
+ 468|             <View style={{ width: 90, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "2 3", gap: 3, borderRight: 0 }}>
+ 469|               <Text style={{ fontSize: 7, color: "#888" }}>(서명)</Text>
+ 470|               {a1?.signatureData
+ 471|                 ? <Image src={a1.signatureData} style={{ width: 60, height: 18, objectFit: "contain" }} />
+    ----
+ 472|                 : <View style={{ width: 60, height: 16, border: "0.5px dashed #ccc" }} />}
+ 473|             </View>
+    ----
+ 474|           </View>
+ 475|           {/* 이행확인자 */}
+ 476|           <View style={P.trLast}>
+ 477|             <Text style={[P.il, { width: 80 }]}>(이행확인)확인자</Text>
+ 478|             <View style={{ flex: 2, borderRight: "0.5px solid #7f9fbf", padding: "2 4", justifyContent: "center" }}>
+ 479|               <Text style={{ fontSize: 7.5, color: "#555" }}>{`(부서) ${deptLabel}   (직책) ${titleLabel}`}</Text>
+ 480|             </View>
+ 481|             <View style={{ width: 70, padding: "2 4", borderRight: "0.5px solid #7f9fbf", justifyContent: "center" }}>
+ 482|               <Text style={{ fontSize: 8 }}>{`(성명) ${a2?.approverName || ""}`}</Text>
+ 483|             </View>
+ 484|             <View style={{ width: 90, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "2 3", gap: 3, borderRight: 0 }}>
+ 485|               <Text style={{ fontSize: 7, color: "#888" }}>(서명)</Text>
+ 486|               {a2?.signatureData
+ 487|                 ? <Image src={a2.signatureData} style={{ width: 60, height: 18, objectFit: "contain" }} />
+    ----
+ 488|                 : <View style={{ width: 60, height: 16, border: "0.5px dashed #ccc" }} />}
+ 489|             </View>
+    ----
+ 523|     if (row.co2) parts.push(`CO₂: ${row.co2}%`);
+ 524|     if (row.h2s) parts.push(`H₂S: ${row.h2s}ppm`);
+ 525|     if (row.co)  parts.push(`CO: ${row.co}ppm`);
+ 526|     if (row.ex)  parts.push(`EX: ${row.ex}%`);
+ 527|     if (row.substances) parts.push(row.substances);
+ 528|     return parts.join("  ");
+ 529|   };
+ 530| 
+ 531|   return (
+ 532|     <Document>
+ 533|       <Page size="A4" style={S.page}>
+ 534|         <View style={S.titleBox}>
+ 535|           <Text style={S.titleMain}>밀폐공간 작업 허가서<Text style={{ fontSize: 13, fontWeight: "normal" }}>(용역업체용)</Text></Text>
+ 536|         </View>
+ 537|         <View style={S.table}>
+ 538|           <ApplicantRow applicantCompany={fd.applicantCompany} applicantTitle={fd.applicantTitle} applicantName={fd.applicantName} signatureData={applicantSignature} labelWidth={100} />
+ 539|           {[
+ 540|             { label: "용 역 명",    val: taskName || fd.serviceName || "" },
+ 541|             { label: "작업수행기간", val: periodText },
+ 542|             { label: "작업장소",     val: workLocationText },
+ 543|             { label: "작업내용",     val: fd.workContent || "" },
+ 544|             { label: "출입자 명단", val: fd.entryList || "" },
+ 545|           ].map((row, i, arr) => (
+ 546|             <View key={i} style={i === arr.length - 1 ? S.trLast : S.tr}>
+ 547|               <Text style={[S.il, { width: 100 }]}>{row.label}</Text>
+    ----
+ 615|               <Text style={{ flex: 0.5, fontSize: 8, textAlign: "center", padding: "3 2", borderRight: "0.5px solid " + C.border }}>{row.entryCount || ""}</Text>
+ 616|               <Text style={{ flex: 0.5, fontSize: 8, textAlign: "center", padding: "3 2" }}>{row.exitCount || ""}</Text>
+ 617|             </View>
+ 618|           )); })()}
+ 619|         </View>
+ 620| 
+ 621|         <Text style={S.secHeader}>5. 특별조치 필요사항</Text>
+ 622|         <View style={[S.table, { marginBottom: 5 }]}>
+ 623|           <Text style={[S.td, { borderRight: 0, minHeight: 20 }]}>{fd.specialMeasures || ""}</Text>
+ 624|         </View>
+ 625| 
+ 626|         <ApproverSection entries={[
+ 627|           { roleLabel: "(계획확인) 허가자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a1?.approverName, signatureData: a1?.signatureData },
+ 628|           { roleLabel: "(이행확인) 확인자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a2?.approverName, signatureData: a2?.signatureData },
+ 629|         ]} />
+ 630|         <Footer documentId={documentId} createdAt={createdAt} />
+ 631|       </Page>
+ 632|     </Document>
+ 633|   );
+ 634| }
+ 635| 
+ 636| // ===== 붙임3: 휴일작업신청서 =====
+ 637| export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+ 638|   formData: Record<string, any>;
+ 639|   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+    ----
+ 640|   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
+    ----
+ 645|   const a2 = approvalLines.find(l => l.approvalOrder === 2);
+ 646|   const periodText = buildPeriod(fd);
+ 647|   const workLocationText = getWorkLocation(fd, workAddress);
+ 648| 
+ 649|   return (
+ 650|     <Document>
+ 651|       <Page size="A4" style={S.page}>
+ 652|         <View style={S.titleBox}><Text style={S.titleMain}>{"\uc6a9\uc5ed\ud604\uc7a5 \ud734\uc77c\uc791\uc5c5 \uc2e0\uccad\uc11c"}</Text></View>
+ 653|         <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
+ 654|           <Text style={{ fontSize: 10.5 }}>{`작업일시: ${periodText}`}</Text>
+ 655|           <Text style={{ fontSize: 10 }}>{`신고일시: ${fd.requestDate || ""}`}</Text>
+ 656|         </View>
+ 657|         <Text style={[S.secHeader, { marginTop: 2 }]}>1. 용역 개요</Text>
+ 658|         <View style={S.table}>
+ 659|           <View style={S.tr}><Text style={[S.il, { width: 58 }]}>용역명</Text><Text style={[S.iv, { borderRight: 0 }]}>{taskName || fd.serviceName || ""}</Text></View>
+ 660|           <View style={S.trLast}>
+ 661|             <Text style={[S.il, { width: 58 }]}>수급인</Text>
+ 662|             <Text style={[S.iv, { flex: 1, borderRight: "0.5px solid " + C.border }]}>{fd.contractorCompany || ""}</Text>
+ 663|             <Text style={[S.il, { width: 55 }]}>용역기간</Text>
+ 664|             <Text style={[S.iv, { flex: 1, borderRight: 0 }]}>{`${fd.contractPeriodStart || fd.workStartDate || ""} ~ ${fd.contractPeriodEnd || fd.workEndDate || ""}`}</Text>
+ 665|           </View>
+ 666|         </View>
+ 667|         <Text style={S.secHeader}>2. 휴일작업 개요</Text>
+ 668|         <View style={S.table}>
+ 669|           {[
+    ----
+ 670|             [{ w: 75, label: "작업대상 시설물", val: fd.facilityName }, { w: 55, label: "시설 관리자", val: `${fd.facilityManager || ""} (${fd.facilityManagerGrade || ""})` }],
+ 671|             [{ w: 75, label: "위치", val: workLocationText }, { w: 55, label: "작업위치", val: fd.workPosition }],
+    ----
+ 672|             [{ w: 75, label: "작업공종", val: fd.workContents }, { w: 55, label: "위험요소", val: fd.riskFactors }],
+ 673|           ].map((cols, ri) => (
+ 674|             <View key={ri} style={S.tr}>
+ 675|               {cols.map((c, ci) => (
+    ----
+ 688|             <Text style={[S.th, { flex: 2 }]}>직위구분</Text>
+ 689|             <Text style={[S.th, { flex: 2 }]}>성명</Text>
+ 690|             <Text style={[S.th, { flex: 2, borderRight: 0 }]}>연락처</Text>
+ 691|           </View>
+ 692|           {participants.map((p, idx) => (
+ 693|             <View key={idx} style={idx === participants.length - 1 ? S.trLast : S.tr}>
+ 694|               <Text style={[S.td, { flex: 2, minHeight: 16 }]}>{p.role || ""}</Text>
+ 695|               <Text style={[S.td, { flex: 2, minHeight: 16 }]}>{p.name || ""}</Text>
+ 696|               <Text style={[S.td, { flex: 2, borderRight: 0, minHeight: 16 }]}>{p.phone || ""}</Text>
+ 697|             </View>
+ 698|           ))}
+ 699|         </View>
+ 700|         <Text style={S.secHeader}>3. 용역감독 검토내용</Text>
+ 701|         <View style={S.table}>
+ 702|           <View style={S.tr}>
+ 703|             <Text style={[S.th, { flex: 1 }]}>검토의견</Text>
+ 704|             <Text style={[S.th, { flex: 1, borderRight: 0 }]}>조치결과</Text>
+ 705|           </View>
+ 706|           <View style={S.trLast}>
+ 707|             <Text style={[S.td, { flex: 1, minHeight: 30 }]}>{fd.reviewOpinion || ""}</Text>
+ 708|             <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 30 }]}>{fd.reviewResult || ""}</Text>
+ 709|           </View>
+ 710|         </View>
+ 711|         <Text style={{ fontSize: 10, textAlign: "center", marginVertical: 4 }}>위와 같이 휴일작업을 신청하오니 검토하여 승인하여 주시기 바랍니다.</Text>
+ 712|         <View style={{ border: "0.8px solid " + C.border, marginBottom: 3 }}>
+    ----
+ 713|           {/* 신청자 행 */}
+ 714|           <View style={{ flexDirection: "row", alignItems: "center", padding: "3 6", minHeight: 26 }}>
+ 715|             <Text style={{ fontSize: 9, width: 55, color: C.black }}>신청자</Text>
+ 716|             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${fd.applicantOrg || ""}  (안전보건관리책임자) ${fd.applicantName || ""}`}</Text>
+ 717|             <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
+ 718|             {applicantSignature
+ 719|               ? <Image src={applicantSignature} style={{ width: 50, height: 28, objectFit: "contain" }} />
+ 720|               : <View style={{ width: 50, height: 28 }} />}
+ 721|           </View>
+ 722|           {/* 검토자 행 */}
+ 723|           <View style={{ flexDirection: "row", alignItems: "center", padding: "3 6", minHeight: 22, borderTop: "0.5px solid " + C.border }}>
+ 724|             <Text style={{ fontSize: 9, width: 55, color: C.black }}>검토자</Text>
+ 725|             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${a1?.approverOrg || ""}  (용역감독원) ${a1?.approverName || ""}`}</Text>
+ 726|             <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
+ 727|             {a1?.signatureData
+ 728|               ? <Image src={a1.signatureData} style={{ width: 50, height: 28, objectFit: "contain" }} />
+ 729|               : <View style={{ width: 50, height: 28 }} />}
+ 730|           </View>
+ 731|           {/* 승인자 행 */}
+ 732|           <View style={{ flexDirection: "row", alignItems: "center", padding: "3 6", minHeight: 22, borderTop: "0.5px solid " + C.border }}>
+ 733|             <Text style={{ fontSize: 9, width: 55, color: C.black }}>승인자</Text>
+ 734|             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${a2?.approverOrg || ""}  (관리감독자) ${a2?.approverName || ""}`}</Text>
+ 735|             <Text style={{ fontSize: 9, width: 30, color: C.black, textAlign: "center" }}>(서명)</Text>
+ 736|             {a2?.signatureData
+ 737|               ? <Image src={a2.signatureData} style={{ width: 50, height: 28, objectFit: "contain" }} />
+    ----
+ 760|     { equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" },
+ 761|     { equipment: "", cutoffConfirmer: "", electrician: "", siteRepair: "" },
+ 762|   ];
+ 763|   const periodText = buildPeriod(fd);
+ 764|   const workLocationText = getWorkLocation(fd, workAddress);
+ 765| 
+ 766|   return (
+ 767|     <Document>
+ 768|       <Page size="A4" style={S.page}>
+ 769|         <View style={[S.titleBox, { marginBottom: 5 }]}>
+ 770|           <Text style={{ fontSize: 20, fontWeight: "bold", textAlign: "center" }}>
+ 771|             {"정전작업 허가서"}
+ 772|             <Text style={{ fontSize: 13, fontWeight: "normal" }}>{"(용역업체용)"}</Text>
+ 773|           </Text>
+ 774|         </View>
+ 775|         <View style={S.table}>
+ 776|           <ApplicantRow applicantCompany={fd.applicantCompany} applicantTitle={fd.applicantTitle} applicantName={fd.applicantName} signatureData={applicantSignature} labelWidth={102} />
+ 777|           {[
+ 778|             { label: "용  역  명",    val: taskName || fd.serviceName || "" },
+ 779|             { label: "작업수행기간", val: periodText },
+ 780|             { label: "작업장소",     val: workLocationText },
+ 781|             { label: "작업내용",     val: fd.workContent || "" },
+ 782|             { label: "입장자 명단", val: fd.entryList || "" },
+ 783|           ].map((row, i, arr) => (
+ 784|             <View key={i} style={i === arr.length - 1 ? S.trLast : S.tr}>
+    ----
+ 830|               <Text style={[S.td, { flex: 1, minHeight: 22 }]}>{item.equipment || ""}</Text>
+ 831|               <Text style={[S.td, { flex: 1, minHeight: 22 }]}>{item.cutoffConfirmer || ""}</Text>
+ 832|               <Text style={[S.td, { flex: 1, minHeight: 22 }]}>{item.electrician || ""}</Text>
+ 833|               <Text style={[S.td, { flex: 1, borderRight: 0, minHeight: 22 }]}>{item.siteRepair || ""}</Text>
+ 834|             </View>
+ 835|           ))}
+ 836|         </View>
+ 837|         <Text style={S.secHeader}>5. 특별조치 필요사항</Text>
+ 838|         <View style={[S.table, { marginBottom: 5 }]}>
+ 839|           <Text style={[S.td, { borderRight: 0, minHeight: 20 }]}>{fd.specialMeasures || ""}</Text>
+ 840|         </View>
+ 841|         <ApproverSection entries={[
+ 842|           { roleLabel: "(계획확인) 허가자", name: a1?.approverName, signatureData: a1?.signatureData },
+ 843|           { roleLabel: "(이행확인) 확인자", name: a2?.approverName, signatureData: a2?.signatureData },
+ 844|         ]} />
+ 845|         <Footer documentId={documentId} createdAt={createdAt} />
+ 846|       </Page>
+ 847|     </Document>
+ 848|   );
+ 849| }
+ 850| 
+ 851| // ===== TBM Tool Box Meeting 회의록 PDF =====
+ 852| export function TbmReportPDF({ report }: { report: Record<string, any> }) {
+ 853|   const T = StyleSheet.create({
+ 854|     page: { fontFamily: "NanumGothic", fontSize: 8.5, paddingTop: 8, paddingBottom: 20, paddingHorizontal: 10, color: "#000" },
+    ----
+ 855|     topNote: { fontSize: 7, color: "#555", marginBottom: 4 },
+    ----
