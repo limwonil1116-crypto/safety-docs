@@ -885,6 +885,17 @@ function AiMeasuresFromRiskButton({ doc, onGenerated, label = "AI \ud2b9\ubcc4\u
     setLoading(true); setError("");
     try {
       const fd = (doc.formDataJson ?? {}) as any;
+      // try enhanced special-measures (real documentType) first; fall back to risk-rows if empty
+      let smResult = "";
+      try {
+        const smRes = await fetch("/api/ai/special-measures", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ documentType: doc.documentType, formData: fd }),
+        });
+        const smData = await smRes.json();
+        if (smRes.ok) smResult = String(smData.specialMeasures || "").trim();
+      } catch {}
+      if (smResult) { onGenerated(smResult); return; }
       const res = await fetch("/api/ai/risk-rows", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

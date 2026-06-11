@@ -1,0 +1,51 @@
+ 877| function AiMeasuresFromRiskButton({ doc, onGenerated, label = "AI \ud2b9\ubcc4\uc870\uce58 \ucd08\uc548 \uc0dd\uc131" }: {
+ 878|   doc: DocumentDetail;
+ 879|   onGenerated: (v: string) => void;
+ 880|   label?: string;
+ 881| }) {
+ 882|   const [loading, setLoading] = useState(false);
+ 883|   const [error, setError] = useState("");
+ 884|   const handleGenerate = async () => {
+ 885|     setLoading(true); setError("");
+ 886|     try {
+ 887|       const fd = (doc.formDataJson ?? {}) as any;
+ 888|       const res = await fetch("/api/ai/risk-rows", {
+ 889|         method: "POST", headers: { "Content-Type": "application/json" },
+ 890|         body: JSON.stringify({
+ 891|           workContent: fd.workContents || fd.workContent || "",
+ 892|           workLocation: fd.facilityAddress || fd.facilityLocation || fd.workLocation || fd.workPosition || "",
+ 893|           riskItems: [],
+ 894|           checkedFactors: [],
+ 895|         }),
+ 896|       });
+ 897|       const data = await res.json();
+ 898|       if (!res.ok) throw new Error(data.error || "AI \uc0dd\uc131 \uc624\ub958");
+ 899|       const rows = Array.isArray(data.rows) ? data.rows : [];
+ 900|       const text = rows
+ 901|         .map((r: any) => String(r.improvement || r.riskFactor || "").trim())
+ 902|         .filter((s: string) => s !== "")
+ 903|         .map((s: string) => "- " + s)
+ 904|         .join("\n");
+ 905|       if (!text) throw new Error("AI \uc751\ub2f5\uc774 \ube44\uc5b4\uc788\uc2b5\ub2c8\ub2e4.");
+ 906|       onGenerated(text);
+ 907|     } catch (e: unknown) { setError(e instanceof Error ? e.message : "\uc624\ub958\uac00 \ubc1c\uc0dd\ud588\uc2b5\ub2c8\ub2e4."); }
+ 908|     finally { setLoading(false); }
+ 909|   };
+ 910|   return (
+ 911|     <div>
+ 912|       <button onClick={handleGenerate} disabled={loading}
+ 913|         className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium text-white disabled:opacity-50"
+ 914|         style={{ background: loading ? "#6b7280" : "linear-gradient(135deg, #7c3aed, #2563eb)" }}>
+ 915|         {loading ? "AI \ucd08\uc548 \uc0dd\uc131 \uc911..." : `\u2728 ${label}`}
+ 916|       </button>
+ 917|       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+ 918|     </div>
+ 919|   );
+ 920| }
+ 921| 
+ 922| function SpecialMeasuresInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+ 923|   const ref = useRef<HTMLTextAreaElement>(null);
+ 924|   useEffect(() => { if (ref.current && ref.current.value !== value) ref.current.value = value; }, [value]);
+ 925|   return (
+ 926|     <textarea ref={ref} defaultValue={value}
+ 927|       onChange={e => onChange(e.target.value)}
