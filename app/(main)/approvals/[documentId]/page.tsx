@@ -1396,6 +1396,8 @@ export default function ApprovalDetailPage() {
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || "오류 발생");
                 if (data.action === "NEED_FINAL_CONFIRMER") {
+                  setIsMyTurn(false);
+                  setPendingDesignation("FINAL_CONFIRMER");
                   setConfinedNextAction("FINAL_CONFIRMER");
                   setShowConfinedNextModal(true);
                 } else {

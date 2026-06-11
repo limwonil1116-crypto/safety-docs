@@ -1,0 +1,96 @@
+total 1561
+
+=== grep markers ===
+  42|   3: "측정결과 입력",
+ 497|       {isForm2 && Array.isArray(fd.gasMeasureRows) && (fd.gasMeasureRows as any[]).length > 0 && (() => {
+ 499|         const rows = PHASE_ORDER.map(phase => (fd.gasMeasureRows as any[]).find((r: any) => r.phase === phase)).filter(Boolean);
+ 513|             <h3 className="text-sm font-bold text-gray-900 mb-3">산소 및 유해가스 농도 측정결과</h3>
+ 811|       const existing = Array.isArray(existingData.document?.formDataJson?.gasMeasureRows)
+ 812|         ? existingData.document.formDataJson.gasMeasureRows : [];
+ 817|         body: JSON.stringify({ formDataJson: { ...existingData.document?.formDataJson, gasMeasureRows: merged }, gasMeasureRowsOnly: true }),
+ 973|   const [showConfinedNextModal, setShowConfinedNextModal] = useState(false);
+ 976|   const [confinedNextAction, setConfinedNextAction] = useState<"PLAN_APPROVER"|"FINAL_CONFIRMER"|null>(null);
+ 992|   const [gasMeasureRowsInput, setGasMeasureRowsInput] = useState<any[]>([]);
+ 993|   const [gasRowsLoaded, setGasRowsLoaded] = useState(false);
+ 995|   // gasMeasureRows: doc 로드 후 초기화
+ 998|     const rows = (doc.formDataJson as any)?.gasMeasureRows;
+1127|       if (isConfinedSpace && confinedOrder === 3) extraBody.gasMeasureRows = gasMeasureRef.current.length > 0 ? gasMeasureRef.current : (gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput.map((r: any) => ({ ...r, measurer: r.measurer || (fd.measurerName as string) || "" })) : DEFAULT_GAS_ROWS);
+1136|       else if (data.action === "NEED_PLAN_APPROVER") { setPendingDesignation("PLAN_APPROVER"); setIsMyTurn(false); setConfinedNextAction("PLAN_APPROVER"); setShowConfinedNextModal(true); }
+1137|       else if (data.action === "NEED_MEASUREMENT") { alert("(계획확인) 서명이 완료됩니다."); router.push("/approvals"); }
+1138|       else if (data.action === "NEED_FINAL_CONFIRMER") { setPendingDesignation("FINAL_CONFIRMER"); setIsMyTurn(false); setConfinedNextAction("FINAL_CONFIRMER"); setShowConfinedNextModal(true); }
+1139|       else if (data.action === "NEED_FINAL_CONFIRMER_POWER") { setPendingDesignation("POWER"); setIsMyTurn(false); setShowPowerNextModal(true); }
+1186|           {confinedOrder === 3 && (
+1188|               <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">산소 및 유해가스 농도 측정결과를 입력해주세요.</p>
+1189|               {gasRowsLoaded && <GasMeasureInput key={gasMeasureRowsInput.map((r:any)=>r.phase).join(",")}
+1192|                   if (gasMeasureRowsInput.length > 0) {
+1193|                     return gasMeasureRowsInput.map((r: any) => ({ ...r, measurer: r.measurer || mn }));
+1209|             <p className="text-xs text-green-600 bg-green-50 rounded-lg px-3 py-2">측정결과를 최종 확인하고 서명해주세요.</p>
+1386|           {/* 밀폐공간 3단계: 서명 없이 측정결과만 제출 */}
+1387|           {isConfinedSpace && confinedOrder === 3 ? (
+1389|               const gasRows = gasMeasureRef.current.length > 0 ? gasMeasureRef.current : (gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : DEFAULT_GAS_ROWS);
+1394|                   body: JSON.stringify({ action: "APPROVE", signatureData: null, gasMeasureRows: gasRows }),
+1398|                 if (data.action === "NEED_FINAL_CONFIRMER") {
+1399|                   setConfinedNextAction("FINAL_CONFIRMER");
+1400|                   setShowConfinedNextModal(true);
+1409|               {processing ? "취소 중..." : "📊 측정결과 제출 및 이행확인자 지정"}
+1511|           <button onClick={() => { if (pendingDesignation === "FINAL_APPROVER") setShowFinalApprover(true); else if (pendingDesignation === "PLAN_APPROVER") { setConfinedNextAction("PLAN_APPROVER"); setShowConfinedNextModal(true); } else if (pendingDesignation === "FINAL_CONFIRMER") { setConfinedNextAction("FINAL_CONFIRMER"); setShowConfinedNextModal(true); } else if (pendingDesignation === "POWER") setShowPowerNextModal(true); }} className="w-full py-3 rounded-xl text-white text-sm font-medium" style={{ background: "#2563eb" }}>{"\ub2e4\uc74c \uacb0\uc7ac\uc790 \uc9c0\uc815"}</button>
+1548|           onClose={() => setShowConfinedNextModal(false)}
+1550|             setShowConfinedNextModal(false);
+
+=== handler around 817 ===
+ 787|   }
+ 788|   function GasMeasureInput({ rows, onChange, documentId, onSaved }: { rows: any[]; onChange: (rows: any[]) => void; documentId?: string; onSaved?: (phase: string, row: any) => void }) {
+ 789|     const buildPhaseRows = (src: any[]) => {
+ 790|       const dm = (Array.isArray(src) ? (src.find((r: any) => r && r.measurer)?.measurer) : "") || "";
+ 791|       return ["\uc791\uc5c5 \uc804", "\uc791\uc5c5 \uc911(1\ucc28)", "\uc791\uc5c5 \uc911(2\ucc28)"].map((ph, idx) => {
+ 792|         const found = Array.isArray(src) ? src.find((r: any) => r && r.phase === ph) : undefined;
+ 793|         const base = found ? { ...found } : { ...DEFAULT_GAS_ROWS[idx] };
+ 794|         return { ...base, phase: ph, measurer: base.measurer || dm };
+ 795|       });
+ 796|     };
+ 797|     const rowsRef = useRef<any[]>(buildPhaseRows(rows));
+ 798|     const savedRowsRef = useRef<Record<string, any>>({});
+ 799|     const PHASES = ["작업 전", "작업 중(1차)", "작업 중(2차)"];
+ 800|     const handleFieldChange = useCallback((idx: number, field: string, value: string) => {
+ 801|       rowsRef.current = rowsRef.current.map((r, i) => i === idx ? { ...r, [field]: value } : r);
+ 802|       onChange([...rowsRef.current]);
+ 803|     }, [onChange]);
+ 804|     const handleSave = async (idx: number) => {
+ 805|       const phase = PHASES[idx];
+ 806|       const row = rowsRef.current[idx];
+ 807|       if (!row || !documentId) return;
+ 808|       // 기존 저장된 값 가져오기
+ 809|       const existingRes = await fetch(`/api/documents/${documentId}`);
+ 810|       const existingData = await existingRes.json();
+ 811|       const existing = Array.isArray(existingData.document?.formDataJson?.gasMeasureRows)
+ 812|         ? existingData.document.formDataJson.gasMeasureRows : [];
+ 813|       const tagged = { ...row, phase };
+ 814|       const merged = [...existing.filter((r: any) => r.phase !== phase), tagged];
+ 815|       const res = await fetch(`/api/documents/${documentId}`, {
+ 816|         method: "PATCH", headers: { "Content-Type": "application/json" },
+ 817|         body: JSON.stringify({ formDataJson: { ...existingData.document?.formDataJson, gasMeasureRows: merged }, gasMeasureRowsOnly: true }),
+ 818|       });
+ 819|       if (res.ok) {
+ 820|         savedRowsRef.current[phase] = tagged;
+ 821|         alert(`[${phase}] 저장 완료!`); window.location.reload();
+ 822|         if (onSaved) onSaved(phase, tagged);
+ 823|         return true;
+ 824|       } else {
+ 825|         alert("저장 실패.");
+ 826|       }
+ 827|     };
+ 828|     return (
+ 829|       <div className="space-y-3">
+ 830|         <p className="text-xs bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+ 831|           <span className="font-medium text-blue-700">기준값:</span>
+ 832|           <span className="text-blue-600"> O₂(18~23.5%) CO₂(1.5%이하) H₂S(10ppm이하) CO(30ppm이하) EX(10%이하)</span>
+ 833|         </p>
+ 834|         {rowsRef.current.map((row, idx) => (
+ 835|           <GasRowInput key={`${idx}-${row.phase}`} rowIndex={idx} initialRow={row} onRowChange={handleFieldChange}
+ 836|             phase={PHASES[idx]}
+ 837|             onSave={documentId ? () => handleSave(idx) : undefined} />
+ 838|         ))}
+ 839|       </div>
+ 840|     );
+ 841|   }
+ 842| function AiSpecialMeasuresButton({ doc, onGenerated, label = "AI 특별조치 초안 생성" }: {

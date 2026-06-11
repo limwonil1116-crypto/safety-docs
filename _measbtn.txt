@@ -1,0 +1,116 @@
+1300|               key={`result-${dataKey}`}
+1301|               ref={reviewResultRef}
+1302|               defaultValue={reviewResult || "이상없음"}
+1303|               placeholder="조치결과를 입력해주세요"
+1304|               rows={2}
+1305|               className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none text-gray-900" />
+1306|           </div>
+1307|         </div>
+1308|       </div>
+1309|     );
+1310|   };
+1311| 
+1312|   const CancelButton = () => canCancel ? (
+1313|     <button onClick={handleCancelApproval} disabled={cancelling}
+1314|       className="w-full py-2.5 rounded-xl text-sm font-medium border-2 border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-50">
+1315|       {cancelling ? "취소 중..." : "결재 취소 (작성중으로)"}
+1316|     </button>
+1317|   ) : null;
+1318| 
+1319|   return (
+1320|     <div className="pb-40">
+1321|       <div className="px-4 pt-4 pb-3 bg-white border-b border-gray-100">
+1322|         <Link href="/approvals" className="flex items-center gap-1 text-gray-400 text-sm mb-2">
+1323|           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+1324|           결재 목록
+1325|         </Link>
+1326|         <div className="flex items-center gap-2 mb-1">
+1327|           <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{typeShort}</span>
+1328|           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle.bg} ${statusStyle.text}`}>{statusStyle.label}</span>
+1329|           {isMyTurn && <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium animate-pulse">지금 결재 차레입니다</span>}
+1330|         </div>
+1331|         <h2 className="text-base font-bold text-gray-900">{taskName}</h2>
+1332|         <p className="text-xs text-gray-500 mt-0.5">{typeLabel}</p>
+1333|         {doc.submittedAt && <p className="text-xs text-gray-400 mt-0.5">제출일: {new Date(doc.submittedAt).toLocaleDateString("ko-KR")}</p>}
+1334|       </div>
+1335| 
+1336|       {/* 탭 - 내용 / 결재현황 */}
+1337|       <div className="bg-white border-b border-gray-200 flex">
+1338|         {["내용", "결재현황"].map(tab => (
+1339|           <button key={tab} onClick={() => setActiveTab(tab)}
+1340|             className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500"}`}>
+1341|             {tab}
+1342|           </button>
+1343|         ))}
+1344|       </div>
+1345| 
+1346|       <div className="p-4 space-y-4">
+1347|         {/* 내용 탭: 모든 입력내용 + 첨부파일 + PDF (승인완료시) */}
+1348|         {activeTab === "내용" && (
+1349|           <>
+1350|             <DocumentContent doc={doc} fd={fd} approvalLines={approvalLines} activeTab={activeTab} />
+1351|             <AttachmentViewer documentId={documentId} canAdd={false} />
+1352|             {isApproved && (
+1353|               <div className="bg-white rounded-2xl p-4 shadow-sm">
+1354|                 <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+1355|                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+1356|                   안전작업허가서 PDF
+1357|                 </h3>
+1358|                 <PdfButtons documentId={documentId} />
+1359|               </div>
+1360|             )}
+1361|             {isMyTurn && (activeTab as string) !== "결재현황" && <ReviewInputSection />}
+1362|             <CancelButton />
+1363|           </>
+1364|         )}
+1365| 
+1366|         {/* 결재현황 탭 - 결재흐름 + 특별조치 + 사진 */}
+1367|         {activeTab === "결재현황" && (
+1368|           <>
+1369|             <ApprovalFlow doc={doc} approvalLines={approvalLines} writerName={(fd.applicantName as string) || writerName} applicantSignature={(fd.signatureData as string) || undefined} />
+1370|             {(doc.documentType === "CONFINED_SPACE" || doc.documentType === "POWER_OUTAGE") && fd.specialMeasures && doc.currentApprovalOrder !== 1 && doc.status !== "SUBMITTED" && (
+1371|               <div className="bg-white rounded-2xl p-4 shadow-sm">
+1372|                 <h3 className="text-sm font-bold text-gray-900 mb-2">특별조치 필요사항</h3>
+1373|                 <p className="text-sm text-gray-800">{fd.specialMeasures as string}</p>
+1374|               </div>
+1375|             )}
+1376|             <PhotoViewer documentId={documentId} />
+1377|             {isMyTurn && (activeTab as string) !== "결재현황" && <ReviewInputSection />}
+1378|             <CancelButton />
+1379|           </>
+1380|         )}
+1381|       </div>
+1382| 
+1383|       {/* 하단 고정 버튼 - 결재 액션 */}
+1384|       {isMyTurn && (
+1385|         <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 pt-3 pb-4">
+1386|           {/* 밀폐공간 3단계: 서명 없이 측정결과만 제출 */}
+1387|           {isConfinedSpace && confinedOrder === 3 ? (
+1388|             <button onClick={async () => {
+1389|               const gasRows = gasMeasureRef.current.length > 0 ? gasMeasureRef.current : (gasMeasureRowsInput.length > 0 ? gasMeasureRowsInput : DEFAULT_GAS_ROWS);
+1390|               setProcessing(true);
+1391|               try {
+1392|                 const res = await fetch(`/api/documents/${documentId}/approve`, {
+1393|                   method: "POST", headers: { "Content-Type": "application/json" },
+1394|                   body: JSON.stringify({ action: "APPROVE", signatureData: null, gasMeasureRows: gasRows }),
+1395|                 });
+1396|                 const data = await res.json();
+1397|                 if (!res.ok) throw new Error(data.error || "오류 발생");
+1398|                 if (data.action === "NEED_FINAL_CONFIRMER") {
+1399|                   setConfinedNextAction("FINAL_CONFIRMER");
+1400|                   setShowConfinedNextModal(true);
+1401|                 } else {
+1402|                   alert("결재가 취소됩니다. 문서탭에서 다시 작성할 수 있습니다.");
+1403|                   router.push("/approvals");
+1404|                 }
+1405|               } catch (e: unknown) { alert(e instanceof Error ? e.message : "취소에 실패했습니다."); }
+1406|               finally { setProcessing(false); }
+1407|             }} disabled={processing}
+1408|               className="w-full py-3 rounded-xl text-white text-sm font-medium disabled:opacity-50" style={{ background: "#16a34a" }}>
+1409|               {processing ? "취소 중..." : "📊 측정결과 제출 및 이행확인자 지정"}
+1410|             </button>
+1411|           ) : (
+1412|             <div className="flex gap-3">
+1413|               <button onClick={() => {
+1414|                   const opinion = (reviewOpinionRef.current?.value ?? "").trim();
+1415|                   const result = (reviewResultRef.current?.value ?? "").trim();
