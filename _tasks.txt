@@ -1,0 +1,683 @@
+
+===== tasks page (\app\(main)\tasks\page.tsx) total 368 =====
+   1| "use client";
+   2| 
+   3| import { useState, useEffect, useCallback } from "react";
+   4| import { useSearchParams, useRouter } from "next/navigation";
+   5| import Link from "next/link";
+   6| 
+   7| interface TaskCounts { inProgress: number; completed: number; rejected: number; }
+   8| interface Task {
+   9|   id: string; name: string; contractorCompanyName?: string;
+  10|   status: string; counts: TaskCounts; lastDate: string;
+  11|   category?: string; division?: string;
+  12| }
+  13| 
+  14| const CONTRACTOR_DIVISIONS = ["전체", "1반", "2반", "3반", "4반", "5반"];
+  15| const SELF_DIVISIONS = ["전체", "1반", "2반", "3반", "4반", "5반", "6반", "7반", "8반", "9반", "10반"];
+  16| 
+  17| function CreateTaskModal({ category, onClose, onCreated }: { category: string; onClose: () => void; onCreated: () => void }) {
+  18|   const isSelf = category === "SELF";
+  19|   const divisions = isSelf ? SELF_DIVISIONS.slice(1) : CONTRACTOR_DIVISIONS.slice(1);
+  20|   const [form, setForm] = useState({ name: "", contractorCompanyName: "", description: "", startDate: "", endDate: "", division: "" });
+  21|   const [loading, setLoading] = useState(false);
+  22|   const [error, setError] = useState("");
+  23| 
+  24|   const handleSubmit = async () => {
+  25|     if (!form.name.trim()) { setError(isSelf ? "지구명을 입력해주세요." : "용역명을 입력해주세요."); return; }
+  26|     setLoading(true); setError("");
+  27|     try {
+  28|       const meta = JSON.stringify({ category, division: form.division });
+  29|       const res = await fetch("/api/tasks", {
+  30|         method: "POST", headers: { "Content-Type": "application/json" },
+  31|         body: JSON.stringify({ ...form, description: meta }),
+  32|       });
+  33|       const data = await res.json();
+  34|       if (!res.ok) throw new Error(data.error || "오류 발생");
+  35|       onCreated(); onClose();
+  36|     } catch (e: unknown) { setError(e instanceof Error ? e.message : "오류가 발생했습니다."); }
+  37|     finally { setLoading(false); }
+  38|   };
+  39| 
+  40|   const inputClass = "w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500";
+  41| 
+  42|   return (
+  43|     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+  44|       <div className="bg-white w-full rounded-t-3xl p-6 pb-24">
+  45|         <div className="flex items-center justify-between mb-5">
+  46|           <h2 className="text-base font-bold text-gray-900">{isSelf ? "지구 등록" : "용역 신규 등록"}</h2>
+  47|           <button onClick={onClose} className="text-gray-400">
+  48|             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  49|           </button>
+  50|         </div>
+  51|         <div className="space-y-3">
+  52|           <div>
+  53|             <label className="text-xs font-medium text-gray-700 mb-1 block">{isSelf ? "지구명" : "용역명"} *</label>
+  54|             <input value={form.name} onChange={e => setForm({...form, name: e.target.value})}
+  55|               placeholder={isSelf ? "예) 예당저수지" : "예) 예당저수지 복통 안전진단"}
+  56|               className={inputClass} />
+  57|           </div>
+  58|           {!isSelf && (
+  59|             <div>
+  60|               <label className="text-xs font-medium text-gray-700 mb-1 block">수급업체명</label>
+  61|               <input value={form.contractorCompanyName} onChange={e => setForm({...form, contractorCompanyName: e.target.value})}
+  62|                 placeholder="예) (주)한국안전엔지니어링" className={inputClass} />
+  63|             </div>
+  64|           )}
+  65|           <div>
+  66|             <label className="text-xs font-medium text-gray-700 mb-1 block">{isSelf ? "조사반" : "관리반"}</label>
+  67|             <select value={form.division} onChange={e => setForm({...form, division: e.target.value})}
+  68|               className={inputClass}>
+  69|               <option value="">선택 안함</option>
+  70|               {divisions.map(d => <option key={d} value={d}>{d}</option>)}
+  71|             </select>
+  72|           </div>
+  73|           <div className="grid grid-cols-2 gap-3">
+  74|             <div>
+  75|               <label className="text-xs font-medium text-gray-700 mb-1 block">시작일</label>
+  76|               <input type="date" value={form.startDate} onChange={e => setForm({...form, startDate: e.target.value})}
+  77|                 className={inputClass} style={{ colorScheme: "light" }} />
+  78|             </div>
+  79|             <div>
+  80|               <label className="text-xs font-medium text-gray-700 mb-1 block">종료일</label>
+  81|               <input type="date" value={form.endDate} onChange={e => setForm({...form, endDate: e.target.value})}
+  82|                 className={inputClass} style={{ colorScheme: "light" }} />
+  83|             </div>
+  84|           </div>
+  85|           {error && <p className="text-xs text-red-500">{error}</p>}
+  86|         </div>
+  87|         <button onClick={handleSubmit} disabled={loading}
+  88|           className="w-full mt-5 py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50"
+  89|           style={{ background: isSelf ? "#16a34a" : "#2563eb" }}>
+  90|           {loading ? "등록 중..." : isSelf ? "지구 등록" : "용역 등록"}
+  91|         </button>
+  92|       </div>
+  93|     </div>
+  94|   );
+  95| }
+  96| 
+  97| function EditTaskModal({ task, category, onClose, onUpdated }: { task: Task; category: string; onClose: () => void; onUpdated: () => void }) {
+  98|   const isSelf = category === "SELF";
+  99|   const divisions = isSelf ? SELF_DIVISIONS.slice(1) : CONTRACTOR_DIVISIONS.slice(1);
+ 100|   const [form, setForm] = useState({ name: task.name, contractorCompanyName: task.contractorCompanyName ?? "", division: task.division ?? "" });
+ 101|   const [loading, setLoading] = useState(false);
+ 102|   const [error, setError] = useState("");
+ 103| 
+ 104|   const handleSubmit = async () => {
+ 105|     if (!form.name.trim()) { setError("이름을 입력해주세요."); return; }
+ 106|     setLoading(true); setError("");
+ 107|     try {
+ 108|       const meta = JSON.stringify({ category, division: form.division });
+ 109|       const res = await fetch(`/api/tasks/${task.id}`, {
+ 110|         method: "PATCH", headers: { "Content-Type": "application/json" },
+ 111|         body: JSON.stringify({ name: form.name, contractorCompanyName: form.contractorCompanyName, description: meta }),
+ 112|       });
+ 113|       const data = await res.json();
+ 114|       if (!res.ok) throw new Error(data.error || "오류 발생");
+ 115|       onUpdated(); onClose();
+ 116|     } catch (e: unknown) { setError(e instanceof Error ? e.message : "오류가 발생했습니다."); }
+ 117|     finally { setLoading(false); }
+ 118|   };
+ 119| 
+ 120|   const inputClass = "w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500";
+ 121| 
+ 122|   return (
+ 123|     <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+ 124|       <div className="bg-white w-full rounded-t-3xl p-6 pb-24">
+ 125|         <div className="flex items-center justify-between mb-5">
+ 126|           <h2 className="text-base font-bold text-gray-900">수정</h2>
+ 127|           <button onClick={onClose} className="text-gray-400">
+ 128|             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+ 129|           </button>
+ 130|         </div>
+ 131|         <div className="space-y-3">
+ 132|           <div>
+ 133|             <label className="text-xs font-medium text-gray-700 mb-1 block">{isSelf ? "지구명" : "용역명"} *</label>
+ 134|             <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className={inputClass} />
+ 135|           </div>
+ 136|           {!isSelf && (
+ 137|             <div>
+ 138|               <label className="text-xs font-medium text-gray-700 mb-1 block">수급업체명</label>
+ 139|               <input value={form.contractorCompanyName} onChange={e => setForm({...form, contractorCompanyName: e.target.value})} className={inputClass} />
+ 140|             </div>
+ 141|           )}
+ 142|           <div>
+ 143|             <label className="text-xs font-medium text-gray-700 mb-1 block">{isSelf ? "조사반" : "관리반"}</label>
+ 144|             <select value={form.division} onChange={e => setForm({...form, division: e.target.value})} className={inputClass}>
+ 145|               <option value="">선택 안함</option>
+ 146|               {divisions.map(d => <option key={d} value={d}>{d}</option>)}
+ 147|             </select>
+ 148|           </div>
+ 149|           {error && <p className="text-xs text-red-500">{error}</p>}
+ 150|         </div>
+ 151|         <div className="flex gap-3 mt-5">
+ 152|           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-600">취소</button>
+ 153|           <button onClick={handleSubmit} disabled={loading}
+ 154|             className="flex-1 py-3 rounded-xl text-white font-medium text-sm disabled:opacity-50"
+ 155|             style={{ background: "#2563eb" }}>
+ 156|             {loading ? "저장 중..." : "저장"}
+ 157|           </button>
+ 158|         </div>
+ 159|       </div>
+ 160|     </div>
+ 161|   );
+ 162| }
+ 163| 
+ 164| function TasksPageInner() {
+ 165|   const searchParams = useSearchParams();
+ 166|   const router = useRouter();
+ 167|   const category = searchParams.get("category") || "CONTRACTOR";
+ 168|   const isSelf = category === "SELF";
+ 169|   const divisions = isSelf ? SELF_DIVISIONS : CONTRACTOR_DIVISIONS;
+ 170| 
+ 171|   const [tasks, setTasks] = useState<Task[]>([]);
+ 172|   const [loading, setLoading] = useState(true);
+ 173|   const [error, setError] = useState("");
+ 174|   const [search, setSearch] = useState("");
+ 175|   const [divisionFilter, setDivisionFilter] = useState("전체");
+ 176|   const [showCreate, setShowCreate] = useState(false);
+ 177|   const [editingTask, setEditingTask] = useState<Task | null>(null);
+ 178|   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+ 179|   const [deletingId, setDeletingId] = useState<string | null>(null);
+ 180| 
+ 181|   const fetchTasks = useCallback(async () => {
+ 182|     setLoading(true); setError("");
+ 183|     try {
+ 184|       const params = search ? `?keyword=${encodeURIComponent(search)}` : "";
+ 185|       const res = await fetch(`/api/tasks${params}`);
+ 186|       const data = await res.json();
+ 187|       if (!res.ok) throw new Error(data.error || "데이터 오류");
+ 188|       // category/division 파싱
+ 189|       const parsed = (data.tasks as Task[]).map(t => {
+ 190|         try {
+ 191|           const meta = JSON.parse(t.contractorCompanyName?.startsWith("{") ? t.contractorCompanyName : (t as any).description || "{}");
+ 192|           return { ...t, category: meta.category || "CONTRACTOR", division: meta.division || "" };
+ 193|         } catch { return { ...t, category: "CONTRACTOR", division: "" }; }
+ 194|       }).filter(t => t.category === category);
+ 195|       setTasks(parsed);
+ 196|     } catch (e: unknown) { setError(e instanceof Error ? e.message : "오류가 발생했습니다."); }
+ 197|     finally { setLoading(false); }
+ 198|   }, [search, category]);
+ 199| 
+ 200|   useEffect(() => {
+ 201|     const timer = setTimeout(fetchTasks, 300);
+ 202|     return () => clearTimeout(timer);
+ 203|   }, [fetchTasks]);
+ 204| 
+ 205|   // division 필터 변경 시 전체로 리셋
+ 206|   useEffect(() => { setDivisionFilter("전체"); }, [category]);
+ 207| 
+ 208|   const handleDeleteTask = async (task: Task) => {
+ 209|     setMenuOpenId(null);
+ 210|     if (!confirm(`"${task.name}"을(를) 삭제하시겠습니까?
+ 211| 
+ 212| 모든 서류도 함께 삭제됩니다.`)) return;
+ 213|     setDeletingId(task.id);
+ 214|     try {
+ 215|       const res = await fetch(`/api/tasks/${task.id}`, { method: "DELETE" });
+ 216|       const data = await res.json();
+ 217|       if (!res.ok) throw new Error(data.error || "삭제 실패");
+ 218|       fetchTasks();
+ 219|     } catch (e: unknown) { alert(e instanceof Error ? e.message : "삭제에 실패했습니다."); }
+ 220|     finally { setDeletingId(null); }
+ 221|   };
+ 222| 
+ 223|   const filtered = divisionFilter === "전체" ? tasks : tasks.filter(t => t.division === divisionFilter);
+ 224|   const totalInProgress = filtered.reduce((a, t) => a + t.counts.inProgress, 0);
+ 225|   const totalCompleted = filtered.reduce((a, t) => a + t.counts.completed, 0);
+ 226|   const totalRejected = filtered.reduce((a, t) => a + t.counts.rejected, 0);
+ 227|   const accentColor = isSelf ? "#16a34a" : "#2563eb";
+ 228| 
+ 229|   return (
+ 230|     <div className="p-4 pb-24">
+ 231|       {menuOpenId && <div className="fixed inset-0 z-10" onClick={() => setMenuOpenId(null)} />}
+ 232| 
+ 233|       {/* 헤더 */}
+ 234|       <div className="flex items-center gap-3 mb-4">
+ 235|         <button onClick={() => router.push("/")} className="text-gray-400">
+ 236|           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+ 237|         </button>
+ 238|         <div>
+ 239|           <h1 className="text-lg font-bold text-gray-900">{isSelf ? "자체진단" : "도급사업 (용역)"}</h1>
+ 240|           <p className="text-sm text-gray-500">{isSelf ? "지구별 자체 안전진단" : "수급업체 용역 현황"}</p>
+ 241|         </div>
+ 242|       </div>
+ 243| 
+ 244|       {/* KPI */}
+ 245|       <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+ 246|         <div className="grid grid-cols-4 gap-2 text-center">
+ 247|           {[
+ 248|             { label: "전체",   value: filtered.length, color: accentColor },
+ 249|             { label: "진행중", value: totalInProgress,  color: "#d97706" },
+ 250|             { label: "완료",   value: totalCompleted,   color: "#16a34a" },
+ 251|             { label: "반려",   value: totalRejected,    color: "#dc2626" },
+ 252|           ].map(item => (
+ 253|             <div key={item.label}>
+ 254|               <div className="text-xl font-bold" style={{ color: item.color }}>{loading ? "-" : item.value}</div>
+ 255|               <div className="text-xs text-gray-500">{item.label}</div>
+ 256|             </div>
+ 257|           ))}
+ 258|         </div>
+ 259|       </div>
+ 260| 
+ 261|       {/* 반 필터 */}
+ 262|       <div className="flex gap-2 overflow-x-auto pb-1 mb-3">
+ 263|         {divisions.map(d => (
+ 264|           <button key={d} onClick={() => setDivisionFilter(d)}
+ 265|             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${divisionFilter === d ? "text-white" : "bg-gray-100 text-gray-600"}`}
+ 266|             style={divisionFilter === d ? { background: accentColor } : {}}>
+ 267|             {d}
+ 268|           </button>
+ 269|         ))}
+ 270|       </div>
+ 271| 
+ 272|       {/* 검색 */}
+ 273|       <div className="relative mb-4">
+ 274|         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+ 275|           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+ 276|         </div>
+ 277|         <input value={search} onChange={e => setSearch(e.target.value)}
+ 278|           placeholder={isSelf ? "지구명 검색" : "용역명 또는 업체명 검색"}
+ 279|           className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+ 280|       </div>
+ 281| 
+ 282|       {/* 목록 */}
+ 283|       {loading ? (
+ 284|         <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="bg-white rounded-2xl p-4 shadow-sm animate-pulse"><div className="h-4 bg-gray-200 rounded w-3/4 mb-2"/><div className="h-3 bg-gray-100 rounded w-1/2"/></div>)}</div>
+ 285|       ) : error ? (
+ 286|         <div className="text-center py-12 text-red-500 text-sm">{error}</div>
+ 287|       ) : filtered.length === 0 ? (
+ 288|         <div className="text-center py-12 text-gray-400 text-sm">{search ? "검색 결과가 없습니다." : isSelf ? "등록된 지구가 없습니다." : "등록된 용역이 없습니다."}</div>
+ 289|       ) : (
+ 290|         <div className="space-y-3">
+ 291|           {filtered.map(task => (
+ 292|             <div key={task.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+ 293|               <div className="flex items-stretch">
+ 294|                 <Link href={`/tasks/${task.id}`} className="flex-1 p-4 min-w-0">
+ 295|                   <div className="flex items-start justify-between mb-2">
+ 296|                     <div className="flex-1 min-w-0">
+ 297|                       <div className="flex items-center gap-2 mb-0.5">
+ 298|                         {task.division && (
+ 299|                           <span className="text-xs px-2 py-0.5 rounded-full font-medium text-white shrink-0"
+ 300|                             style={{ background: accentColor }}>{task.division}</span>
+ 301|                         )}
+ 302|                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 ${isSelf ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+ 303|                           {isSelf ? "[자체진단]" : "[용역]"}
+ 304|                         </span>
+ 305|                         <h3 className="font-semibold text-gray-900 text-sm truncate">{task.name}</h3>
+ 306|                       </div>
+ 307|                       {!isSelf && task.contractorCompanyName && (
+ 308|                         <p className="text-xs text-gray-500">{task.contractorCompanyName}</p>
+ 309|                       )}
+ 310|                     </div>
+ 311|                     <span className="text-xs text-gray-400 shrink-0 ml-2">{task.lastDate}</span>
+ 312|                   </div>
+ 313|                   <div className="flex gap-3 text-xs">
+ 314|                     <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block"/><span className="text-gray-600">진행중 {task.counts.inProgress}건</span></span>
+ 315|                     <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400 inline-block"/><span className="text-gray-600">완료 {task.counts.completed}건</span></span>
+ 316|                     {task.counts.rejected > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block"/><span className="text-gray-600">반려 {task.counts.rejected}건</span></span>}
+ 317|                   </div>
+ 318|                 </Link>
+ 319|                 <div className="relative flex items-start pt-3 pr-3">
+ 320|                   <button onClick={() => setMenuOpenId(menuOpenId === task.id ? null : task.id)}
+ 321|                     className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100">
+ 322|                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+ 323|                   </button>
+ 324|                   {menuOpenId === task.id && (
+ 325|                     <div className="absolute right-0 top-11 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden w-28 z-30">
+ 326|                       <button onClick={() => { setMenuOpenId(null); setEditingTask(task); }}
+ 327|                         className="w-full flex items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50">
+ 328|                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+ 329|                         수정
+ 330|                       </button>
+ 331|                       <div className="border-t border-gray-100"/>
+ 332|                       <button onClick={() => { setMenuOpenId(null); handleDeleteTask(task); }} disabled={deletingId === task.id}
+ 333|                         className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-500 hover:bg-red-50 disabled:opacity-50">
+ 334|                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+ 335|                         {deletingId === task.id ? "삭제 중..." : "삭제"}
+ 336|                       </button>
+ 337|                     </div>
+ 338|                   )}
+ 339|                 </div>
+ 340|               </div>
+ 341|             </div>
+ 342|           ))}
+ 343|         </div>
+ 344|       )}
+ 345| 
+ 346|       {/* FAB */}
+ 347|       <button onClick={() => setShowCreate(true)}
+ 348|         className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white"
+ 349|         style={{ background: accentColor }}>
+ 350|         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+ 351|           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+ 352|         </svg>
+ 353|       </button>
+ 354| 
+ 355|       {showCreate && <CreateTaskModal category={category} onClose={() => setShowCreate(false)} onCreated={fetchTasks} />}
+ 356|       {editingTask && <EditTaskModal task={editingTask} category={category} onClose={() => setEditingTask(null)} onUpdated={fetchTasks} />}
+ 357|     </div>
+ 358|   );
+ 359| }
+ 360| 
+ 361| import { Suspense } from "react";
+ 362| export default function TasksPage() {
+ 363|   return (
+ 364|     <Suspense fallback={<div className="p-4 text-center text-gray-400 text-sm">로딩 중...</div>}>
+ 365|       <TasksPageInner />
+ 366|     </Suspense>
+ 367|   );
+ 368| }
+
+===== tasks API (collection) (\app\api\tasks\route.ts) total 123 =====
+   1| import { NextRequest, NextResponse } from "next/server";
+   2| import { auth } from "@/auth";
+   3| import { db } from "@/db";
+   4| import { tasks, documents, users } from "@/db/schema";
+   5| import { eq, ilike, or, isNull, desc, sql } from "drizzle-orm";
+   6| 
+   7| // GET /api/tasks - 과업 목록 조회
+   8| export async function GET(req: NextRequest) {
+   9|   try {
+  10|     const session = await auth();
+  11|     if (!session?.user) {
+  12|       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+  13|     }
+  14| 
+  15|     const { searchParams } = new URL(req.url);
+  16|     const keyword = searchParams.get("keyword") || "";
+  17| 
+  18|     const taskList = await db
+  19|       .select({
+  20|         id: tasks.id,
+  21|         name: tasks.name,
+  22|         contractorCompanyName: tasks.contractorCompanyName,
+  23|         description: tasks.description,
+  24|         status: tasks.status,
+  25|         startDate: tasks.startDate,
+  26|         endDate: tasks.endDate,
+  27|         createdAt: tasks.createdAt,
+  28|         updatedAt: tasks.updatedAt,
+  29|         createdBy: tasks.createdBy,
+  30|         // category/division은 description JSON에서 파싱해서 프론트에서 처리
+  31|       })
+  32|       .from(tasks)
+  33|       .where(
+  34|         keyword
+  35|           ? or(
+  36|               ilike(tasks.name, `%${keyword}%`),
+  37|               ilike(tasks.contractorCompanyName, `%${keyword}%`)
+  38|             )
+  39|           : isNull(tasks.deletedAt)
+  40|       )
+  41|       .orderBy(desc(tasks.updatedAt));
+  42| 
+  43|       const taskIds = taskList.map((t: { id: string }) => t.id);
+  44|     let docStats: Record<string, { inProgress: number; completed: number; rejected: number }> = {};
+  45| 
+  46|     if (taskIds.length > 0) {
+  47|       const stats = await db
+  48|         .select({
+  49|           taskId: documents.taskId,
+  50|           status: documents.status,
+  51|           count: sql<number>`count(*)::int`,
+  52|         })
+  53|         .from(documents)
+  54|         .where(isNull(documents.deletedAt))
+  55|         .groupBy(documents.taskId, documents.status);
+  56| 
+  57|       for (const row of stats) {
+  58|         if (!docStats[row.taskId]) {
+  59|           docStats[row.taskId] = { inProgress: 0, completed: 0, rejected: 0 };
+  60|         }
+  61|         if (["SUBMITTED", "IN_REVIEW"].includes(row.status)) {
+  62|           docStats[row.taskId].inProgress += row.count;
+  63|         } else if (row.status === "APPROVED") {
+  64|           docStats[row.taskId].completed += row.count;
+  65|         } else if (row.status === "REJECTED") {
+  66|           docStats[row.taskId].rejected += row.count;
+  67|         }
+  68|       }
+  69|     }
+  70| 
+  71|     const result = taskList.map((task: typeof taskList[0]) => ({
+  72|       ...task,
+  73|       counts: docStats[task.id] ?? { inProgress: 0, completed: 0, rejected: 0 },
+  74|       lastDate: task.updatedAt
+  75|         ? new Date(task.updatedAt).toLocaleDateString("ko-KR", {
+  76|             year: "numeric",
+  77|             month: "2-digit",
+  78|             day: "2-digit",
+  79|           }).replace(/\. /g, ".").replace(/\.$/, "")
+  80|         : "",
+  81|     }));
+  82| 
+  83|     return NextResponse.json({ tasks: result });
+  84|   } catch (error) {
+  85|     console.error("[GET /api/tasks]", error);
+  86|     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+  87|   }
+  88| }
+  89| 
+  90| // POST /api/tasks - 과업 생성
+  91| export async function POST(req: NextRequest) {
+  92|   try {
+  93|     const session = await auth();
+  94|     if (!session?.user) {
+  95|       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+  96|     }
+  97| 
+  98|     const body = await req.json();
+  99|     const { name, contractorCompanyName, description, startDate, endDate } = body;
+ 100| 
+ 101|     if (!name || name.trim() === "") {
+ 102|       return NextResponse.json({ error: "과업명을 입력해주세요." }, { status: 400 });
+ 103|     }
+ 104| 
+ 105|     const [newTask] = await db
+ 106|       .insert(tasks)
+ 107|       .values({
+ 108|         name: name.trim(),
+ 109|         contractorCompanyName: contractorCompanyName?.trim() || null,
+ 110|         description: description?.trim() || null,
+ 111|         createdBy: session.user.id,
+ 112|         startDate: startDate ? new Date(startDate) : null,
+ 113|         endDate: endDate ? new Date(endDate) : null,
+ 114|         status: "ACTIVE",
+ 115|       })
+ 116|       .returning();
+ 117| 
+ 118|     return NextResponse.json({ task: newTask }, { status: 201 });
+ 119|   } catch (error) {
+ 120|     console.error("[POST /api/tasks]", error);
+ 121|     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+ 122|   }
+ 123| }
+
+===== tasks API (item) (\app\api\tasks\[taskId]\route.ts) total 186 =====
+   1| ﻿import { NextRequest, NextResponse } from "next/server";
+   2| import { auth } from "@/auth";
+   3| import { db } from "@/db";
+   4| import { tasks, documents, users, documentApprovalLines } from "@/db/schema";
+   5| import { eq, sql, inArray, isNull, and } from "drizzle-orm";
+   6| 
+   7| export async function GET(
+   8|   req: NextRequest,
+   9|   { params }: { params: Promise<{ taskId: string }> }
+  10| ) {
+  11|   try {
+  12|     const session = await auth();
+  13|     if (!session?.user) {
+  14|       return NextResponse.json({ error: "?몄쬆???꾩슂?⑸땲??" }, { status: 401 });
+  15|     }
+  16| 
+  17|     const { taskId } = await params;
+  18| 
+  19|     const [task] = await db
+  20|       .select()
+  21|       .from(tasks)
+  22|       .where(eq(tasks.id, taskId))
+  23|       .limit(1);
+  24| 
+  25|     if (!task || task.deletedAt) {
+  26|       return NextResponse.json({ error: "怨쇱뾽??李얠쓣 ???놁뒿?덈떎." }, { status: 404 });
+  27|     }
+  28| 
+  29|     const docList = await db
+  30|       .select({
+  31|         id: documents.id,
+  32|         taskId: documents.taskId,
+  33|         documentType: documents.documentType,
+  34|         status: documents.status,
+  35|         createdBy: documents.createdBy,
+  36|         currentApprovalOrder: documents.currentApprovalOrder,
+  37|         currentApproverUserId: documents.currentApproverUserId,
+  38|         submittedAt: documents.submittedAt,
+  39|         createdAt: documents.createdAt,
+  40|         updatedAt: documents.updatedAt,
+  41|         writerName: users.name,
+  42|         writerOrg: users.organization,
+  43|       })
+  44|       .from(documents)
+  45|       .leftJoin(users, eq(documents.createdBy, users.id))
+  46|       .where(and(eq(documents.taskId, taskId), isNull(documents.deletedAt)))
+  47|       .orderBy(sql`${documents.updatedAt} desc`);
+  48| 
+  49|     // ?꾩옱 寃곗옱???대쫫 議고쉶
+  50|     const approverIds = docList
+  51|       .filter((d: typeof docList[0]) => d.currentApproverUserId)
+  52|       .map((d: typeof docList[0]) => d.currentApproverUserId as string);
+  53| 
+  54|     const approverMap: Record<string, string> = {};
+  55|     if (approverIds.length > 0) {
+  56|       const approvers = await db
+  57|         .select({ id: users.id, name: users.name })
+  58|         .from(users)
+  59|         .where(inArray(users.id, approverIds));
+  60|       approvers.forEach((a: { id: string; name: string }) => { approverMap[a.id] = a.name; });
+  61|     }
+  62| 
+  63|     // 臾몄꽌蹂?寃곗옱??議고쉶
+  64|     const docIds = docList.map((d: typeof docList[0]) => d.id);
+  65|     let approvalLinesMap: Record<string, { approvalOrder: number; approverName: string | null; approverOrg: string | null; stepStatus: string }[]> = {};
+  66| 
+  67|     if (docIds.length > 0) {
+  68|       const lines = await db
+  69|         .select({
+  70|           documentId: documentApprovalLines.documentId,
+  71|           approvalOrder: documentApprovalLines.approvalOrder,
+  72|           stepStatus: documentApprovalLines.stepStatus,
+  73|           approverName: users.name,
+  74|           approverOrg: users.organization,
+  75|         })
+  76|         .from(documentApprovalLines)
+  77|         .leftJoin(users, eq(documentApprovalLines.approverUserId, users.id))
+  78|         .where(inArray(documentApprovalLines.documentId, docIds))
+  79|         .orderBy(documentApprovalLines.approvalOrder);
+  80| 
+  81|       lines.forEach((line: typeof lines[0]) => {
+  82|         if (!approvalLinesMap[line.documentId]) approvalLinesMap[line.documentId] = [];
+  83|         approvalLinesMap[line.documentId].push({
+  84|           approvalOrder: line.approvalOrder,
+  85|           approverName: line.approverName,
+  86|           approverOrg: line.approverOrg,
+  87|           stepStatus: line.stepStatus,
+  88|         });
+  89|       });
+  90|     }
+  91| 
+  92|     const enrichedDocs = docList.map((doc) => ({
+  93|       ...doc,
+  94|       currentApproverName: doc.currentApproverUserId
+  95|         ? approverMap[doc.currentApproverUserId] ?? null
+  96|         : null,
+  97|       approvalLines: approvalLinesMap[doc.id] ?? [],
+  98|       submittedAt: doc.submittedAt
+  99|         ? new Date(doc.submittedAt).toLocaleDateString("ko-KR", {
+ 100|             year: "numeric",
+ 101|             month: "2-digit",
+ 102|             day: "2-digit",
+ 103|           }).replace(/\. /g, ".").replace(/\.$/, "")
+ 104|         : null,
+ 105|     }));
+ 106| 
+ 107|     return NextResponse.json({ task, documents: enrichedDocs });
+ 108|   } catch (error) {
+ 109|     console.error("[GET /api/tasks/[taskId]]", error);
+ 110|     return NextResponse.json({ error: "?쒕쾭 ?ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." }, { status: 500 });
+ 111|   }
+ 112| }
+ 113| 
+ 114| export async function PATCH(
+ 115|   req: NextRequest,
+ 116|   { params }: { params: Promise<{ taskId: string }> }
+ 117| ) {
+ 118|   try {
+ 119|     const session = await auth();
+ 120|     if (!session?.user) {
+ 121|       return NextResponse.json({ error: "?몄쬆???꾩슂?⑸땲??" }, { status: 401 });
+ 122|     }
+ 123| 
+ 124|     const { taskId } = await params;
+ 125|     const body = await req.json();
+ 126|     const { name, contractorCompanyName, description, startDate, endDate, status } = body;
+ 127| 
+ 128|     const [existing] = await db
+ 129|       .select()
+ 130|       .from(tasks)
+ 131|       .where(eq(tasks.id, taskId))
+ 132|       .limit(1);
+ 133| 
+ 134|     if (!existing || existing.deletedAt) {
+ 135|       return NextResponse.json({ error: "怨쇱뾽??李얠쓣 ???놁뒿?덈떎." }, { status: 404 });
+ 136|     }
+ 137| 
+ 138|     const updateData: Partial<typeof tasks.$inferInsert> = { updatedAt: new Date() };
+ 139|     if (name !== undefined) updateData.name = name.trim();
+ 140|     if (contractorCompanyName !== undefined) updateData.contractorCompanyName = contractorCompanyName?.trim() || null;
+ 141|     if (description !== undefined) updateData.description = description?.trim() || null;
+ 142|     if (startDate !== undefined) updateData.startDate = startDate ? new Date(startDate) : null;
+ 143|     if (endDate !== undefined) updateData.endDate = endDate ? new Date(endDate) : null;
+ 144|     if (status !== undefined) updateData.status = status;
+ 145| 
+ 146|     const [updated] = await db
+ 147|       .update(tasks)
+ 148|       .set(updateData)
+ 149|       .where(eq(tasks.id, taskId))
+ 150|       .returning();
+ 151| 
+ 152|     return NextResponse.json({ task: updated });
+ 153|   } catch (error) {
+ 154|     console.error("[PATCH /api/tasks/[taskId]]", error);
+ 155|     return NextResponse.json({ error: "?쒕쾭 ?ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." }, { status: 500 });
+ 156|   }
+ 157| }
+ 158| 
+ 159| export async function DELETE(
+ 160|   req: NextRequest,
+ 161|   { params }: { params: Promise<{ taskId: string }> }
+ 162| ) {
+ 163|   try {
+ 164|     const session = await auth();
+ 165|     if (!session?.user) {
+ 166|       return NextResponse.json({ error: "?몄쬆???꾩슂?⑸땲??" }, { status: 401 });
+ 167|     }
+ 168| 
+ 169|     const { taskId } = await params;
+ 170| 
+ 171|     const [updated] = await db
+ 172|       .update(tasks)
+ 173|       .set({ deletedAt: new Date(), updatedAt: new Date() })
+ 174|       .where(eq(tasks.id, taskId))
+ 175|       .returning();
+ 176| 
+ 177|     if (!updated) {
+ 178|       return NextResponse.json({ error: "怨쇱뾽??李얠쓣 ???놁뒿?덈떎." }, { status: 404 });
+ 179|     }
+ 180| 
+ 181|     return NextResponse.json({ success: true });
+ 182|   } catch (error) {
+ 183|     console.error("[DELETE /api/tasks/[taskId]]", error);
+ 184|     return NextResponse.json({ error: "?쒕쾭 ?ㅻ쪟媛 諛쒖깮?덉뒿?덈떎." }, { status: 500 });
+ 185|   }
+ 186| }

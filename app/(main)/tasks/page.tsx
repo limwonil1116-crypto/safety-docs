@@ -177,6 +177,9 @@ function TasksPageInner() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const fetchTasks = useCallback(async () => {
     setLoading(true); setError("");
@@ -226,6 +229,32 @@ function TasksPageInner() {
   const totalRejected = filtered.reduce((a, t) => a + t.counts.rejected, 0);
   const accentColor = isSelf ? "#16a34a" : "#2563eb";
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  };
+  const exitSelectMode = () => { setSelectMode(false); setSelectedIds(new Set()); };
+  const allSelected = filtered.length > 0 && filtered.every(t => selectedIds.has(t.id));
+  const toggleSelectAll = () => {
+    setSelectedIds(prev => {
+      if (filtered.every(t => prev.has(t.id))) { const next = new Set(prev); filtered.forEach(t => next.delete(t.id)); return next; }
+      const next = new Set(prev); filtered.forEach(t => next.add(t.id)); return next;
+    });
+  };
+  const handleBulkDelete = async () => {
+    const ids = filtered.filter(t => selectedIds.has(t.id)).map(t => t.id);
+    if (ids.length === 0) return;
+    if (!confirm(`선택한 ${ids.length}개를 삭제하시겠습니까?
+
+각 항목의 모든 서류도 함께 삭제됩니다.`)) return;
+    setBulkDeleting(true);
+    try {
+      for (const id of ids) { await fetch(`/api/tasks/${id}`, { method: "DELETE" }).catch(() => {}); }
+      exitSelectMode();
+      fetchTasks();
+    } catch { alert("일부 삭제에 실패했습니다."); }
+    finally { setBulkDeleting(false); }
+  };
+
   return (
     <div className="p-4 pb-24">
       {menuOpenId && <div className="fixed inset-0 z-10" onClick={() => setMenuOpenId(null)} />}
@@ -239,6 +268,9 @@ function TasksPageInner() {
           <h1 className="text-lg font-bold text-gray-900">{isSelf ? "자체진단" : "도급사업 (용역)"}</h1>
           <p className="text-sm text-gray-500">{isSelf ? "지구별 자체 안전진단" : "수급업체 용역 현황"}</p>
         </div>
+        <button onClick={() => { if (selectMode) exitSelectMode(); else setSelectMode(true); }} className="ml-auto text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200 text-gray-600">
+          {selectMode ? "취소" : "선택"}
+        </button>
       </div>
 
       {/* KPI */}
@@ -289,9 +321,16 @@ function TasksPageInner() {
       ) : (
         <div className="space-y-3">
           {filtered.map(task => (
-            <div key={task.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div key={task.id} className={`bg-white rounded-2xl shadow-sm border hover:shadow-md transition-shadow ${selectMode && selectedIds.has(task.id) ? "border-blue-400 ring-2 ring-blue-200" : "border-gray-100"}`}>
               <div className="flex items-stretch">
-                <Link href={`/tasks/${task.id}`} className="flex-1 p-4 min-w-0">
+                {selectMode && (
+                  <button type="button" onClick={() => toggleSelect(task.id)} className="flex items-center pl-3" aria-label="선택">
+                    <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${selectedIds.has(task.id) ? "bg-blue-600 border-blue-600" : "border-gray-300"}`}>
+                      {selectedIds.has(task.id) && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                    </span>
+                  </button>
+                )}
+                <Link href={`/tasks/${task.id}`} onClick={(e) => { if (selectMode) { e.preventDefault(); toggleSelect(task.id); } }} className="flex-1 p-4 min-w-0">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
@@ -343,14 +382,26 @@ function TasksPageInner() {
         </div>
       )}
 
+      {selectMode && (
+        <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex items-center gap-3 z-40">
+          <button onClick={toggleSelectAll} className="text-xs font-medium px-3 py-2 rounded-xl border border-gray-200 text-gray-600 shrink-0">
+            {allSelected ? "전체 해제" : "전체 선택"}
+          </button>
+          <button onClick={handleBulkDelete} disabled={bulkDeleting || selectedIds.size === 0}
+            className="flex-1 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-40" style={{ background: "#dc2626" }}>
+            {bulkDeleting ? "삭제 중..." : `선택 삭제 (${selectedIds.size})`}
+          </button>
+        </div>
+      )}
+
       {/* FAB */}
-      <button onClick={() => setShowCreate(true)}
+      {!selectMode && (<button onClick={() => setShowCreate(true)}
         className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white"
         style={{ background: accentColor }}>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
         </svg>
-      </button>
+      </button>)}
 
       {showCreate && <CreateTaskModal category={category} onClose={() => setShowCreate(false)} onCreated={fetchTasks} />}
       {editingTask && <EditTaskModal task={editingTask} category={category} onClose={() => setEditingTask(null)} onUpdated={fetchTasks} />}
