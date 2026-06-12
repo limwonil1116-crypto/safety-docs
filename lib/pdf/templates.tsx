@@ -537,6 +537,24 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
         </View>
         <View style={S.table}>
           <ApplicantRow applicantCompany={fd.applicantCompany} applicantTitle={fd.applicantTitle} applicantName={fd.applicantName} signatureData={applicantSignature} labelWidth={100} />
+          <View style={[S.tr, { alignItems: "stretch", minHeight: 36 }]}>
+            <Text style={[S.il, { width: 100 }]}>감 시 인</Text>
+            <View style={{ flex: 1.5, borderRight: "0.5px solid " + C.border, padding: "4 4", justifyContent: "center" }}>
+              <Text style={{ fontSize: 9 }}>{`(부서) ${monitor?.approverOrg || ""}`}</Text>
+            </View>
+            <View style={{ flex: 1, borderRight: "0.5px solid " + C.border, padding: "4 4", justifyContent: "center" }}>
+              <Text style={{ fontSize: 9 }}>{`(직책) ${monitor?.approverPosition || ""}`}</Text>
+            </View>
+            <View style={{ flex: 1, borderRight: "0.5px solid " + C.border, padding: "4 4", justifyContent: "center" }}>
+              <Text style={{ fontSize: 9 }}>{`(성명) ${monitor?.approverName || ""}`}</Text>
+            </View>
+            <View style={{ width: 95, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: "4 4", gap: 4 }}>
+              <Text style={{ fontSize: 8, color: "#888" }}>(서명)</Text>
+              {monitor?.signatureData
+                ? <Image src={monitor.signatureData} style={{ width: 60, height: 22, objectFit: "contain" }} />
+                : <View style={{ width: 60, height: 20, border: "0.5px dashed #ccc" }} />}
+            </View>
+          </View>
           {[
             { label: "용 역 명",    val: taskName || fd.serviceName || "" },
             { label: "작업수행기간", val: periodText },
@@ -625,7 +643,6 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
         </View>
 
         <ApproverSection entries={[
-          { roleLabel: "감시인", deptLabel: `(부서) ${monitor?.approverOrg || ""}   (직책) ${monitor?.approverPosition || ""}`, name: monitor?.approverName, signatureData: monitor?.signatureData },
           { roleLabel: "(계획확인) 허가자", deptLabel: `(부서) 안전기술본부   (직책) ${isSelf ? "시행부장" : "용역감독원"}`, name: a1?.approverName, signatureData: a1?.signatureData },
           { roleLabel: "(이행확인) 확인자", deptLabel: `(부서) 안전기술본부   (직책) ${isSelf ? "시행부장" : "용역감독원"}`, name: a2?.approverName, signatureData: a2?.signatureData },
         ]} />
