@@ -256,7 +256,7 @@ export function AttachmentPagesPDF({ riskAssessFiles, safetyCheckPhotos, safetyC
 // ===== 첨부1: 안전작업허가서 =====
 export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
   formData: Record<string, any>;
-  approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+  approvalLines: Array<{ approverName?: string; approverOrg?: string; approverPosition?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
   workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
 }) {
@@ -502,7 +502,7 @@ export function SafetyWorkPermitPDF({ formData: fd, approvalLines, documentId, c
 
 export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
   formData: Record<string, any>;
-  approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+  approvalLines: Array<{ approverName?: string; approverOrg?: string; approverPosition?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
   workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
 }) {
@@ -512,8 +512,9 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
     { time: "중", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
     { time: "후", hour: "", minute: "", o2: "", co2: "", h2s: "", co: "", ex: "", measurer: "", entryCount: "", exitCount: "" },
   ];
-  const a1 = approvalLines.find(l => l.approvalOrder === 1);
-  const a2 = approvalLines.find(l => l.approvalOrder === 2);
+  const monitor = approvalLines.find(l => l.approvalOrder === 1);
+  const a1 = approvalLines.find(l => l.approvalOrder === 2);
+  const a2 = approvalLines.find(l => l.approvalOrder === 4);
   const periodText = buildPeriod(fd);
   const workLocationText = getWorkLocation(fd, workAddress);
 
@@ -532,7 +533,7 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
     <Document>
       <Page size="A4" style={S.page}>
         <View style={S.titleBox}>
-          <Text style={S.titleMain}>밀폐공간 작업 허가서<Text style={{ fontSize: 13, fontWeight: "normal" }}>(용역업체용)</Text></Text>
+          <Text style={S.titleMain}>밀폐공간 작업 허가서<Text style={{ fontSize: 13, fontWeight: "normal" }}>{isSelf ? "(직원용)" : "(용역업체용)"}</Text></Text>
         </View>
         <View style={S.table}>
           <ApplicantRow applicantCompany={fd.applicantCompany} applicantTitle={fd.applicantTitle} applicantName={fd.applicantName} signatureData={applicantSignature} labelWidth={100} />
@@ -624,8 +625,9 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
         </View>
 
         <ApproverSection entries={[
-          { roleLabel: "(계획확인) 허가자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a1?.approverName, signatureData: a1?.signatureData },
-          { roleLabel: "(이행확인) 확인자", deptLabel: "(부서) 안전기술본부   (직책) 용역감독원", name: a2?.approverName, signatureData: a2?.signatureData },
+          { roleLabel: "감시인", deptLabel: `(부서) ${monitor?.approverOrg || ""}   (직책) ${monitor?.approverPosition || ""}`, name: monitor?.approverName, signatureData: monitor?.signatureData },
+          { roleLabel: "(계획확인) 허가자", deptLabel: `(부서) 안전기술본부   (직책) ${isSelf ? "시행부장" : "용역감독원"}`, name: a1?.approverName, signatureData: a1?.signatureData },
+          { roleLabel: "(이행확인) 확인자", deptLabel: `(부서) 안전기술본부   (직책) ${isSelf ? "시행부장" : "용역감독원"}`, name: a2?.approverName, signatureData: a2?.signatureData },
         ]} />
         <Footer documentId={documentId} createdAt={createdAt} />
       </Page>
@@ -636,7 +638,7 @@ export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, crea
 // ===== 붙임3: 휴일작업신청서 =====
 export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
   formData: Record<string, any>;
-  approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+  approvalLines: Array<{ approverName?: string; approverOrg?: string; approverPosition?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
   workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
 }) {
@@ -748,7 +750,7 @@ export function HolidayWorkPDF({ formData: fd, approvalLines, documentId, create
 // ===== 붙임4: 정전작업허가서 =====
 export function PowerOutagePDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
   formData: Record<string, any>;
-  approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+  approvalLines: Array<{ approverName?: string; approverOrg?: string; approverPosition?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
   documentId: string; createdAt: string; taskName?: string; applicantSignature?: string;
   workAddress?: string | null; attachments?: AttachmentInfo[]; isSelf?: boolean;
 }) {

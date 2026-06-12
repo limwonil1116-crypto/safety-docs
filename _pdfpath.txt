@@ -1,0 +1,388 @@
+
+===== pdf route (\app\api\documents\[documentId]\pdf\route.ts) total 210 =====
+   1| // app/api/documents/[documentId]/pdf/route.ts
+   2| import { NextRequest, NextResponse } from "next/server";
+   3| import { auth } from "@/auth";
+   4| import { db } from "@/db";
+   5| import { documents, documentApprovalLines, documentSignatures, documentOutputs, documentAttachments, users, tasks } from "@/db/schema";
+   6| import { eq, sql } from "drizzle-orm";
+   7| import { generateAndUploadPDF, generatePDF } from "@/lib/pdf/generator";
+   8| 
+   9| async function getApprovalLinesWithSig(documentId: string) {
+  10|   const lines = await db
+  11|     .select({
+  12|       id: documentApprovalLines.id,
+  13|       approvalOrder: documentApprovalLines.approvalOrder,
+  14|       actedAt: documentApprovalLines.actedAt,
+  15|       approverName: users.name,
+  16|       approverOrg: users.organization,
+  17|       approverUserId: documentApprovalLines.approverUserId,
+  18|     })
+  19|     .from(documentApprovalLines)
+  20|     .leftJoin(users, eq(documentApprovalLines.approverUserId, users.id))
+  21|     .where(eq(documentApprovalLines.documentId, documentId))
+  22|     .orderBy(documentApprovalLines.approvalOrder);
+  23| 
+  24|   const signatures = await db
+  25|     .select()
+  26|     .from(documentSignatures)
+  27|     .where(eq(documentSignatures.documentId, documentId));
+  28| 
+  29|   return lines.map((line: typeof lines[0]) => ({
+  30|     approvalOrder: line.approvalOrder,
+  31|     approverName: line.approverName ?? undefined,
+  32|     approverOrg: line.approverOrg ?? undefined,
+  33|     actedAt: line.actedAt?.toISOString(),
+  34|     approverUserId: line.approverUserId,
+  35|     signatureData: signatures.find(
+  36|       (s: { approvalLineId: string; signatureData: string | null }) =>
+  37|         s.approvalLineId === line.id
+  38|     )?.signatureData ?? undefined,
+  39|   }));
+  40| }
+  41| 
+  42| async function getApplicantSignature(
+  43|   doc: { formDataJson: unknown; createdBy: string; id: string }
+  44| ): Promise<string | undefined> {
+  45|   const fd = doc.formDataJson as Record<string, unknown> | null;
+  46|   if (fd && typeof fd.signatureData === "string" && fd.signatureData) return fd.signatureData;
+  47|   try {
+  48|     const sigs = await db.select().from(documentSignatures).where(eq(documentSignatures.documentId, doc.id));
+  49|     const applicantSig = sigs.find(
+  50|       (s: { signerUserId: string; signatureData: string | null }) =>
+  51|         s.signerUserId === doc.createdBy && s.signatureData
+  52|     );
+  53|     if (applicantSig?.signatureData) return applicantSig.signatureData;
+  54|     if (sigs.length > 0 && sigs[0].signatureData) return sigs[0].signatureData;
+  55|   } catch (e) { console.error("서명 조회 오류:", e); }
+  56|   return undefined;
+  57| }
+  58| 
+  59| // ✅ 첨부파일 조회
+  60| async function getAttachments(documentId: string) {
+  61|   const all = await db
+  62|     .select()
+  63|     .from(documentAttachments)
+  64|     .where(eq(documentAttachments.documentId, documentId))
+  65|     .orderBy(documentAttachments.sortOrder);
+  66|   return all.filter((a: any) => !a.deletedAt).map((a: any) => ({
+  67|     id: a.id,
+  68|     fileName: a.fileName,
+  69|     fileUrl: a.fileUrl,
+  70|     mimeType: a.mimeType,
+  71|     attachmentType: a.attachmentType,
+  72|     description: a.description,
+  73|   }));
+  74| }
+  75| 
+  76| export async function GET(
+  77|   req: NextRequest,
+  78|   { params }: { params: Promise<{ documentId: string }> }
+  79| ) {
+  80|   try {
+  81|     const session = await auth();
+  82|     if (!session?.user) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+  83| 
+  84|     const { documentId } = await params;
+  85|     const { searchParams } = new URL(req.url);
+  86|     const download = searchParams.get("download") === "true";
+  87|     const forceNew = searchParams.get("force") === "true";
+  88| 
+  89|     const [doc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+  90|     if (!doc || doc.deletedAt) return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
+  91| 
+  92|     const [task] = doc.taskId
+  93|       ? await db.select({ name: tasks.name, description: tasks.description }).from(tasks).where(eq(tasks.id, doc.taskId)).limit(1)
+  94|       : [{ name: undefined, description: undefined }];
+  95|     const taskName = task?.name ?? undefined;
+  96|     const isSelf = (() => { try { return JSON.parse((task as any)?.description || "{}").category === "SELF"; } catch { return false; } })();
+  97|     const applicantSignature = await getApplicantSignature({ formDataJson: doc.formDataJson, createdBy: doc.createdBy, id: doc.id });
+  98|     const workAddress = (doc as any).workAddress ?? null;
+  99|     const attachments = await getAttachments(documentId);  // ✅
+ 100| 
+ 101|     if (download) {
+ 102|       const approvalLinesWithSig = await getApprovalLinesWithSig(documentId);
+ 103|       const { buffer, filename } = await generatePDF({
+ 104|         documentId, documentType: doc.documentType,
+ 105|         formData: (doc.formDataJson as Record<string, unknown>) ?? {},
+ 106|         approvalLines: approvalLinesWithSig,
+ 107|         createdAt: doc.createdAt.toISOString(),
+ 108|         taskName, applicantSignature, workAddress, attachments, isSelf,
+ 109|       });
+ 110|       return new NextResponse(new Uint8Array(buffer), {
+ 111|         headers: {
+ 112|           "Content-Type": "application/pdf",
+ 113|           "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+ 114|           "Content-Length": String(buffer.length),
+ 115|         },
+ 116|       });
+ 117|     }
+ 118| 
+ 119|     if (!forceNew) {
+ 120|       try {
+ 121|         const [existingOutput] = await db.select().from(documentOutputs)
+ 122|           .where(sql`${documentOutputs.documentId} = ${documentId} AND ${documentOutputs.generationStatus} = 'COMPLETED'`)
+ 123|           .orderBy(sql`${documentOutputs.generatedAt} DESC`).limit(1);
+ 124|         if (existingOutput?.fileUrl) return NextResponse.json({ url: existingOutput.fileUrl, filename: existingOutput.fileName, size: existingOutput.fileSize, generatedAt: existingOutput.generatedAt });
+ 125|       } catch (e) { console.error("기존 output 조회 오류:", e); }
+ 126|     }
+ 127| 
+ 128|     const approvalLinesWithSig = await getApprovalLinesWithSig(documentId);
+ 129| 
+ 130|     try {
+ 131|       const { url, filename, size } = await generateAndUploadPDF({
+ 132|         documentId, documentType: doc.documentType,
+ 133|         formData: (doc.formDataJson as Record<string, unknown>) ?? {},
+ 134|         approvalLines: approvalLinesWithSig,
+ 135|         createdAt: doc.createdAt.toISOString(),
+ 136|         taskName, applicantSignature, workAddress, attachments, isSelf,
+ 137|       });
+ 138|       try {
+ 139|         await db.insert(documentOutputs).values({
+ 140|           documentId, outputType: "PDF", fileName: filename, fileUrl: url,
+ 141|           fileSize: BigInt(size), mimeType: "application/pdf",
+ 142|           generationStatus: "COMPLETED", isOfficial: doc.status === "APPROVED", generatedAt: new Date(),
+ 143|         });
+ 144|       } catch (e) { console.error("output 저장 오류:", e); }
+ 145|       return NextResponse.json({ url, filename, size });
+ 146|     } catch (uploadError) {
+ 147|       console.error("Blob 업로드 실패, fallback:", uploadError);
+ 148|       const { buffer, filename } = await generatePDF({
+ 149|         documentId, documentType: doc.documentType,
+ 150|         formData: (doc.formDataJson as Record<string, unknown>) ?? {},
+ 151|         approvalLines: approvalLinesWithSig,
+ 152|         createdAt: doc.createdAt.toISOString(),
+ 153|         taskName, applicantSignature, workAddress, attachments, isSelf,
+ 154|       });
+ 155|       return new NextResponse(new Uint8Array(buffer), {
+ 156|         headers: {
+ 157|           "Content-Type": "application/pdf",
+ 158|           "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(filename)}`,
+ 159|           "Content-Length": String(buffer.length),
+ 160|         },
+ 161|       });
+ 162|     }
+ 163|   } catch (error) {
+ 164|     console.error("[GET /api/documents/[documentId]/pdf]", error);
+ 165|     return NextResponse.json({ error: `PDF 생성 중 오류: ${error instanceof Error ? error.message : String(error)}` }, { status: 500 });
+ 166|   }
+ 167| }
+ 168| 
+ 169| export async function POST(
+ 170|   req: NextRequest,
+ 171|   { params }: { params: Promise<{ documentId: string }> }
+ 172| ) {
+ 173|   try {
+ 174|     const session = await auth();
+ 175|     if (!session?.user) return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+ 176| 
+ 177|     const { documentId } = await params;
+ 178|     const [doc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+ 179|     if (!doc || doc.deletedAt) return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
+ 180| 
+ 181|     const [task] = doc.taskId
+ 182|       ? await db.select({ name: tasks.name }).from(tasks).where(eq(tasks.id, doc.taskId)).limit(1)
+ 183|       : [{ name: undefined }];
+ 184| 
+ 185|     const applicantSignature = await getApplicantSignature({ formDataJson: doc.formDataJson, createdBy: doc.createdBy, id: doc.id });
+ 186|     const approvalLinesWithSig = await getApprovalLinesWithSig(documentId);
+ 187|     const workAddress = (doc as any).workAddress ?? null;
+ 188|     const attachments = await getAttachments(documentId);
+ 189| 
+ 190|     const { url, filename, size } = await generateAndUploadPDF({
+ 191|       documentId, documentType: doc.documentType,
+ 192|       formData: (doc.formDataJson as Record<string, unknown>) ?? {},
+ 193|       approvalLines: approvalLinesWithSig,
+ 194|       createdAt: doc.createdAt.toISOString(),
+ 195|       taskName: task?.name ?? undefined,
+ 196|       applicantSignature, workAddress, attachments,
+ 197|     });
+ 198| 
+ 199|     await db.insert(documentOutputs).values({
+ 200|       documentId, outputType: "PDF", fileName: filename, fileUrl: url,
+ 201|       fileSize: BigInt(size), mimeType: "application/pdf",
+ 202|       generationStatus: "COMPLETED", isOfficial: doc.status === "APPROVED", generatedAt: new Date(),
+ 203|     });
+ 204| 
+ 205|     return NextResponse.json({ url, filename, size, message: "PDF가 생성됐습니다." });
+ 206|   } catch (error) {
+ 207|     console.error("[POST /api/documents/[documentId]/pdf]", error);
+ 208|     return NextResponse.json({ error: `PDF 생성 중 오류: ${error instanceof Error ? error.message : String(error)}` }, { status: 500 });
+ 209|   }
+ 210| }
+
+===== generator (\lib\pdf\generator.ts) total 137 =====
+   1| // lib/pdf/generator.ts
+   2| import { renderToBuffer } from "@react-pdf/renderer";
+   3| import { put } from "@vercel/blob";
+   4| import React from "react";
+   5| import { SafetyWorkPermitPDF, ConfinedSpacePDF, HolidayWorkPDF, PowerOutagePDF, AttachmentPagesPDF } from "./templates";
+   6| 
+   7| export interface ApprovalLineInfo {
+   8|   approverName?: string;
+   9|   approverOrg?: string;
+  10|   approvalOrder: number;
+  11|   signatureData?: string;
+  12|   actedAt?: string;
+  13| }
+  14| 
+  15| export interface AttachmentInfo {
+  16|   id: string;
+  17|   fileName: string;
+  18|   fileUrl: string;
+  19|   mimeType: string | null;
+  20|   attachmentType: string;
+  21|   description: string | null;
+  22| }
+  23| 
+  24| export interface GeneratePDFOptions {
+  25|   documentId: string;
+  26|   documentType: string;
+  27|   formData: Record<string, unknown>;
+  28|   approvalLines: ApprovalLineInfo[];
+  29|   createdAt: string;
+  30|   taskName?: string;
+  31|   applicantSignature?: string;
+  32|   workAddress?: string | null;
+  33|   attachments?: AttachmentInfo[];  // ✅ 첨부파일
+  34|   isSelf?: boolean; // 자체진단 여부
+  35| }
+  36| 
+  37| export async function generatePDF(options: GeneratePDFOptions): Promise<{ buffer: Buffer; filename: string }> {
+  38|   const {
+  39|     documentId, documentType, formData, approvalLines,
+  40|     createdAt, taskName, applicantSignature, workAddress, isSelf,
+  41|     attachments = [],
+  42|   } = options;
+  43| 
+  44|   const TYPE_MAP: Record<string, string> = {
+  45|     SAFETY_WORK_PERMIT: "안전작업허가서",
+  46|     CONFINED_SPACE:     "밀폐공간작업허가서",
+  47|     HOLIDAY_WORK:       "휴일작업신고서",
+  48|     POWER_OUTAGE:       "정전작업허가서",
+  49|   };
+  50| 
+  51|   const typeName = TYPE_MAP[documentType] ?? "안전서류";
+  52|   const now = new Date();
+  53|   const dateTimeStr = now.getFullYear().toString() +
+  54|     String(now.getMonth()+1).padStart(2,"0") +
+  55|     String(now.getDate()).padStart(2,"0") + "_" +
+  56|     String(now.getHours()).padStart(2,"0") +
+  57|     String(now.getMinutes()).padStart(2,"0");
+  58|   const safeTaskName = (taskName || "").replace(/[^\w\uAC00-\uD7A3]/g, "_").slice(0, 20);
+  59|   const filename = `${dateTimeStr}_${safeTaskName}_${typeName}.pdf`;
+  60| 
+  61|   const commonProps = {
+  62|     formData: formData as Record<string, any>,
+  63|     approvalLines,
+  64|     documentId,
+  65|     createdAt,
+  66|     taskName,
+  67|     applicantSignature,
+  68|     workAddress,
+  69|     attachments,
+  70|     isSelf: isSelf ?? false,
+  71|   };
+  72| 
+  73|   // ✅ 메인 문서 element
+  74|   let mainElement: React.ReactElement;
+  75|   switch (documentType) {
+  76|     case "CONFINED_SPACE": mainElement = React.createElement(ConfinedSpacePDF,    commonProps); break;
+  77|     case "HOLIDAY_WORK":   mainElement = React.createElement(HolidayWorkPDF,      commonProps); break;
+  78|     case "POWER_OUTAGE":   mainElement = React.createElement(PowerOutagePDF,      commonProps); break;
+  79|     default:               mainElement = React.createElement(SafetyWorkPermitPDF, commonProps);
+  80|   }
+  81| 
+  82|   // ✅ 첨부파일 분류
+  83|   const riskAssessFiles = attachments.filter(a =>
+  84|     a.attachmentType === "DOCUMENT" && a.description === "위험성평가표"
+  85|   );
+  86|   const safetyCheckPhotos = attachments.filter(a =>
+  87|     a.attachmentType === "PHOTO"
+  88|   );
+  89|   const safetyCheckDocs = attachments.filter(a =>
+  90|     a.attachmentType === "DOCUMENT" && a.description === "개선대책확인자료"
+  91|   );
+  92| 
+  93|   const hasAttachments = riskAssessFiles.length > 0 || safetyCheckPhotos.length > 0 || safetyCheckDocs.length > 0;
+  94| 
+  95|   // 첨부파일이 있으면 PDF 병합
+  96|   if (hasAttachments) {
+  97|     // @react-pdf/renderer의 renderToBuffer는 Document element를 받음
+  98|     // AttachmentPagesPDF는 Document를 반환하므로 타입 캐스팅 필요
+  99|     const attachElement = React.createElement(AttachmentPagesPDF, {
+ 100|       riskAssessFiles,
+ 101|       safetyCheckPhotos,
+ 102|       safetyCheckDocs,
+ 103|       documentId,
+ 104|       createdAt,
+ 105|     }) as any;  // ✅ 타입 캐스팅으로 타입 에러 해결
+ 106| 
+ 107|     const [mainBuffer, attachBuffer] = await Promise.all([
+ 108|       renderToBuffer(mainElement),
+ 109|       renderToBuffer(attachElement),
+ 110|     ]);
+ 111| 
+ 112|     // pdf-lib으로 PDF 병합
+ 113|     const { PDFDocument } = await import("pdf-lib");
+ 114|     const mergedPdf = await PDFDocument.create();
+ 115|     const mainPdf = await PDFDocument.load(mainBuffer);
+ 116|     const attachPdf = await PDFDocument.load(attachBuffer);
+ 117|     const mainPages = await mergedPdf.copyPages(mainPdf, mainPdf.getPageIndices());
+ 118|     mainPages.forEach(p => mergedPdf.addPage(p));
+ 119|     const attachPages = await mergedPdf.copyPages(attachPdf, attachPdf.getPageIndices());
+ 120|     attachPages.forEach(p => mergedPdf.addPage(p));
+ 121|     const mergedBytes = await mergedPdf.save();
+ 122|     return { buffer: Buffer.from(mergedBytes), filename };
+ 123|   }
+ 124| 
+ 125|   const buffer = await renderToBuffer(mainElement);
+ 126|   return { buffer: Buffer.from(buffer), filename };
+ 127| }
+ 128| 
+ 129| export async function generateAndUploadPDF(options: GeneratePDFOptions): Promise<{ url: string; filename: string; size: number }> {
+ 130|   const { buffer, filename } = await generatePDF(options);
+ 131|   const blob = await put(
+ 132|     `pdf/${options.documentId}/${filename}`,
+ 133|     buffer,
+ 134|     { access: "public", contentType: "application/pdf", addRandomSuffix: false }
+ 135|   );
+ 136|   return { url: blob.url, filename, size: buffer.length };
+ 137| }
+
+!! generator NOT FOUND: E:\safety-docs\lib\pdf\generator.tsx
+
+===== grep approverOrg / users.organization / ConfinedSpacePDF / approvalOrder select =====
+\lib\pdf\generator.ts:5| import { SafetyWorkPermitPDF, ConfinedSpacePDF, HolidayWorkPDF, PowerOutagePDF, AttachmentPagesPDF } from "./templates";
+\lib\pdf\generator.ts:9|   approverOrg?: string;
+\lib\pdf\generator.ts:76|     case "CONFINED_SPACE": mainElement = React.createElement(ConfinedSpacePDF,    commonProps); break;
+\lib\pdf\templates.tsx:259|   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+\lib\pdf\templates.tsx:503| export function ConfinedSpacePDF({ formData: fd, approvalLines, documentId, createdAt, taskName, applicantSignature, workAddress, isSelf = false }: {
+\lib\pdf\templates.tsx:505|   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+\lib\pdf\templates.tsx:639|   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+\lib\pdf\templates.tsx:725|             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${a1?.approverOrg || ""}  (용역감독원) ${a1?.approverName || ""}`}</Text>
+\lib\pdf\templates.tsx:734|             <Text style={{ fontSize: 9, flex: 1 }}>{`(소속) ${a2?.approverOrg || ""}  (관리감독자) ${a2?.approverName || ""}`}</Text>
+\lib\pdf\templates.tsx:751|   approvalLines: Array<{ approverName?: string; approverOrg?: string; approvalOrder: number; signatureData?: string; actedAt?: string }>;
+\app\(main)\approvals\[documentId]\page.tsx:16|   approverName?: string; approverOrg?: string; approverUserId?: string;
+\app\(main)\tasks\[taskId]\page.tsx:20|   approverOrg?: string;
+\app\(main)\tasks\[taskId]\page.tsx:383|                           {line.approverOrg && <span className="opacity-60">· {line.approverOrg}</span>}
+\app\(main)\tasks\[taskId]\documents\[documentId]\detail\page.tsx:27|   approverOrg?: string;
+\app\(main)\tasks\[taskId]\documents\[documentId]\detail\page.tsx:309|                         {line.approverOrg && <span className="text-xs text-gray-500 ml-1.5">{line.approverOrg}</span>}
+\app\api\documents\route.ts:28|         creatorOrganization: users.organization,
+\app\api\documents\[documentId]\approval-lines\route.ts:31|         approverOrg: users.organization,
+\app\api\documents\[documentId]\approve\route.ts:152|           generatePDFBackground(documentId, doc).catch(console.error);
+\app\api\documents\[documentId]\approve\route.ts:184|           generatePDFBackground(documentId, doc).catch(console.error);
+\app\api\documents\[documentId]\approve\route.ts:210|         generatePDFBackground(documentId, doc).catch(console.error);
+\app\api\documents\[documentId]\approve\route.ts:220| async function generatePDFBackground(
+\app\api\documents\[documentId]\approve\route.ts:243|         approverOrg: users.organization,
+\app\api\documents\[documentId]\approve\route.ts:258|       approverOrg: line.approverOrg ?? undefined,
+\app\api\documents\[documentId]\pdf\route.ts:16|       approverOrg: users.organization,
+\app\api\documents\[documentId]\pdf\route.ts:32|     approverOrg: line.approverOrg ?? undefined,
+\app\api\tasks\[taskId]\route.ts:42|         writerOrg: users.organization,
+\app\api\tasks\[taskId]\route.ts:65|     let approvalLinesMap: Record<string, { approvalOrder: number; approverName: string | null; approverOrg: string | null; stepStatus: string }[]> = {};
+\app\api\tasks\[taskId]\route.ts:74|           approverOrg: users.organization,
+\app\api\tasks\[taskId]\route.ts:86|           approverOrg: line.approverOrg,
+\app\api\users\route.ts:24|       conditions.push(eq(users.organization, "한국농어촌공사"));
+\app\api\users\route.ts:39|           ilike(users.organization, `%${keyword}%`)
+\app\api\users\route.ts:48|         organization: users.organization,
+\app\api\users\me\route.ts:19|         organization: users.organization,
