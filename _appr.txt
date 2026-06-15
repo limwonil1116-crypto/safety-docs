@@ -1,0 +1,634 @@
+
+===== approvals list page (\app\(main)\approvals\page.tsx) total 408 =====
+   1| "use client";
+   2| 
+   3| import { useState, useEffect, useCallback } from "react";
+   4| import Link from "next/link";
+   5| import { DOCUMENT_TYPE_LABELS, DOCUMENT_TYPE_SHORT, DocumentType } from "@/types";
+   6| 
+   7| interface ApprovalDoc {
+   8|   id: string;
+   9|   document_type: DocumentType;
+  10|   status: string;
+  11|   current_approval_order?: number;
+  12|   task_name: string;
+  13|   task_description?: string;
+  14|   task_division?: string;
+  15|   contractor_company_name?: string;
+  16|   writer_name?: string;
+  17|   current_approver_name?: string;
+  18|   submitted_at?: string;
+  19|   updated_at: string;
+  20|   is_my_turn: boolean;
+  21| }
+  22| 
+  23| const getDivision = (desc?: string): string => {
+  24|   try { return JSON.parse(desc || "{}").division || ""; } catch { return ""; }
+  25| };
+  26| 
+  27| const getTaskCategory = (desc?: string): "CONTRACTOR" | "SELF" => {
+  28|   try { return JSON.parse(desc || "{}").category === "SELF" ? "SELF" : "CONTRACTOR"; } catch { return "CONTRACTOR"; }
+  29| };
+  30| 
+  31| const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
+  32|   DRAFT:           { bg: "bg-gray-100",   text: "text-gray-500",   label: "작성중" },
+  33|   SUBMITTED:       { bg: "bg-blue-100",   text: "text-blue-600",   label: "제출완료" },
+  34|   IN_REVIEW:       { bg: "bg-amber-100",  text: "text-amber-600",  label: "검토중" },
+  35|   IN_REVIEW_FINAL: { bg: "bg-orange-100", text: "text-orange-600", label: "최종결재 진행중" },
+  36|   APPROVED:        { bg: "bg-green-100",  text: "text-green-600",  label: "승인완료" },
+  37|   REJECTED:        { bg: "bg-red-100",    text: "text-red-600",    label: "반려" },
+  38| };
+  39| 
+  40| function getStatusKey(doc: ApprovalDoc): string {
+  41|   if (doc.status === "IN_REVIEW" && doc.current_approval_order === 2) return "IN_REVIEW_FINAL";
+  42|   return doc.status;
+  43| }
+  44| 
+  45| const TABS = [
+  46|   { key: "ALL",                label: "전체" },
+  47|   { key: "SAFETY_WORK_PERMIT", label: "안전작업허가서" },
+  48|   { key: "CONFINED_SPACE",     label: "밀폐공간작업허가서" },
+  49|   { key: "HOLIDAY_WORK",       label: "휴일작업신고서" },
+  50|   { key: "POWER_OUTAGE",       label: "정전작업허가서" },
+  51| ];
+  52| 
+  53| const DATE_FILTERS = [
+  54|   { key: "ALL",                label: "전체" },
+  55|   { key: "THIS_WEEK",  label: "이번 주" },
+  56|   { key: "THIS_MONTH", label: "이번 달" },
+  57| ];
+  58| 
+  59| function ApprovalStepFlow({ doc }: { doc: ApprovalDoc }) {
+  60|   const isConfined = doc.document_type === "CONFINED_SPACE";
+  61|   const isPowerOutage = doc.document_type === "POWER_OUTAGE";
+  62|   type StepStatus = "done" | "active" | "pending" | "rejected";
+  63| 
+  64|   const stepColor = (s: StepStatus) => {
+  65|     if (s === "done")     return { bg: "#2563eb", icon: "white" };
+  66|     if (s === "active")   return { bg: "#f59e0b", icon: "white" };
+  67|     if (s === "rejected") return { bg: "#dc2626", icon: "white" };
+  68|     return { bg: "#e5e7eb", icon: "#9ca3af" };
+  69|   };
+  70| 
+  71|   const StepDot = ({ s, label, type }: { s: StepStatus; label: string; type: "doc"|"search"|"shield" }) => {
+  72|     const c = stepColor(s);
+  73|     const icons: Record<string, React.ReactElement> = {
+  74|       doc: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.icon} strokeWidth="2.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>,
+  75|       search: s === "rejected"
+  76|         ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.icon} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  77|         : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.icon} strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="15.65" y2="15.65"/></svg>,
+  78|       shield: s === "done"
+  79|         ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.icon} strokeWidth="2.5" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+  80|         : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={c.icon} strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  81|     };
+  82|     return (
+  83|       <div className="flex flex-col items-center gap-0.5">
+  84|         <div className="w-7 h-7 rounded-full flex items-center justify-center relative"
+  85|           style={{ backgroundColor: c.bg, boxShadow: s === "active" ? `0 0 0 3px ${c.bg}44` : undefined }}>
+  86|           {icons[type]}
+  87|           {s === "active" && <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 border border-white animate-pulse" />}
+  88|         </div>
+  89|         <span className="text-[8px] text-gray-500 font-medium text-center leading-tight whitespace-nowrap">{label}</span>
+  90|       </div>
+  91|     );
+  92|   };
+  93| 
+  94|   const Line = ({ active }: { active: boolean }) => (
+  95|     <div className="flex-1 h-0.5 mb-3.5 rounded" style={{ backgroundColor: active ? "#2563eb" : "#e5e7eb" }} />
+  96|   );
+  97| 
+  98|   if (isConfined) {
+  99|     const ord = doc.current_approval_order ?? 0;
+ 100|     const st = doc.status;
+ 101|     const s0: StepStatus = st !== "DRAFT" ? "done" : "active";
+ 102|     const s1: StepStatus = st === "SUBMITTED" ? "active" : ord >= 1 ? (st === "REJECTED" && ord === 1 ? "rejected" : ord === 1 && st === "IN_REVIEW" ? "active" : "done") : "pending";
+ 103|     const s2: StepStatus = ord === 2 && st === "IN_REVIEW" ? "active" : ord > 2 || st === "APPROVED" ? "done" : "pending";
+ 104|     const s3: StepStatus = ord === 3 && st === "IN_REVIEW" ? "active" : ord > 3 || st === "APPROVED" ? "done" : "pending";
+ 105|     const s4: StepStatus = ord === 4 && st === "IN_REVIEW" ? "active" : st === "APPROVED" ? "done" : "pending";
+ 106|     return (
+ 107|       <div className="flex items-center gap-0.5 mt-2.5">
+ 108|         <StepDot s={s0} label="신청" type="doc" />
+ 109|         <Line active={s1 === "done" || s1 === "active"} />
+ 110|         <StepDot s={s1} label="감시자" type="search" />
+ 111|         <Line active={s2 === "done" || s2 === "active"} />
+ 112|         <StepDot s={s2} label="계획확인" type="shield" />
+ 113|         <Line active={s3 === "done" || s3 === "active"} />
+ 114|         <StepDot s={s3} label="측정" type="search" />
+ 115|         <Line active={s4 === "done" || s4 === "active"} />
+ 116|         <StepDot s={s4} label="이행확인" type="shield" />
+ 117|         {doc.current_approver_name && (
+ 118|           <div className="ml-1 text-[9px] text-amber-600 font-medium shrink-0 max-w-[50px] truncate">{doc.current_approver_name}</div>
+ 119|         )}
+ 120|       </div>
+ 121|     );
+ 122|   }
+ 123| 
+ 124|   if (isPowerOutage) {
+ 125|     const ord = doc.current_approval_order ?? 0;
+ 126|     const st = doc.status;
+ 127|     const sp0: StepStatus = st !== "DRAFT" ? "done" : "active";
+ 128|     const sp1: StepStatus = st === "SUBMITTED" ? "active" : ord >= 1 ? (st === "REJECTED" && ord === 1 ? "rejected" : ord === 1 && st === "IN_REVIEW" ? "active" : "done") : "pending";
+ 129|     const sp2: StepStatus = ord === 2 && st === "IN_REVIEW" ? "active" : ord > 2 || st === "APPROVED" ? "done" : "pending";
+ 130|     const sp3: StepStatus = ord === 3 && st === "IN_REVIEW" ? "active" : st === "APPROVED" ? "done" : "pending";
+ 131|     return (
+ 132|       <div className="flex items-center gap-0.5 mt-2.5">
+ 133|         <StepDot s={sp0} label="신청" type="doc" />
+ 134|         <Line active={sp1 === "done" || sp1 === "active"} />
+ 135|         <StepDot s={sp1} label="계획확인" type="shield" />
+ 136|         <Line active={sp2 === "done" || sp2 === "active"} />
+ 137|         <StepDot s={sp2} label="점검확인" type="search" />
+ 138|         <Line active={sp3 === "done" || sp3 === "active"} />
+ 139|         <StepDot s={sp3} label="이행확인" type="shield" />
+ 140|         {doc.current_approver_name && (
+ 141|           <div className="ml-1 text-[9px] text-amber-600 font-medium shrink-0 max-w-[50px] truncate">{doc.current_approver_name}</div>
+ 142|         )}
+ 143|       </div>
+ 144|     );
+ 145|   }
+ 146|   const step1: StepStatus = doc.status !== "DRAFT" ? "done" : "active";
+ 147|   let step2: StepStatus = "pending";
+ 148|   let step3: StepStatus = "pending";
+ 149|   if (doc.status === "SUBMITTED") { step2 = "active"; }
+ 150|   else if (doc.status === "IN_REVIEW") {
+ 151|     if (doc.current_approval_order === 1) step2 = "active";
+ 152|     else if (doc.current_approval_order === 2) { step2 = "done"; step3 = "active"; }
+ 153|   } else if (doc.status === "APPROVED") { step2 = "done"; step3 = "done"; }
+ 154|   else if (doc.status === "REJECTED") { step2 = "rejected"; }
+ 155| 
+ 156|   const isSafetyPermit = doc.document_type === "SAFETY_WORK_PERMIT";
+ 157|   return (
+ 158|     <div className="flex items-center gap-1 mt-2.5">
+ 159|       <StepDot s={step1} label="신청" type="doc" />
+ 160|       <Line active={step2 === "done" || step2 === "active"} />
+ 161|       <StepDot s={step2} label={isSafetyPermit ? "계획확인" : "검토"} type="search" />
+ 162|       <Line active={step3 === "done" || step3 === "active"} />
+ 163|       <StepDot s={step3} label={isSafetyPermit ? "이행확인" : "허가"} type="shield" />
+ 164|       {doc.current_approver_name && (
+ 165|         <div className="ml-2 text-[10px] text-amber-600 font-medium shrink-0 max-w-[70px] truncate">{doc.current_approver_name}</div>
+ 166|       )}
+ 167|     </div>
+ 168|   );
+ 169| }
+ 170| 
+ 171| export default function ApprovalsPage() {
+ 172|   const [docs, setDocs] = useState<ApprovalDoc[]>([]);
+ 173|   const [loading, setLoading] = useState(true);
+ 174|   const [error, setError] = useState("");
+ 175|   const [activeTab, setActiveTab] = useState("ALL");
+ 176|   const [dateFilter, setDateFilter] = useState("ALL");
+ 177|   const [categoryFilter, setCategoryFilter] = useState<"ALL"|"CONTRACTOR"|"SELF">("ALL");
+ 178|   const [divisionFilter, setDivisionFilter] = useState("ALL");
+ 179|   const [search, setSearch] = useState("");
+ 180|   const [myTurnCount, setMyTurnCount] = useState(0);
+ 181| 
+ 182|   const statusParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("status") : null;
+ 183| 
+ 184|   const fetchApprovals = useCallback(async () => {
+ 185|     setLoading(true); setError("");
+ 186|     try {
+ 187|       const params = new URLSearchParams();
+ 188|       if (activeTab !== "ALL") params.set("type", activeTab);
+ 189|       if (dateFilter !== "ALL") params.set("date", dateFilter);
+ 190|       if (search) params.set("keyword", search);
+ 191|       const res = await fetch(`/api/approvals?${params.toString()}`);
+ 192|       const data = await res.json();
+ 193|       if (!res.ok) throw new Error(data.error || "데이터 오류");
+ 194|       setDocs(data.documents ?? []);
+ 195|       setMyTurnCount(data.myTurnCount ?? 0);
+ 196|     } catch (e: unknown) {
+ 197|       setError(e instanceof Error ? e.message : "알 수 없는 오류가 발생했습니다.");
+ 198|     } finally {
+ 199|       setLoading(false);
+ 200|     }
+ 201|   }, [activeTab, dateFilter, search]);
+ 202| 
+ 203|   useEffect(() => {
+ 204|     const timer = setTimeout(fetchApprovals, 300);
+ 205|     return () => clearTimeout(timer);
+ 206|   }, [fetchApprovals]);
+ 207| 
+ 208|   const formatDate = (dateStr?: string) => {
+ 209|     if (!dateStr) return "";
+ 210|     return new Date(dateStr).toLocaleDateString("ko-KR", {
+ 211|       year: "numeric", month: "2-digit", day: "2-digit",
+ 212|     }).replace(/\. /g, ".").replace(/\.$/, "");
+ 213|   };
+ 214| 
+ 215|   // 반 목록: 현재 카테고리 필터에 맞는 것만
+ 216|   const divisionList = ["ALL", ...Array.from(new Set(
+ 217|     docs
+ 218|       .filter(d => categoryFilter === "ALL" || getTaskCategory(d.task_description) === categoryFilter)
+ 219|       .map(d => getDivision(d.task_description))
+ 220|       .filter(Boolean)
+ 221|   )).sort()];
+ 222| 
+ 223|   const filteredDocs = docs.filter(doc => {
+ 224|     if (statusParam === "DRAFT" && doc.status !== "DRAFT") return false;
+ 225|     if (categoryFilter !== "ALL") {
+ 226|       if (getTaskCategory(doc.task_description) !== categoryFilter) return false;
+ 227|     }
+ 228|     if (divisionFilter !== "ALL") {
+ 229|       if (getDivision(doc.task_description) !== divisionFilter) return false;
+ 230|     }
+ 231|     return true;
+ 232|   });
+ 233| 
+ 234|   return (
+ 235|     <div>
+ 236|       <div className="px-4 pt-4 pb-3 bg-white border-b border-gray-100">
+ 237|         <div className="flex items-center justify-between mb-3">
+ 238|           <h1 className="text-lg font-bold text-gray-900">결재현황</h1>
+ 239|           {myTurnCount > 0 && (
+ 240|             <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-red-100 text-red-600">
+ 241|               내 차례 {myTurnCount}건
+ 242|             </span>
+ 243|           )}
+ 244|         </div>
+ 245| 
+ 246|         {/* 기간 필터 */}
+ 247|         <div className="flex gap-2 mb-2">
+ 248|           {DATE_FILTERS.map((f) => (
+ 249|             <button key={f.key} onClick={() => setDateFilter(f.key)}
+ 250|               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+ 251|                 dateFilter === f.key
+ 252|                   ? "bg-blue-600 text-white border-blue-600"
+ 253|                   : "bg-white text-gray-600 border-gray-200"
+ 254|               }`}>
+ 255|               {f.label}
+ 256|             </button>
+ 257|           ))}
+ 258|         </div>
+ 259| 
+ 260|         {/* 유형 필터 (전체/용역/자체진단) + 반 드롭다운 */}
+ 261|         <div className="flex items-center gap-2 flex-wrap">
+ 262|           {(["ALL", "CONTRACTOR", "SELF"] as const).map(f => (
+ 263|             <button key={f}
+ 264|               onClick={() => { setCategoryFilter(f); setDivisionFilter("ALL"); }}
+ 265|               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+ 266|                 categoryFilter === f
+ 267|                   ? f === "SELF" ? "bg-green-600 text-white border-green-600"
+ 268|                     : f === "CONTRACTOR" ? "bg-blue-600 text-white border-blue-600"
+ 269|                     : "bg-gray-700 text-white border-gray-700"
+ 270|                   : f === "SELF" ? "text-green-600 border-green-200 bg-white"
+ 271|                     : f === "CONTRACTOR" ? "text-blue-600 border-blue-200 bg-white"
+ 272|                     : "bg-white text-gray-600 border-gray-200"
+ 273|               }`}>
+ 274|               {f === "ALL" ? "전체" : f === "CONTRACTOR" ? "[용역]" : "[자체진단]"}
+ 275|             </button>
+ 276|           ))}
+ 277|           {/* 반 드롭다운: 용역 또는 자체진단 선택시에만 표시 */}
+ 278|           {categoryFilter !== "ALL" && divisionList.length > 1 && (
+ 279|             <select
+ 280|               value={divisionFilter}
+ 281|               onChange={e => setDivisionFilter(e.target.value)}
+ 282|               className="text-xs px-2.5 py-1.5 border border-gray-200 rounded-full text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+ 283|               {divisionList.map(d => (
+ 284|                 <option key={d} value={d}>{d === "ALL" ? "전체 반" : d}</option>
+ 285|               ))}
+ 286|             </select>
+ 287|           )}
+ 288|         </div>
+ 289|       </div>
+ 290| 
+ 291|       {/* 허가서 종류 탭 */}
+ 292|       <div className="bg-white border-b border-gray-200 flex overflow-x-auto">
+ 293|         {TABS.map((tab) => {
+ 294|           const count = tab.key === "ALL"
+ 295|             ? filteredDocs.length
+ 296|             : filteredDocs.filter(d => d.document_type === tab.key).length;
+ 297|           return (
+ 298|             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+ 299|               className={`flex-shrink-0 px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
+ 300|                 activeTab === tab.key ? "border-blue-600 text-blue-600" : "border-transparent text-gray-700"
+ 301|               }`}>
+ 302|               {tab.label}
+ 303|               {count > 0 && (
+ 304|                 <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
+ 305|                   activeTab === tab.key ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-500"
+ 306|                 }`}>{count}</span>
+ 307|               )}
+ 308|             </button>
+ 309|           );
+ 310|         })}
+ 311|       </div>
+ 312| 
+ 313|       <div className="px-4 pt-3 pb-2">
+ 314|         <div className="relative">
+ 315|           <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+ 316|             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+ 317|               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+ 318|             </svg>
+ 319|           </div>
+ 320|           <input value={search} onChange={(e) => setSearch(e.target.value)}
+ 321|             placeholder="용역명, 업체명으로 검색하세요"
+ 322|             className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+ 323|         </div>
+ 324|       </div>
+ 325| 
+ 326|       <div className="px-4 pb-4 space-y-3">
+ 327|         {loading ? (
+ 328|           [1, 2, 3].map((i) => (
+ 329|             <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 animate-pulse">
+ 330|               <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+ 331|               <div className="h-3 bg-gray-100 rounded w-1/2" />
+ 332|             </div>
+ 333|           ))
+ 334|         ) : error ? (
+ 335|           <div className="text-center py-12 text-red-500 text-sm">{error}</div>
+ 336|         ) : filteredDocs.length === 0 ? (
+ 337|           <div className="text-center py-16 text-gray-400">
+ 338|             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-3 opacity-50">
+ 339|               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+ 340|               <polyline points="14 2 14 8 20 8"/>
+ 341|             </svg>
+ 342|             <p className="text-sm">결재 목록이 없습니다</p>
+ 343|           </div>
+ 344|         ) : (
+ 345|           filteredDocs.map((doc) => {
+ 346|             const statusKey = getStatusKey(doc);
+ 347|             const style = STATUS_STYLE[statusKey] ?? STATUS_STYLE.SUBMITTED;
+ 348|             const typeShort = DOCUMENT_TYPE_SHORT[doc.document_type] ?? doc.document_type;
+ 349|             const typeLabel = DOCUMENT_TYPE_LABELS[doc.document_type] ?? doc.document_type;
+ 350|             const isMyTurn = doc.is_my_turn === true || String(doc.is_my_turn) === "true";
+ 351|             return (
+ 352|               <Link key={doc.id} href={
+ 353|                 doc.status === "DRAFT"
+ 354|                   ? `/tasks/${(doc as any).task_id ?? ""}`
+ 355|                   : `/approvals/${doc.id}`
+ 356|               }>
+ 357|                 <div className={`bg-white rounded-2xl p-4 shadow-sm border transition-shadow hover:shadow-md ${
+ 358|                   isMyTurn ? "border-blue-200" :
+ 359|                   doc.status === "DRAFT" ? "border-dashed border-gray-200" :
+ 360|                   "border-gray-100"
+ 361|                 }`}>
+ 362|                   {doc.status === "DRAFT" && (
+ 363|                     <div className="flex items-center gap-1.5 mb-2 text-xs text-gray-400">
+ 364|                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+ 365|                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+ 366|                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+ 367|                       </svg>
+ 368|                       작성 중 - 용역 페이지에서 이어서 작성
+ 369|                     </div>
+ 370|                   )}
+ 371|                   {isMyTurn && (
+ 372|                     <div className="flex items-center gap-1.5 mb-2 text-xs font-medium text-blue-600">
+ 373|                       <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse inline-block"/>
+ 374|                       지금 결재 차례입니다
+ 375|                     </div>
+ 376|                   )}
+ 377|                   <div className="flex items-start justify-between mb-1">
+ 378|                     <div className="flex items-center gap-2 flex-wrap">
+ 379|                       <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 font-medium">{typeShort}</span>
+ 380|                       <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 ${getTaskCategory(doc.task_description) === "SELF" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+ 381|                         {getTaskCategory(doc.task_description) === "SELF" ? "[자체진단]" : "[용역]"}
+ 382|                       </span>
+ 383|                       {getDivision(doc.task_description) && (
+ 384|                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{getDivision(doc.task_description)}</span>
+ 385|                       )}
+ 386|                       <span className="text-sm font-semibold text-gray-900">{doc.task_name}</span>
+ 387|                     </div>
+ 388|                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ml-1 ${style.bg} ${style.text}`}>
+ 389|                       {style.label}
+ 390|                     </span>
+ 391|                   </div>
+ 392|                   <p className="text-xs text-gray-500 mb-1">{typeLabel}</p>
+ 393|                   <div className="flex items-center gap-2 text-xs text-gray-400 flex-wrap">
+ 394|                     {doc.contractor_company_name && <span>{doc.contractor_company_name}</span>}
+ 395|                     {doc.contractor_company_name && <span>·</span>}
+ 396|                     <span>작성자: {doc.writer_name}</span>
+ 397|                     {doc.submitted_at && <><span>·</span><span>{formatDate(doc.submitted_at)}</span></>}
+ 398|                   </div>
+ 399|                   {doc.status !== "DRAFT" && <ApprovalStepFlow doc={doc} />}
+ 400|                 </div>
+ 401|               </Link>
+ 402|             );
+ 403|           })
+ 404|         )}
+ 405|       </div>
+ 406|     </div>
+ 407|   );
+ 408| }
+
+===== grep: cancel / DELETE / handleCancelApproval across api+detail page =====
+\app\(main)\approvals\[documentId]\page.tsx:1082|   const handleCancelApproval = async () => {
+\app\(main)\approvals\[documentId]\page.tsx:1313|     <button onClick={handleCancelApproval} disabled={cancelling}
+\app\(main)\tasks\[taskId]\page.tsx:146|   const handleCancelApproval = async (docId: string) => {
+\app\(main)\tasks\[taskId]\page.tsx:411|                       onClick={() => handleCancelApproval(doc.id)}
+\app\api\documents\[documentId]\route.ts:145| export async function DELETE(
+\app\api\documents\[documentId]\attachments\route.ts:161| export async function DELETE(
+\app\api\documents\[documentId]\delete\route.ts:15| export async function DELETE(
+
+===== documents [id] API (\app\api\documents\[documentId]\route.ts) total 211 =====
+   1| import { NextRequest, NextResponse } from "next/server";
+   2| import { auth } from "@/auth";
+   3| import { db } from "@/db";
+   4| import { documents, documentHistories } from "@/db/schema";
+   5| import { eq } from "drizzle-orm";
+   6| 
+   7| // GET /api/documents/[documentId]
+   8| export async function GET(
+   9|   req: NextRequest,
+  10|   { params }: { params: Promise<{ documentId: string }> }
+  11| ) {
+  12|   try {
+  13|     const session = await auth();
+  14|     if (!session?.user) {
+  15|       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+  16|     }
+  17|     const { documentId } = await params;
+  18|     const [doc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+  19|     if (!doc || doc.deletedAt) {
+  20|       return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
+  21|     }
+  22|     return NextResponse.json({ document: doc });
+  23|   } catch (error) {
+  24|     console.error("[GET /api/documents/[documentId]]", error);
+  25|     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+  26|   }
+  27| }
+  28| 
+  29| // PATCH /api/documents/[documentId] - 임시저장 (위치 포함)
+  30| export async function PATCH(
+  31|   req: NextRequest,
+  32|   { params }: { params: Promise<{ documentId: string }> }
+  33| ) {
+  34|   try {
+  35|     const session = await auth();
+  36|     if (!session?.user) {
+  37|       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+  38|     }
+  39| 
+  40|     const { documentId } = await params;
+  41|     const body = await req.json();
+  42|     const { formDataJson, workLatitude, workLongitude, workAddress, gasMeasureRowsOnly } = body;
+  43| 
+  44|     const [existing] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+  45|     if (!existing || existing.deletedAt) {
+  46|       return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
+  47|     }
+  48|     if (!["DRAFT", "REJECTED"].includes(existing.status) && !gasMeasureRowsOnly) {
+  49|       return NextResponse.json({ error: "저장할 수 없는 상태입니다." }, { status: 400 });
+  50|     }
+  51| 
+  52|     // ✅ workAddress가 들어오면 formDataJson의 workLocation/facilityLocation도 주소로 동기화
+  53|     // gasMeasureRows 전용 임시저장
+  54|     if (gasMeasureRowsOnly && formDataJson?.gasMeasureRows) {
+  55|       const merged = { ...(existing.formDataJson as object), gasMeasureRows: formDataJson.gasMeasureRows };
+  56|       await db.update(documents).set({ formDataJson: merged, updatedAt: new Date() }).where(eq(documents.id, documentId));
+  57|       return NextResponse.json({ success: true });
+  58|     }
+  59|         let mergedFormData = formDataJson ?? existing.formDataJson;
+  60|     if (workAddress && typeof workAddress === "string" && workAddress.trim()) {
+  61|       const fd = (mergedFormData ?? {}) as Record<string, unknown>;
+  62|       const docType = existing.documentType;
+  63|       if (docType === "HOLIDAY_WORK") {
+  64|         // 붙임3은 facilityLocation 사용
+  65|         mergedFormData = { ...fd, facilityLocation: workAddress };
+  66|       } else {
+  67|         // 붙임1,2,4는 workLocation 사용
+  68|         mergedFormData = { ...fd, workLocation: workAddress };
+  69|       }
+  70|     }
+  71| 
+  72|     const [updated] = await db
+  73|       .update(documents)
+  74|       .set({
+  75|         formDataJson: mergedFormData,
+  76|         ...(workLatitude  !== undefined && { workLatitude }),
+  77|         ...(workLongitude !== undefined && { workLongitude }),
+  78|         ...(workAddress   !== undefined && { workAddress }),
+  79|         lastUpdatedBy: session.user.id,
+  80|         updatedAt: new Date(),
+  81|       })
+  82|       .where(eq(documents.id, documentId))
+  83|       .returning();
+  84| 
+  85|     return NextResponse.json({ document: updated });
+  86|   } catch (error) {
+  87|     console.error("[PATCH /api/documents/[documentId]]", error);
+  88|     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+  89|   }
+  90| }
+  91| 
+  92| // POST /api/documents/[documentId] - 제출
+  93| export async function POST(
+  94|   req: NextRequest,
+  95|   { params }: { params: Promise<{ documentId: string }> }
+  96| ) {
+  97|   try {
+  98|     const session = await auth();
+  99|     if (!session?.user) {
+ 100|       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+ 101|     }
+ 102| 
+ 103|     const { documentId } = await params;
+ 104|     const body = await req.json();
+ 105|     const { formDataJson, workLatitude, workLongitude, workAddress, gasMeasureRowsOnly } = body;
+ 106| 
+ 107|     const [existing] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+ 108|     if (!existing || existing.deletedAt) {
+ 109|       return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
+ 110|     }
+ 111|     if (!["DRAFT", "REJECTED"].includes(existing.status) && !gasMeasureRowsOnly) {
+ 112|       return NextResponse.json({ error: "제출할 수 없는 상태입니다." }, { status: 400 });
+ 113|     }
+ 114| 
+ 115|     const [updated] = await db
+ 116|       .update(documents)
+ 117|       .set({
+ 118|         formDataJson: gasMeasureRowsOnly
+ 119|           ? { ...(existing.formDataJson as object), ...(formDataJson as object) }
+ 120|           : (formDataJson ?? existing.formDataJson),
+ 121|         status: "SUBMITTED",
+ 122|         lastUpdatedBy: session.user.id,
+ 123|         submittedAt: new Date(),
+ 124|         updatedAt: new Date(),
+ 125|       })
+ 126|       .where(eq(documents.id, documentId))
+ 127|       .returning();
+ 128| 
+ 129|     await db.insert(documentHistories).values({
+ 130|       documentId,
+ 131|       actionType: existing.status === "REJECTED" ? "RESUBMITTED" : "SUBMITTED",
+ 132|       actorUserId: session.user.id,
+ 133|       previousStatus: existing.status,
+ 134|       nextStatus: "SUBMITTED",
+ 135|     });
+ 136| 
+ 137|     return NextResponse.json({ document: updated });
+ 138|   } catch (error) {
+ 139|     console.error("[POST /api/documents/[documentId]]", error);
+ 140|     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+ 141|   }
+ 142| }
+ 143| 
+ 144| // DELETE /api/documents/[documentId] - 결재 취소 → DRAFT 복원
+ 145| export async function DELETE(
+ 146|   req: NextRequest,
+ 147|   { params }: { params: Promise<{ documentId: string }> }
+ 148| ) {
+ 149|   try {
+ 150|     const session = await auth();
+ 151|     if (!session?.user) {
+ 152|       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+ 153|     }
+ 154| 
+ 155|     const { documentId } = await params;
+ 156|     const [existing] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+ 157|     if (!existing || existing.deletedAt) {
+ 158|       return NextResponse.json({ error: "문서를 찾을 수 없습니다." }, { status: 404 });
+ 159|     }
+ 160| 
+ 161|     const userRole = (session.user as any).role ?? "";
+ 162|     const isOwner = String(existing.createdBy).toLowerCase() === String(session.user.id).toLowerCase();
+ 163|     const isStaff = ["REVIEWER", "FINAL_APPROVER", "ADMIN"].includes(userRole);
+ 164|     if (!isOwner && !isStaff) {
+ 165|       return NextResponse.json({ error: "결재 취소 권한이 없습니다. (작성자 또는 관리자만 가능)" }, { status: 403 });
+ 166|     }
+ 167| 
+ 168|     if (existing.status === "DRAFT") {
+ 169|       return NextResponse.json({ error: "이미 작성중 상태입니다." }, { status: 400 });
+ 170|     }
+ 171| 
+ 172|     const previousStatus = existing.status;
+ 173|     const formData = (existing.formDataJson as Record<string, unknown>) ?? {};
+ 174|     const { signatureData: _removed, ...cleanFormData } = formData;
+ 175| 
+ 176|     const [updated] = await db
+ 177|       .update(documents)
+ 178|       .set({
+ 179|         status: "DRAFT",
+ 180|         formDataJson: cleanFormData,
+ 181|         currentApprovalOrder: null,
+ 182|         currentApproverUserId: null,
+ 183|         submittedAt: null,
+ 184|         approvedAt: null,
+ 185|         rejectedAt: null,
+ 186|         rejectionReason: null,
+ 187|         lastUpdatedBy: session.user.id,
+ 188|         updatedAt: new Date(),
+ 189|       })
+ 190|       .where(eq(documents.id, documentId))
+ 191|       .returning();
+ 192| 
+ 193|     const { documentApprovalLines, documentSignatures } = await import("@/db/schema");
+ 194|     await db.delete(documentSignatures).where(eq(documentSignatures.documentId, documentId));
+ 195|     await db.delete(documentApprovalLines).where(eq(documentApprovalLines.documentId, documentId));
+ 196| 
+ 197|     await db.insert(documentHistories).values({
+ 198|       documentId,
+ 199|       actionType: "CANCELLED",
+ 200|       actorUserId: session.user.id,
+ 201|       previousStatus: previousStatus as "SUBMITTED" | "IN_REVIEW" | "APPROVED" | "REJECTED" | "DRAFT",
+ 202|       nextStatus: "DRAFT",
+ 203|       memo: "결재 취소 - 작성중으로 복원",
+ 204|     });
+ 205| 
+ 206|     return NextResponse.json({ document: updated, message: "결재가 취소됐습니다." });
+ 207|   } catch (error) {
+ 208|     console.error("[DELETE /api/documents/[documentId]]", error);
+ 209|     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+ 210|   }
+ 211| }
+
+!! cancel route NOT FOUND E:\safety-docs\app\api\documents\[documentId]\cancel\route.ts

@@ -178,6 +178,9 @@ export default function ApprovalsPage() {
   const [divisionFilter, setDivisionFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [myTurnCount, setMyTurnCount] = useState(0);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const statusParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("status") : null;
 
@@ -231,16 +234,55 @@ export default function ApprovalsPage() {
     return true;
   });
 
+  const toggleSelect = (id: string) => setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const exitSelectMode = () => { setSelectMode(false); setSelectedIds(new Set()); };
+  const allSelected = filteredDocs.length > 0 && filteredDocs.every(d => selectedIds.has(d.id));
+  const toggleSelectAll = () => setSelectedIds(prev => {
+    if (filteredDocs.every(d => prev.has(d.id))) { const n = new Set(prev); filteredDocs.forEach(d => n.delete(d.id)); return n; }
+    const n = new Set(prev); filteredDocs.forEach(d => n.add(d.id)); return n;
+  });
+  const runBulk = async (ids: string[], path: (id: string) => string, okMsg: string) => {
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    let fail = 0;
+    for (const id of ids) { try { const r = await fetch(path(id), { method: "DELETE" }); if (!r.ok) fail++; } catch { fail++; } }
+    setBulkBusy(false);
+    exitSelectMode();
+    fetchApprovals();
+    if (fail > 0) alert(`${ids.length - fail}건 ${okMsg}, ${fail}건 실패`);
+  };
+  const bulkCancel = () => {
+    const list = filteredDocs.filter(d => selectedIds.has(d.id) && d.status !== "DRAFT");
+    if (list.length === 0) { alert("결재취소할 항목이 없습니다. (작성중 제외)"); return; }
+    if (!confirm(`${list.length}건을 결재취소(작성중 복원)합니다.
+
+서명·결재선이 초기화됩니다. 진행할까요?`)) return;
+    runBulk(list.map(d => d.id), id => `/api/documents/${id}`, "결재취소");
+  };
+  const bulkDelete = () => {
+    const ids = filteredDocs.filter(d => selectedIds.has(d.id)).map(d => d.id);
+    if (ids.length === 0) return;
+    if (!confirm(`${ids.length}건을 완전히 삭제합니다.
+
+승인완료 포함, 되돌릴 수 없습니다. 진행할까요?`)) return;
+    runBulk(ids, id => `/api/documents/${id}/delete`, "삭제");
+  };
+
   return (
     <div>
       <div className="px-4 pt-4 pb-3 bg-white border-b border-gray-100">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-lg font-bold text-gray-900">결재현황</h1>
+          <div className="flex items-center gap-2">
           {myTurnCount > 0 && (
             <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-red-100 text-red-600">
               내 차례 {myTurnCount}건
             </span>
           )}
+          <button onClick={() => { if (selectMode) exitSelectMode(); else setSelectMode(true); }} className="text-xs font-medium px-3 py-1.5 rounded-full border border-gray-200 text-gray-600">
+            {selectMode ? "취소" : "선택"}
+          </button>
+          </div>
         </div>
 
         {/* 기간 필터 */}
@@ -323,7 +365,7 @@ export default function ApprovalsPage() {
         </div>
       </div>
 
-      <div className="px-4 pb-4 space-y-3">
+      <div className={`px-4 ${selectMode ? "pb-28" : "pb-4"} space-y-3`}>
         {loading ? (
           [1, 2, 3].map((i) => (
             <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 animate-pulse">
@@ -353,12 +395,20 @@ export default function ApprovalsPage() {
                 doc.status === "DRAFT"
                   ? `/tasks/${(doc as any).task_id ?? ""}`
                   : `/approvals/${doc.id}`
-              }>
-                <div className={`bg-white rounded-2xl p-4 shadow-sm border transition-shadow hover:shadow-md ${
+              } onClick={(e) => { if (selectMode) { e.preventDefault(); toggleSelect(doc.id); } }}>
+                <div className={`bg-white rounded-2xl p-4 shadow-sm border transition-shadow hover:shadow-md ${selectMode && selectedIds.has(doc.id) ? "ring-2 ring-blue-400 " : ""}${
                   isMyTurn ? "border-blue-200" :
                   doc.status === "DRAFT" ? "border-dashed border-gray-200" :
                   "border-gray-100"
                 }`}>
+                  {selectMode && (
+                    <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
+                      <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${selectedIds.has(doc.id) ? "bg-blue-600 border-blue-600" : "border-gray-300"}`}>
+                        {selectedIds.has(doc.id) && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>}
+                      </span>
+                      <span className="text-xs text-gray-500">{selectedIds.has(doc.id) ? "선택됨" : "선택"}</span>
+                    </div>
+                  )}
                   {doc.status === "DRAFT" && (
                     <div className="flex items-center gap-1.5 mb-2 text-xs text-gray-400">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -403,6 +453,21 @@ export default function ApprovalsPage() {
           })
         )}
       </div>
+      {selectMode && (
+        <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 z-40">
+          <div className="flex items-center gap-2">
+            <button onClick={toggleSelectAll} className="text-xs font-medium px-3 py-2 rounded-xl border border-gray-200 text-gray-600 shrink-0">
+              {allSelected ? "전체 해제" : "전체 선택"}
+            </button>
+            <button onClick={bulkCancel} disabled={bulkBusy || selectedIds.size === 0} className="flex-1 py-2.5 rounded-xl text-sm font-medium border-2 border-amber-300 text-amber-600 disabled:opacity-40">
+              {bulkBusy ? "처리 중..." : `결재취소 (${selectedIds.size})`}
+            </button>
+            <button onClick={bulkDelete} disabled={bulkBusy || selectedIds.size === 0} className="flex-1 py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-40" style={{ background: "#dc2626" }}>
+              {bulkBusy ? "처리 중..." : `삭제 (${selectedIds.size})`}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
