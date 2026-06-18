@@ -304,7 +304,7 @@ export default function LoginPage() {
 
           {/* 문의처 */}
           <div className="mt-6 pt-4 border-t border-gray-100">
-            <p className="text-xs text-gray-400 text-center mb-3">문의</p>
+            <p className="text-xs text-gray-400 text-center mb-3">문의_사업자번호_한국농어촌공사 충남지역본부_314-82-06350 </p>
             <div className="space-y-2.5">
               {contacts.map((c) => (
                 <div key={c.category} className="bg-gray-50 rounded-xl px-3 py-2.5">
